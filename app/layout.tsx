@@ -27,6 +27,10 @@ export const metadata = {
 	description:
 		"Official portal of Barangay Malinta, Los Baños, Laguna. Access barangay services online.",
 	generator: "v0.dev",
+
+	icons: {
+		icon: "/favicon.ico",
+	},
 };
 
 export default function RootLayout({
