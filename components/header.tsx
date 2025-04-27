@@ -19,7 +19,12 @@ import {
 	ChevronDown,
 	Settings,
 } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+	Sheet,
+	SheetContent,
+	SheetTrigger,
+	SheetTitle,
+} from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/contexts/language-context";
 import {
@@ -94,12 +99,13 @@ export default function Header() {
 				<div className="flex items-center gap-2">
 					<Sheet open={open} onOpenChange={setOpen}>
 						<SheetTrigger asChild>
-							<Button variant="ghost" size="icon" className="md:hidden">
+							<Button variant="ghost" size="icon" className="lg:hidden">
 								<Menu className="h-5 w-5" />
 								<span className="sr-only">Toggle menu</span>
 							</Button>
 						</SheetTrigger>
 						<SheetContent side="left" className="pr-0">
+							<SheetTitle className="sr-only">Navigation Menu</SheetTitle>
 							<div className="px-7">
 								<Link
 									href="/"
@@ -144,7 +150,7 @@ export default function Header() {
 							</nav>
 						</SheetContent>
 					</Sheet>
-					<Link href="/" className="hidden items-center gap-2 md:flex">
+					<Link href="/" className="hidden md:flex items-center gap-2">
 						<div className="relative h-10 w-10 overflow-hidden rounded-full">
 							<Image
 								src="/images/malinta_logo.jpg"
@@ -163,7 +169,7 @@ export default function Header() {
 						</div>
 					</Link>
 				</div>
-				<nav className="hidden md:flex md:gap-6">
+				<nav className="hidden lg:flex lg:gap-6">
 					{/* Main navigation */}
 					{mainNavigation.map((item) => (
 						<Link

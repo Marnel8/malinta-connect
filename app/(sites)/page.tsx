@@ -107,6 +107,36 @@ export default function Home() {
 				</div>
 			</section>
 
+			{/* Registered Voters Count Section */}
+			<section className="w-full py-16 bg-gradient-to-r from-primary/5 to-primary/10 border-y border-primary/10">
+				<div className="container px-4 md:px-6">
+					<div className="max-w-3xl mx-auto bg-card rounded-xl shadow-lg overflow-hidden">
+						<div className="flex flex-col md:flex-row items-center">
+							<div className="bg-primary w-full md:w-auto p-8 md:p-12 flex justify-center items-center">
+								<Users className="h-16 w-16 md:h-20 md:w-20 text-primary-foreground" />
+							</div>
+							<div className="p-8 md:p-12 flex flex-col items-center md:items-start">
+								<h3 className="text-lg font-medium text-muted-foreground mb-1">
+									Total Registered Voters
+								</h3>
+								<div className="flex items-baseline gap-1">
+									<span className="font-bold text-5xl md:text-6xl tracking-tight text-primary">
+										5,248
+									</span>
+									<span className="text-sm font-medium text-muted-foreground mt-2 bg-muted px-2 py-0.5 rounded-full">
+										Updated May 2025
+									</span>
+								</div>
+								<p className="text-muted-foreground text-sm mt-4 text-center md:text-left">
+									As of the latest COMELEC data, Barangay Malinta has a growing
+									and engaged voter population.
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
 			{/* Services Section */}
 			<ServicesSection />
 
