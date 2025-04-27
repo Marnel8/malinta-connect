@@ -42,22 +42,20 @@ export default function EventsPage() {
 				className="w-full mb-10"
 				onValueChange={setActiveTab}
 			>
-				<div className="mb-16">
-					<TabsList className="flex w-full gap-4 bg-gray-100">
-						<TabsTrigger
-							value="events"
-							className="flex-1 text-[9px] md:text-sm sm:text-base"
-						>
-							{t("events.allEvents")}
-						</TabsTrigger>
-						<TabsTrigger
-							value="announcements"
-							className="flex-1 text-[9px] md:text-sm sm:text-base bg-gray-100 md:bg-transparent py-2.5 md:py-1"
-						>
-							{t("events.announcements")}
-						</TabsTrigger>
-					</TabsList>
-				</div>
+				<TabsList className="flex w-full gap-4 bg-gray-100">
+					<TabsTrigger
+						value="events"
+						className="flex-1 text-[9px] md:text-sm sm:text-base"
+					>
+						{t("events.allEvents")}
+					</TabsTrigger>
+					<TabsTrigger
+						value="announcements"
+						className="flex-1 text-[9px] md:text-sm sm:text-base bg-gray-100 md:bg-transparent py-2.5 md:py-1"
+					>
+						{t("events.announcements")}
+					</TabsTrigger>
+				</TabsList>
 
 				<div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4 sm:mb-6">
 					<div className="relative w-full sm:flex-1">
