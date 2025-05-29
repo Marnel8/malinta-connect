@@ -305,6 +305,7 @@ export default function OfficialsManagementPage() {
 										alt={official.name}
 										fill
 										className="object-cover"
+										objectPosition="center top"
 									/>
 								</div>
 								<div className="flex-1 p-6">
@@ -678,6 +679,7 @@ export default function OfficialsManagementPage() {
 									alt={currentOfficial.name}
 									fill
 									className="object-cover"
+									objectPosition="center top"
 								/>
 							</div>
 							<h2 className="text-2xl font-bold">{currentOfficial.name}</h2>
