@@ -312,8 +312,8 @@ export default function OfficialsManagementPage() {
 									<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
 										<div>
 											<h3 className="text-xl font-bold">{official.name}</h3>
-											<p className="text-muted-foreground">
-												{t(`officials.${official.position}`)}
+											<p className="text-muted-foreground capitalize">
+												{official.position}
 											</p>
 											<div className="flex items-center mt-2">
 												<Badge
