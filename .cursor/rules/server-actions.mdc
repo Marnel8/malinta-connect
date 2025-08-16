@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+Put all server/firebase calls on server actions

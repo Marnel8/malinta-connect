@@ -55,7 +55,7 @@ export function UserButton() {
               <DialogTitle>{t("login.title")}</DialogTitle>
               <DialogDescription>{t("login.description")}</DialogDescription>
             </DialogHeader>
-            <LoginForm onLogin={handleLogin} />
+            <LoginForm onLogin={handleLogin} onClose={() => setIsLoginOpen(false)} />
           </DialogContent>
         </Dialog>
       </>

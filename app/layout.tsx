@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { LanguageProvider } from "@/contexts/language-context";
+import { AuthProvider } from "@/contexts/auth-context";
 
 // Font for body text
 const inter = Inter({
@@ -54,12 +55,14 @@ export default function RootLayout({
 					disableTransitionOnChange
 				>
 					<LanguageProvider>
-						<div className="flex min-h-screen flex-col">
-							{/* <Header /> */}
-							<main className="flex-1">{children}</main>
-							{/* <Footer /> */}
-						</div>
-						<Toaster position="bottom-right" />
+						<AuthProvider>
+							<div className="flex min-h-screen flex-col">
+								{/* <Header /> */}
+								<main className="flex-1">{children}</main>
+								{/* <Footer /> */}
+							</div>
+							<Toaster position="bottom-right" />
+						</AuthProvider>
 					</LanguageProvider>
 				</ThemeProvider>
 			</body>
