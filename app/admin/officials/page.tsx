@@ -305,14 +305,15 @@ export default function OfficialsManagementPage() {
 										alt={official.name}
 										fill
 										className="object-cover"
+										objectPosition="center top"
 									/>
 								</div>
 								<div className="flex-1 p-6">
 									<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
 										<div>
 											<h3 className="text-xl font-bold">{official.name}</h3>
-											<p className="text-muted-foreground">
-												{t(`officials.${official.position}`)}
+											<p className="text-muted-foreground capitalize">
+												{official.position}
 											</p>
 											<div className="flex items-center mt-2">
 												<Badge
@@ -678,6 +679,7 @@ export default function OfficialsManagementPage() {
 									alt={currentOfficial.name}
 									fill
 									className="object-cover"
+									objectPosition="center top"
 								/>
 							</div>
 							<h2 className="text-2xl font-bold">{currentOfficial.name}</h2>

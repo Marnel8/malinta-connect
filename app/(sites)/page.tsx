@@ -164,6 +164,7 @@ export default function Home() {
 									alt="Barangay Captain"
 									fill
 									className="object-cover"
+									objectPosition="center top"
 								/>
 							</div>
 							<CardHeader>

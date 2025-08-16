@@ -1,17 +1,18 @@
 import type { ReactNode } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { ProtectedRoute } from "@/components/protected-route";
+import { FloatingSidebarTrigger } from "@/components/admin/floating-sidebar-trigger";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
 	return (
-		<ProtectedRoute requiredRole="official">
-			<SidebarProvider>
-				<div className="flex min-h-screen w-full bg-muted/30">
-					<AdminSidebar />
-					<main className="flex-1 overflow-y-auto">{children}</main>
-				</div>
-			</SidebarProvider>
-		</ProtectedRoute>
+		<SidebarProvider>
+			<div className="flex min-h-screen w-full bg-muted/30">
+				<AdminSidebar />
+				<main className="relative flex-1 overflow-y-auto">
+					<FloatingSidebarTrigger />
+					<div className="py-14">{children}</div>
+				</main>
+			</div>
+		</SidebarProvider>
 	);
 }
