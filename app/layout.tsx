@@ -4,8 +4,6 @@ import { Inter, Montserrat } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "react-hot-toast";
-import Header from "@/components/header";
-import Footer from "@/components/footer";
 import { LanguageProvider } from "@/contexts/language-context";
 import { AuthProvider } from "@/contexts/auth-context";
 
@@ -28,7 +26,6 @@ export const metadata = {
 	description:
 		"Official portal of Barangay Malinta, Los Baños, Laguna. Access barangay services online.",
 	generator: "v0.dev",
-
 	icons: {
 		icon: "/favicon.ico",
 	},
@@ -56,11 +53,7 @@ export default function RootLayout({
 				>
 					<LanguageProvider>
 						<AuthProvider>
-							<div className="flex min-h-screen flex-col">
-								{/* <Header /> */}
-								<main className="flex-1">{children}</main>
-								{/* <Footer /> */}
-							</div>
+							{children}
 							<Toaster position="bottom-right" />
 						</AuthProvider>
 					</LanguageProvider>

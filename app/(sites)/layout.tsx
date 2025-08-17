@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { LanguageProvider } from "@/contexts/language-context";
+import { SitesLogoutButton } from "@/components/sites-logout-button";
 
 // Font for body text
 const inter = Inter({
@@ -35,30 +36,30 @@ export default function SiteLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html lang="en" suppressHydrationWarning>
-			<body
-				className={cn(
-					"min-h-screen bg-background font-sans antialiased",
-					inter.variable,
-					montserrat.variable
-				)}
+		<div
+			className={cn(
+				"min-h-screen bg-background font-sans antialiased",
+				inter.variable,
+				montserrat.variable
+			)}
+		>
+			<ThemeProvider
+				attribute="class"
+				defaultTheme="light"
+				enableSystem
+				disableTransitionOnChange
 			>
-				<ThemeProvider
-					attribute="class"
-					defaultTheme="light"
-					enableSystem
-					disableTransitionOnChange
-				>
-					<LanguageProvider>
-						<div className="flex min-h-screen flex-col">
-							<Header />
-							<main className="flex-1">{children}</main>
-							<Footer />
-						</div>
-						<Toaster position="bottom-right" />
-					</LanguageProvider>
-				</ThemeProvider>
-			</body>
-		</html>
+				<LanguageProvider>
+					<div className="flex min-h-screen flex-col">
+						<Header />
+						{/* Logout button for logged-in users */}
+						<SitesLogoutButton />
+						<main className="flex-1">{children}</main>
+						<Footer />
+					</div>
+					<Toaster position="bottom-right" />
+				</LanguageProvider>
+			</ThemeProvider>
+		</div>
 	);
 }

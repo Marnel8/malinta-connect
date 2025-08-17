@@ -1,0 +1,9 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+Always have a loading indicator for submit buttons that is asynchronous (Adding..., Updating..., Deleting...)
+
+add toast for success and errors

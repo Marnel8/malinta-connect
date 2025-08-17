@@ -22,8 +22,8 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { ref, get } from "firebase/database";
-import { auth, database } from "@/app/firebase/firebase";
+import { auth } from "@/app/firebase/firebase";
+import { ensureUserProfileAction } from "@/app/actions/auth";
 
 const formSchema = z.object({
 	email: z.string().email({
@@ -60,7 +60,7 @@ export function LoginForm({
 		setIsLoading(true);
 
 		try {
-			// Sign in with Firebase directly (no server action)
+			// Sign in with Firebase on client side
 			const userCredential = await signInWithEmailAndPassword(
 				auth,
 				values.email,
@@ -68,73 +68,61 @@ export function LoginForm({
 			);
 			const user = userCredential.user;
 
-			// Get user profile from database
-			const userRef = ref(database, `users/${user.uid}`);
-			const userSnapshot = await get(userRef);
+			// Use server action to get/create user profile
+			const profileResult = await ensureUserProfileAction(user.uid, user.email || "");
 
-			let userRole = "resident";
-			let userProfile = null;
+			if (profileResult.success && profileResult.user) {
+				const userProfile = profileResult.user;
+				const userRole = userProfile.role;
 
-			if (userSnapshot.exists()) {
-				const userData = userSnapshot.val();
-				userRole = userData.role || "resident";
-				userProfile = userData;
-			} else {
-				// Create default profile for new users
-				userProfile = {
-					uid: user.uid,
-					email: user.email || "",
-					role: "resident",
-					createdAt: Date.now(),
-					updatedAt: Date.now(),
-				};
-			}
+				// Update auth context with user profile
+				updateUserProfile(userProfile);
 
-			// Store user profile and role in localStorage and update auth context
-			localStorage.setItem(`userRole_${user.uid}`, userRole);
-			localStorage.setItem(
-				`userProfile_${user.uid}`,
-				JSON.stringify(userProfile)
-			);
-			updateUserProfile(userProfile);
-
-			// Redirect based on role
-			if (userRole === "official" || userRole === "admin") {
-				if (activeTab === "official") {
-					// Close dialog before redirecting
-					if (onClose) onClose();
-					router.push("/admin");
+				// Check if user is trying to access the correct tab
+				if (userRole === "official" || userRole === "admin") {
+					if (activeTab === "official") {
+						// Close dialog before redirecting
+						if (onClose) onClose();
+						router.push("/admin");
+					} else {
+						// User tried to login as resident but is an official
+						toast({
+							title: "Access Denied",
+							description:
+								"This account is for officials only. Please use the official login tab.",
+							variant: "destructive",
+						});
+						setIsLoading(false);
+						return;
+					}
 				} else {
-					// User tried to login as resident but is an official
-					toast({
-						title: "Access Denied",
-						description:
-							"This account is for officials only. Please use the official login tab.",
-						variant: "destructive",
-					});
-					setIsLoading(false);
-					return;
+					if (activeTab === "resident") {
+						// Close dialog before redirecting
+						if (onClose) onClose();
+						router.push("/");
+					} else {
+						// User tried to login as official but is a resident
+						toast({
+							title: "Access Denied",
+							description:
+								"This account is for residents only. Please use the resident login tab.",
+							variant: "destructive",
+						});
+						setIsLoading(false);
+						return;
+					}
 				}
-			} else {
-				if (activeTab === "resident") {
-					// Close dialog before redirecting
-					if (onClose) onClose();
-					router.push("/");
-				} else {
-					// User tried to login as official but is a resident
-					toast({
-						title: "Access Denied",
-						description:
-							"This account is for residents only. Please use the resident login tab.",
-						variant: "destructive",
-					});
-					setIsLoading(false);
-					return;
-				}
-			}
 
-			// Call onLogin callback
-			onLogin();
+				// Call onLogin callback
+				onLogin();
+			} else {
+				// Handle error from server action
+				toast({
+					title: "Profile Error",
+					description: profileResult.error || "Failed to get user profile. Please try again.",
+					variant: "destructive",
+				});
+			}
 		} catch (error: any) {
 			console.error("Login error:", error);
 

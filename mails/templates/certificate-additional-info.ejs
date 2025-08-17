@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Additional Information Required</title>
+		<style>
+			body {
+				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+				line-height: 1.6;
+				color: #333;
+				max-width: 600px;
+				margin: 0 auto;
+				padding: 20px;
+				background-color: #f4f4f4;
+			}
+			.container {
+				background-color: #ffffff;
+				padding: 30px;
+				border-radius: 10px;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+			}
+			.header {
+				text-align: center;
+				border-bottom: 3px solid #f59e0b;
+				padding-bottom: 20px;
+				margin-bottom: 30px;
+			}
+			.logo {
+				max-width: 150px;
+				height: auto;
+				margin-bottom: 15px;
+			}
+			.status-badge {
+				display: inline-block;
+				background-color: #fed7aa;
+				color: #92400e;
+				padding: 8px 16px;
+				border-radius: 20px;
+				font-weight: bold;
+				font-size: 14px;
+				margin: 20px 0;
+			}
+			.details {
+				background-color: #fffbeb;
+				padding: 20px;
+				border-radius: 8px;
+				margin: 20px 0;
+			}
+			.detail-row {
+				display: flex;
+				justify-content: space-between;
+				margin-bottom: 10px;
+				padding: 8px 0;
+				border-bottom: 1px solid #fed7aa;
+			}
+			.detail-row:last-child {
+				border-bottom: none;
+			}
+			.label {
+				font-weight: 600;
+				color: #92400e;
+			}
+			.value {
+				color: #1e293b;
+			}
+			.info-request {
+				background-color: #fffbeb;
+				border-left: 4px solid #f59e0b;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+			.footer {
+				text-align: center;
+				margin-top: 30px;
+				padding-top: 20px;
+				border-top: 1px solid #e2e8f0;
+				color: #64748b;
+				font-size: 14px;
+			}
+			.cta-button {
+				display: inline-block;
+				background-color: #f59e0b;
+				color: white;
+				padding: 12px 24px;
+				text-decoration: none;
+				border-radius: 6px;
+				margin: 20px 0;
+				font-weight: 600;
+			}
+			.note {
+				background-color: #dbeafe;
+				border-left: 4px solid #3b82f6;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+			.urgent {
+				background-color: #fef2f2;
+				border-left: 4px solid #dc2626;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="header">
+				<img
+					src="<%= process.env.NEXT_PUBLIC_APP_URL %>/images/malinta_logo.jpg"
+					alt="Malinta Connect Logo"
+					class="logo"
+				/>
+				<h1 style="color: #1e293b; margin: 0">Additional Information Required</h1>
+				<div class="status-badge">NEEDS INFO</div>
+			</div>
+
+			<p>Dear <strong><%= userName %></strong>,</p>
+
+			<p>
+				Your certificate request is currently on hold because we need additional
+				information or documents to process it. Please review the details below
+				and provide the requested information as soon as possible.
+			</p>
+
+			<div class="info-request">
+				<strong>Information/Documents Required:</strong><br />
+				<%= additionalInfoRequest %>
+			</div>
+
+			<div class="details">
+				<h3 style="margin-top: 0; color: #1e293b">Request Details</h3>
+
+				<div class="detail-row">
+					<span class="label">Reference Number:</span>
+					<span class="value"><strong><%= referenceNumber %></strong></span>
+				</div>
+
+				<div class="detail-row">
+					<span class="label">Certificate Type:</span>
+					<span class="value"><%= certificateType %></span>
+				</div>
+
+				<div class="detail-row">
+					<span class="label">Request Date:</span>
+					<span class="value"><%= requestDate %></span>
+				</div>
+
+				<div class="detail-row">
+					<span class="label">Purpose:</span>
+					<span class="value"><%= purpose %></span>
+				</div>
+			</div>
+
+			<div class="note">
+				<strong>How to provide the requested information:</strong><br />
+				• Visit our office during business hours<br />
+				• Bring all required documents<br />
+				• Speak with our staff for guidance<br />
+				• Ensure documents are complete and valid
+			</div>
+
+			<div class="urgent">
+				<strong>Important:</strong> Your request will remain on hold until we
+				receive the requested information. Please provide it promptly to avoid
+				further delays in processing.
+			</div>
+
+			<p>
+				Once you provide the requested information, we will resume processing
+				your certificate request immediately.
+			</p>
+
+			<div style="text-align: center;">
+				<a
+					href="<%= process.env.NEXT_PUBLIC_APP_URL %>/certificates"
+					class="cta-button"
+					>View Request Status</a
+				>
+			</div>
+
+			<p><strong>Contact Information:</strong></p>
+
+			<ul style="color: #475569">
+				<li><strong>Phone:</strong> <%= contactPhone || 'N/A' %></li>
+				<li><strong>Email:</strong> <%= contactEmail || 'N/A' %></li>
+				<li>
+					<strong>Office Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM
+				</li>
+			</ul>
+
+			<div class="footer">
+				<p>
+					Thank you for your cooperation. We look forward to processing your
+					certificate request once we receive the required information.
+				</p>
+				<p>This is an automated message. Please do not reply to this email.</p>
+			</div>
+		</div>
+	</body>
+</html>

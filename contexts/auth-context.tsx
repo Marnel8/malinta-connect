@@ -28,6 +28,10 @@ interface UserProfile {
 		canManageAppointments: boolean;
 		canViewAnalytics: boolean;
 		canManageSettings: boolean;
+		canManageBlotter: boolean;
+		canManageOfficials: boolean;
+		canManageResidents: boolean;
+		canManageAnnouncements: boolean;
 	};
 }
 
