@@ -454,3 +454,102 @@ export const sendAppointmentStatusEmail = async (
 		return false;
 	}
 };
+
+// Blotter email data interface
+export interface BlotterEmailData {
+	userName: string;
+	referenceNumber: string;
+	reportType: string;
+	dateReported: string;
+	location?: string;
+	description: string;
+	notes?: string;
+	contactPhone?: string;
+	contactEmail?: string;
+}
+
+export const sendBlotterStatusEmail = async (
+	to: string,
+	status:
+		| "pending"
+		| "investigating"
+		| "additionalInfo"
+		| "resolved"
+		| "closed",
+	data: BlotterEmailData
+): Promise<boolean> => {
+	try {
+		let subject = "";
+		let intro = "";
+		switch (status) {
+			case "pending":
+				subject = `Blotter Report Received - ${data.referenceNumber}`;
+				intro = "Your blotter report has been received and is pending review.";
+				break;
+			case "investigating":
+				subject = `Blotter Report Under Investigation - ${data.referenceNumber}`;
+				intro = "Your blotter report is now under investigation.";
+				break;
+			case "additionalInfo":
+				subject = `Additional Information Requested - ${data.referenceNumber}`;
+				intro =
+					"We require additional information to proceed with your blotter report.";
+				break;
+			case "resolved":
+				subject = `Blotter Report Resolved - ${data.referenceNumber}`;
+				intro = "Your blotter report has been resolved.";
+				break;
+			case "closed":
+				subject = `Blotter Report Closed - ${data.referenceNumber}`;
+				intro = "Your blotter case has been closed.";
+				break;
+			default:
+				subject = `Blotter Report Update - ${data.referenceNumber}`;
+				intro = "There is an update regarding your blotter report.";
+		}
+
+		const html = `
+			<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827">
+				<h2 style="margin: 0 0 12px 0;">${intro}</h2>
+				<p style="margin: 0 0 8px 0;">Hello ${data.userName},</p>
+				<p style="margin: 0 0 16px 0;">Reference Number: <strong>${
+					data.referenceNumber
+				}</strong></p>
+				<table style="width: 100%; border-collapse: collapse;">
+					<tr>
+						<td style="padding: 6px 0; width: 160px; color: #6B7280;">Report Type</td>
+						<td style="padding: 6px 0;">${data.reportType}</td>
+					</tr>
+					<tr>
+						<td style="padding: 6px 0; color: #6B7280;">Date Reported</td>
+						<td style="padding: 6px 0;">${data.dateReported}</td>
+					</tr>
+					${
+						data.location
+							? `<tr><td style="padding: 6px 0; color: #6B7280;">Location</td><td style=\"padding: 6px 0;\">${data.location}</td></tr>`
+							: ""
+					}
+					<tr>
+						<td style="padding: 6px 0; color: #6B7280;">Description</td>
+						<td style="padding: 6px 0;">${data.description}</td>
+					</tr>
+					${
+						data.notes
+							? `<tr><td style="padding: 6px 0; color: #6B7280;">Notes</td><td style=\"padding: 6px 0;\">${data.notes}</td></tr>`
+							: ""
+					}
+				</table>
+				<p style="margin: 16px 0 0 0; font-size: 12px; color: #6B7280;">If you have questions, reply to this email or contact us at ${
+					data.contactEmail ||
+					process.env.CONTACT_EMAIL ||
+					"info@malinta-connect.com"
+				}.</p>
+			</div>
+		`;
+
+		return await sendEmail({ to, subject, html });
+	} catch (error) {
+		console.error("Error sending blotter status email:", error);
+		return false;
+	}
+};

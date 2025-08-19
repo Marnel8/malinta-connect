@@ -26,10 +26,28 @@ export interface Certificate {
 	purpose: string;
 	estimatedCompletion?: string;
 	notes?: string;
+	photoUrl?: string;
 	completedOn?: string;
 	rejectedReason?: string;
 	createdAt: number;
 	updatedAt: number;
+	// Additional fields for specific certificate types
+	age?: string;
+	address?: string;
+	businessName?: string;
+	businessLocation?: string;
+	closureDate?: string;
+	closureReason?: string;
+	relationship?: string; // For bail certificates
+	occupation?: string;
+	income?: string;
+	incomeYear?: string;
+	employmentPeriod?: string;
+	jobTitle?: string;
+	nonResidenceDuration?: string;
+	supportDetails?: string;
+	allowanceAmount?: string;
+	requiresPicture?: boolean; // For certificates that need 1x1 picture
 }
 
 export interface CreateCertificateData {
@@ -39,6 +57,24 @@ export interface CreateCertificateData {
 	purpose: string;
 	estimatedCompletion?: string;
 	notes?: string;
+	photoUrl?: string;
+	// Additional fields for specific certificate types
+	age?: string;
+	address?: string;
+	businessName?: string;
+	businessLocation?: string;
+	closureDate?: string;
+	closureReason?: string;
+	relationship?: string; // For bail certificates
+	occupation?: string;
+	income?: string;
+	incomeYear?: string;
+	employmentPeriod?: string;
+	jobTitle?: string;
+	nonResidenceDuration?: string;
+	supportDetails?: string;
+	allowanceAmount?: string;
+	requiresPicture?: boolean; // For certificates that need 1x1 picture
 }
 
 export interface UpdateCertificateData extends Partial<CreateCertificateData> {
