@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -9,7 +10,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/contexts/language-context"
+import { useToast } from "@/hooks/use-toast"
+import {
+  getAllAnalytics,
+  type OverviewStats,
+  type CertificateStats,
+  type AppointmentStats,
+  type BlotterStats,
+  type AnalyticsData
+} from "@/app/actions/analytics"
 import {
   BarChart3,
   Users,
@@ -20,101 +31,181 @@ import {
   TrendingDown,
   Activity,
   Percent,
+  RefreshCw,
+  Loader2,
 } from "lucide-react"
-
-// Mock data for analytics
-const overviewStats = [
-  {
-    title: "Total Residents",
-    value: "2,345",
-    change: "+12%",
-    trend: "up",
-    description: "vs. last month",
-    icon: Users,
-  },
-  {
-    title: "Certificate Requests",
-    value: "156",
-    change: "+8%",
-    trend: "up",
-    description: "vs. last month",
-    icon: FileText,
-  },
-  {
-    title: "Appointments",
-    value: "89",
-    change: "-3%",
-    trend: "down",
-    description: "vs. last month",
-    icon: Calendar,
-  },
-  {
-    title: "Blotter Reports",
-    value: "45",
-    change: "+15%",
-    trend: "up",
-    description: "vs. last month",
-    icon: MessageSquare,
-  },
-]
-
-const certificateStats = {
-  total: 156,
-  breakdown: [
-    { type: "Barangay Clearance", count: 78, percentage: 50 },
-    { type: "Certificate of Residency", count: 45, percentage: 29 },
-    { type: "Certificate of Indigency", count: 33, percentage: 21 },
-  ],
-  status: [
-    { status: "Processing", count: 45 },
-    { status: "Ready", count: 89 },
-    { status: "Needs Info", count: 22 },
-  ],
-}
-
-const appointmentStats = {
-  total: 89,
-  breakdown: [
-    { type: "Barangay Captain Consultation", count: 34, percentage: 38 },
-    { type: "Dispute Resolution", count: 28, percentage: 31 },
-    { type: "Business Permit Assistance", count: 15, percentage: 17 },
-    { type: "Social Welfare Assistance", count: 12, percentage: 14 },
-  ],
-  status: [
-    { status: "Confirmed", count: 56 },
-    { status: "Pending", count: 23 },
-    { status: "Cancelled", count: 10 },
-  ],
-}
-
-const blotterStats = {
-  total: 45,
-  breakdown: [
-    { type: "Noise Complaint", count: 15, percentage: 33 },
-    { type: "Property Damage", count: 12, percentage: 27 },
-    { type: "Neighbor Dispute", count: 10, percentage: 22 },
-    { type: "Theft/Robbery", count: 8, percentage: 18 },
-  ],
-  status: [
-    { status: "Under Investigation", count: 18 },
-    { status: "Resolved", count: 20 },
-    { status: "Needs Info", count: 7 },
-  ],
-}
 
 export default function AdminAnalyticsPage() {
   const { t } = useLanguage()
+  const { toast } = useToast()
+  
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [timeRange, setTimeRange] = useState("30")
+
+  // Load analytics data on component mount
+  useEffect(() => {
+    loadAnalytics()
+  }, [timeRange])
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await getAllAnalytics()
+      setAnalyticsData(data)
+    } catch (error) {
+      console.error("Error loading analytics:", error)
+      setError("Failed to load analytics data")
+      toast({
+        title: "Error",
+        description: "Failed to load analytics data",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const refreshAnalytics = async () => {
+    try {
+      setRefreshing(true)
+      await loadAnalytics()
+      toast({
+        title: "Success",
+        description: "Analytics data refreshed successfully"
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh analytics data",
+        variant: "destructive"
+      })
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const getIconComponent = (iconName: string) => {
+    const iconMap: { [key: string]: any } = {
+      Users,
+      FileText,
+      Calendar,
+      MessageSquare
+    }
+    return iconMap[iconName] || Activity
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+          <p className="text-muted-foreground mt-2">Track and analyze barangay services and resident data</p>
+        </div>
+        
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading analytics data...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+          <p className="text-muted-foreground mt-2">Track and analyze barangay services and resident data</p>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={loadAnalytics} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                "Try Again"
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!analyticsData) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+          <p className="text-muted-foreground mt-2">Track and analyze barangay services and resident data</p>
+        </div>
+        
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground">No analytics data available</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
-        <p className="text-muted-foreground mt-2">Track and analyze barangay services and resident data</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+          <p className="text-muted-foreground mt-2">Track and analyze barangay services and resident data</p>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Time Range:</span>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 90 days</SelectItem>
+                <SelectItem value="365">Last year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <Button 
+            onClick={refreshAnalytics} 
+            disabled={refreshing}
+            variant="outline"
+            size="sm"
+          >
+            {refreshing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        {overviewStats.map((stat, index) => {
-          const Icon = stat.icon
+        {analyticsData.overview.map((stat, index) => {
+          const Icon = getIconComponent(stat.icon)
           return (
             <Card key={index}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -149,20 +240,26 @@ export default function AdminAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {certificateStats.breakdown.map((item, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span>{item.type}</span>
-                    <span className="font-medium">{item.count}</span>
+              {analyticsData.certificates.breakdown.length > 0 ? (
+                analyticsData.certificates.breakdown.map((item, index) => (
+                  <div key={index}>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span>{item.type}</span>
+                      <span className="font-medium">{item.count}</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full">
+                      <div
+                        className="h-2 bg-primary rounded-full"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-secondary rounded-full">
-                    <div
-                      className="h-2 bg-primary rounded-full"
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No certificate data available
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -175,20 +272,26 @@ export default function AdminAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {appointmentStats.breakdown.map((item, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span>{item.type}</span>
-                    <span className="font-medium">{item.count}</span>
+              {analyticsData.appointments.breakdown.length > 0 ? (
+                analyticsData.appointments.breakdown.map((item, index) => (
+                  <div key={index}>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span>{item.type}</span>
+                      <span className="font-medium">{item.count}</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full">
+                      <div
+                        className="h-2 bg-primary rounded-full"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-secondary rounded-full">
-                    <div
-                      className="h-2 bg-primary rounded-full"
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No appointment data available
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -201,20 +304,26 @@ export default function AdminAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {blotterStats.breakdown.map((item, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span>{item.type}</span>
-                    <span className="font-medium">{item.count}</span>
+              {analyticsData.blotter.breakdown.length > 0 ? (
+                analyticsData.blotter.breakdown.map((item, index) => (
+                  <div key={index}>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span>{item.type}</span>
+                      <span className="font-medium">{item.count}</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full">
+                      <div
+                        className="h-2 bg-primary rounded-full"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-secondary rounded-full">
-                    <div
-                      className="h-2 bg-primary rounded-full"
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No blotter data available
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

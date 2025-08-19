@@ -1,0 +1,17 @@
+<div style="font-family: Arial, sans-serif;">
+  <h2>Appointment Completed</h2>
+  <p>Hi <%= userName %>,</p>
+  <p>Your appointment is marked as <strong>completed</strong>. We hope everything went well.</p>
+  <ul>
+    <li><strong>Reference Number:</strong> <%= referenceNumber %></li>
+    <li><strong>Title:</strong> <%= appointmentTitle %></li>
+    <li><strong>Date:</strong> <%= appointmentDate %></li>
+    <li><strong>Time:</strong> <%= appointmentTime %></li>
+    <li><strong>Purpose:</strong> <%= purpose %></li>
+  </ul>
+  <% if (notes) { %>
+    <p><strong>Notes:</strong> <%= notes %></p>
+  <% } %>
+  <p>Thank you for using Malinta Connect.</p>
+</div>
+

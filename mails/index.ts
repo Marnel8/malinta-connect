@@ -384,3 +384,73 @@ export const closeTransporter = async (): Promise<void> => {
 		console.error("Error closing transporter:", error);
 	}
 };
+
+// Appointment email data interface
+export interface AppointmentEmailData {
+	userName: string;
+	referenceNumber: string;
+	appointmentTitle: string;
+	appointmentDate: string;
+	appointmentTime: string;
+	purpose: string;
+	contactPhone?: string;
+	contactEmail?: string;
+	notes?: string;
+}
+
+export const sendAppointmentRequestReceivedEmail = async (
+	to: string,
+	data: AppointmentEmailData
+): Promise<boolean> => {
+	try {
+		const template = readTemplate("appointment-request-received");
+		const html = renderTemplate(template, data);
+		return await sendEmail({
+			to,
+			subject: `Appointment Request Received - ${data.referenceNumber}`,
+			html,
+		});
+	} catch (error) {
+		console.error("Error sending appointment request email:", error);
+		return false;
+	}
+};
+
+export const sendAppointmentStatusEmail = async (
+	to: string,
+	status: "pending" | "confirmed" | "cancelled" | "completed",
+	data: AppointmentEmailData
+): Promise<boolean> => {
+	try {
+		let templateName = "";
+		let subject = "";
+		switch (status) {
+			case "pending":
+				templateName = "appointment-request-received";
+				subject = `Appointment Request Received - ${data.referenceNumber}`;
+				break;
+			case "confirmed":
+				templateName = "appointment-confirmed";
+				subject = `Appointment Confirmed - ${data.referenceNumber}`;
+				break;
+			case "cancelled":
+				templateName = "appointment-cancelled";
+				subject = `Appointment Cancelled - ${data.referenceNumber}`;
+				break;
+			case "completed":
+				templateName = "appointment-completed";
+				subject = `Appointment Completed - ${data.referenceNumber}`;
+				break;
+			default:
+				templateName = "appointment-request-received";
+				subject = `Appointment Update - ${data.referenceNumber}`;
+		}
+
+		const template = readTemplate(templateName);
+		const html = renderTemplate(template, data);
+		return await sendEmail({ to, subject, html });
+	} catch (error) {
+		console.error("Error sending appointment status email:", error);
+		return false;
+	}
+};

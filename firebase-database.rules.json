@@ -1,0 +1,57 @@
+{
+  "rules": {
+    "users": {
+      ".indexOn": ["createdAt", "role", "email"],
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+        ".write": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+    "certificates": {
+      ".indexOn": ["requestedOn", "status", "userId", "type"],
+      "$certId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (data.child('userId').val() == auth.uid || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+    "appointments": {
+      ".indexOn": ["scheduledDate", "status", "userId", "type"],
+      "$aptId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (data.child('userId').val() == auth.uid || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+    "blotter": {
+      ".indexOn": ["incidentDate", "status", "userId", "caseType"],
+      "$caseId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (data.child('userId').val() == auth.uid || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+    "events": {
+      ".indexOn": ["eventDate", "status", "createdBy"],
+      "$eventId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (data.child('createdBy').val() == auth.uid || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+    "announcements": {
+      ".indexOn": ["createdAt", "status", "createdBy"],
+      "$announcementId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (data.child('createdBy').val() == auth.uid || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+    "officials": {
+      ".indexOn": ["position", "status", "createdAt"],
+      "$officialId": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'admin'"
+      }
+    },
+    "settings": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'admin'",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'admin'"
+    }
+  }
+}

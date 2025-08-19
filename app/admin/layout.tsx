@@ -3,6 +3,7 @@ import { ProtectedRoute } from "@/components/protected-route";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { FloatingSidebarTrigger } from "@/components/admin/floating-sidebar-trigger";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
 	return (
@@ -15,6 +16,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 						<div className="py-14">{children}</div>
 					</main>
 				</div>
+				<Toaster />
 			</SidebarProvider>
 		</ProtectedRoute>
 	);

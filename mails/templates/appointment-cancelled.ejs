@@ -1,0 +1,18 @@
+<div style="font-family: Arial, sans-serif;">
+  <h2>Appointment Cancelled</h2>
+  <p>Hi <%= userName %>,</p>
+  <p>Your appointment has been <strong>cancelled</strong>. Here are the details:</p>
+  <ul>
+    <li><strong>Reference Number:</strong> <%= referenceNumber %></li>
+    <li><strong>Title:</strong> <%= appointmentTitle %></li>
+    <li><strong>Date:</strong> <%= appointmentDate %></li>
+    <li><strong>Time:</strong> <%= appointmentTime %></li>
+    <li><strong>Purpose:</strong> <%= purpose %></li>
+  </ul>
+  <% if (notes) { %>
+    <p><strong>Notes:</strong> <%= notes %></p>
+  <% } %>
+  <p>If you believe this was a mistake, please reply to this email.</p>
+  <p>Thank you,<br/>Malinta Connect</p>
+</div>
+

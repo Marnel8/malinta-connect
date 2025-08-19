@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -18,42 +19,242 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Users, Clock, CheckCircle, X } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Search, Users, Clock, CheckCircle, X, Loader2, Eye, Edit, Trash2, Plus, MoreHorizontal } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
-
-// Mock data for appointments
-const appointments = [
-  {
-    id: "APT-2025-0426-001",
-    type: "Barangay Captain Consultation",
-    residentName: "Juan Dela Cruz",
-    date: "April 26, 2025",
-    time: "10:00 AM",
-    status: "confirmed",
-    purpose: "Discuss community project proposal",
-  },
-  {
-    id: "APT-2025-0503-002",
-    type: "Dispute Resolution",
-    residentName: "Maria Santos",
-    date: "May 3, 2025",
-    time: "2:00 PM",
-    status: "pending",
-    purpose: "Property boundary dispute with neighbor",
-  },
-  {
-    id: "APT-2025-0415-003",
-    type: "Social Welfare Assistance",
-    residentName: "Pedro Reyes",
-    date: "April 15, 2025",
-    time: "9:00 AM",
-    status: "cancelled",
-    purpose: "Inquire about educational assistance program",
-  },
-]
+import { useToast } from "@/hooks/use-toast"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import {
+  getAllAppointmentsAction,
+  updateAppointmentStatusAction,
+  deleteAppointmentAction,
+  getAppointmentsByStatusAction,
+  createAppointmentAction,
+  type Appointment,
+  type CreateAppointmentData
+} from "@/app/actions/appointments"
 
 export default function AdminAppointmentsPage() {
   const { t } = useLanguage()
+  const { toast } = useToast()
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [dateFilter, setDateFilter] = useState("all")
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [createLoading, setCreateLoading] = useState(false)
+  const [formData, setFormData] = useState<CreateAppointmentData>({
+    title: "",
+    description: "",
+    date: "",
+    time: "",
+    requestedBy: "",
+    contactNumber: "",
+    email: "",
+    notes: ""
+  })
+
+  // Load appointments on component mount
+  useEffect(() => {
+    loadAppointments()
+  }, [])
+
+  const loadAppointments = async () => {
+    setLoading(true)
+    try {
+      const result = await getAllAppointmentsAction()
+      if (result.success && result.appointments) {
+        setAppointments(result.appointments)
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to load appointments",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load appointments",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreateAppointment = async () => {
+    setCreateLoading(true)
+    try {
+      const result = await createAppointmentAction(formData)
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Appointment created successfully",
+        })
+        setCreateDialogOpen(false)
+        setFormData({
+          title: "",
+          description: "",
+          date: "",
+          time: "",
+          requestedBy: "",
+          contactNumber: "",
+          email: "",
+          notes: ""
+        })
+        await loadAppointments()
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create appointment",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create appointment",
+        variant: "destructive",
+      })
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
+  const handleStatusUpdate = async (appointmentId: string, newStatus: Appointment["status"]) => {
+    setActionLoading(appointmentId)
+    try {
+      const result = await updateAppointmentStatusAction(appointmentId, newStatus)
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Appointment ${newStatus} successfully`,
+        })
+        // Reload appointments to get updated data
+        await loadAppointments()
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to update appointment status",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update appointment status",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDelete = async (appointmentId: string) => {
+    if (!confirm("Are you sure you want to delete this appointment?")) return
+    
+    setActionLoading(appointmentId)
+    try {
+      const result = await deleteAppointmentAction(appointmentId)
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Appointment deleted successfully",
+        })
+        // Reload appointments to get updated data
+        await loadAppointments()
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete appointment",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete appointment",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleStatusFilter = async (status: string) => {
+    setStatusFilter(status)
+    setLoading(true)
+    try {
+      if (status === "all") {
+        await loadAppointments()
+      } else {
+        const result = await getAppointmentsByStatusAction(status as Appointment["status"])
+        if (result.success && result.appointments) {
+          setAppointments(result.appointments)
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to filter appointments",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to filter appointments",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredAppointments = appointments.filter(appointment => {
+    const matchesSearch = appointment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         appointment.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (appointment.referenceNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesDateFilter = dateFilter === "all" || (() => {
+      const appointmentDate = new Date(appointment.date)
+      const today = new Date()
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      
+      switch (dateFilter) {
+        case "today":
+          return appointmentDate.toDateString() === today.toDateString()
+        case "tomorrow":
+          return appointmentDate.toDateString() === tomorrow.toDateString()
+        case "week":
+          const weekFromNow = new Date(today)
+          weekFromNow.setDate(weekFromNow.getDate() + 7)
+          return appointmentDate >= today && appointmentDate <= weekFromNow
+        case "month":
+          const monthFromNow = new Date(today)
+          monthFromNow.setMonth(monthFromNow.getMonth() + 1)
+          return appointmentDate >= today && appointmentDate <= monthFromNow
+        default:
+          return true
+      }
+    })()
+    
+    return matchesSearch && matchesDateFilter
+  })
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -61,26 +262,53 @@ export default function AdminAppointmentsPage() {
         return (
           <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
             <CheckCircle className="mr-1 h-3 w-3" />
-            {t("appointments.status.confirmed")}
+            {t("appointments.status.confirmed") || "Confirmed"}
           </Badge>
         )
       case "pending":
         return (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
             <Clock className="mr-1 h-3 w-3" />
-            {t("appointments.status.pending")}
+            {t("appointments.status.pending") || "Pending"}
           </Badge>
         )
       case "cancelled":
         return (
           <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
             <X className="mr-1 h-3 w-3" />
-            {t("appointments.status.cancelled")}
+            {t("appointments.status.cancelled") || "Cancelled"}
+          </Badge>
+        )
+      case "completed":
+        return (
+          <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            <CheckCircle className="mr-1 h-3 w-3" />
+            {t("appointments.status.completed") || "Completed"}
           </Badge>
         )
       default:
         return null
     }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading appointments...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -90,18 +318,143 @@ export default function AdminAppointmentsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Appointments</h1>
           <p className="text-muted-foreground mt-2">Manage and schedule appointments with residents</p>
         </div>
-        <Button>
-          <Users className="mr-2 h-4 w-4" />
-          Schedule Appointment
-        </Button>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Schedule Appointment
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Schedule New Appointment</DialogTitle>
+              <DialogDescription>
+                Create a new appointment for a resident. Fill in all required fields.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title *</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Appointment title"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="requestedBy">Requested By *</Label>
+                  <Input
+                    id="requestedBy"
+                    value={formData.requestedBy}
+                    onChange={(e) => setFormData({ ...formData, requestedBy: e.target.value })}
+                    placeholder="Resident name"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description *</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Appointment purpose or description"
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="date">Date *</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="time">Time *</Label>
+                  <Input
+                    id="time"
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contactNumber">Contact Number *</Label>
+                  <Input
+                    id="contactNumber"
+                    value={formData.contactNumber}
+                    onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                    placeholder="Phone number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Email address"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Additional notes or comments"
+                  rows={2}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateDialogOpen(false)}
+                disabled={createLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCreateAppointment}
+                disabled={createLoading || !formData.title || !formData.description || !formData.date || !formData.time || !formData.requestedBy || !formData.contactNumber || !formData.email}
+              >
+                {createLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Appointment"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex items-center space-x-2 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input type="search" placeholder="Search appointments..." className="pl-8" />
+          <Input 
+            type="search" 
+            placeholder="Search appointments..." 
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-        <Select defaultValue="all">
+        <Select value={statusFilter} onValueChange={handleStatusFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
@@ -110,13 +463,15 @@ export default function AdminAppointmentsPage() {
             <SelectItem value="confirmed">Confirmed</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
-        <Select defaultValue="today">
+        <Select value={dateFilter} onValueChange={setDateFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by date" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">All Dates</SelectItem>
             <SelectItem value="today">Today</SelectItem>
             <SelectItem value="tomorrow">Tomorrow</SelectItem>
             <SelectItem value="week">This Week</SelectItem>
@@ -130,8 +485,8 @@ export default function AdminAppointmentsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Reference No.</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Resident</TableHead>
+              <TableHead>Title</TableHead>
+              <TableHead>Requested By</TableHead>
               <TableHead>Date & Time</TableHead>
               <TableHead>Purpose</TableHead>
               <TableHead>Status</TableHead>
@@ -139,40 +494,142 @@ export default function AdminAppointmentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {appointments.map((appointment) => (
-              <TableRow key={appointment.id}>
-                <TableCell className="font-medium">{appointment.id}</TableCell>
-                <TableCell>
-                  <div className="flex items-center">
-                    <Users className="mr-2 h-4 w-4 text-primary" />
-                    {appointment.type}
-                  </div>
-                </TableCell>
-                <TableCell>{appointment.residentName}</TableCell>
-                <TableCell>
-                  {appointment.date} at {appointment.time}
-                </TableCell>
-                <TableCell>{appointment.purpose}</TableCell>
-                <TableCell>{getStatusBadge(appointment.status)}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">View</Button>
-                    {appointment.status === "pending" && (
-                      <>
-                        <Button size="sm">Confirm</Button>
-                        <Button variant="destructive" size="sm">Reject</Button>
-                      </>
-                    )}
-                    {appointment.status === "confirmed" && (
-                      <>
-                        <Button variant="outline" size="sm">Reschedule</Button>
-                        <Button variant="destructive" size="sm">Cancel</Button>
-                      </>
-                    )}
-                  </div>
+            {filteredAppointments.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  No appointments found
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredAppointments.map((appointment) => (
+                <TableRow key={appointment.id}>
+                  <TableCell className="font-medium">{appointment.referenceNumber || appointment.id}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <Users className="mr-2 h-4 w-4 text-primary" />
+                      {appointment.title}
+                    </div>
+                  </TableCell>
+                  <TableCell>{appointment.requestedBy}</TableCell>
+                  <TableCell>
+                    {formatDate(appointment.date)} at {appointment.time}
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate">{appointment.description}</TableCell>
+                  <TableCell>{getStatusBadge(appointment.status)}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {/* TODO: open view dialog */}}
+                          disabled={actionLoading === appointment.id}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+
+                        {appointment.status === "pending" && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusUpdate(appointment.id, "confirmed")}
+                              disabled={actionLoading === appointment.id}
+                            >
+                              {actionLoading === appointment.id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                              )}
+                              {actionLoading === appointment.id ? "Updating..." : "Confirm"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusUpdate(appointment.id, "cancelled")}
+                              disabled={actionLoading === appointment.id}
+                            >
+                              {actionLoading === appointment.id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <X className="h-4 w-4 mr-2" />
+                              )}
+                              {actionLoading === appointment.id ? "Updating..." : "Reject"}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        {appointment.status === "confirmed" && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusUpdate(appointment.id, "completed")}
+                              disabled={actionLoading === appointment.id}
+                            >
+                              {actionLoading === appointment.id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                              )}
+                              {actionLoading === appointment.id ? "Updating..." : "Mark as Completed"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusUpdate(appointment.id, "cancelled")}
+                              disabled={actionLoading === appointment.id}
+                            >
+                              {actionLoading === appointment.id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <X className="h-4 w-4 mr-2" />
+                              )}
+                              {actionLoading === appointment.id ? "Updating..." : "Cancel"}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        <DropdownMenuSeparator />
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600"
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Appointment</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. Are you sure you want to delete this appointment?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-red-600 hover:bg-red-700"
+                                onClick={() => handleDelete(appointment.id)}
+                                disabled={actionLoading === appointment.id}
+                              >
+                                {actionLoading === appointment.id ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Deleting...
+                                  </>
+                                ) : (
+                                  "Delete"
+                                )}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

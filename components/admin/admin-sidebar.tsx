@@ -37,6 +37,8 @@ import {
 	Home,
 	ChevronRight,
 	UserCog,
+	UserCheck,
+	Speaker,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { LanguageSelector } from "@/components/language-selector";
@@ -230,6 +232,20 @@ export function AdminSidebar() {
 								</SidebarMenuItem>
 							)}
 							{(userProfile?.role === "admin" ||
+								userProfile?.permissions?.canManageAnnouncements) && (
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										asChild
+										isActive={isActive("/admin/announcements")}
+									>
+										<Link href="/admin/announcements">
+											<Speaker className="h-4 w-4" />
+											<span>Announcements</span>
+										</Link>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							)}
+							{(userProfile?.role === "admin" ||
 								userProfile?.permissions?.canManageCertificates) && (
 								<SidebarMenuItem>
 									<SidebarMenuButton
@@ -308,6 +324,20 @@ export function AdminSidebar() {
 										<Link href="/admin/residents">
 											<Users className="h-4 w-4" />
 											<span>{t("admin.residents")}</span>
+										</Link>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							)}
+							{(userProfile?.role === "admin" ||
+								userProfile?.permissions?.canManageOfficials) && (
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										asChild
+										isActive={isActive("/admin/officials")}
+									>
+										<Link href="/admin/officials">
+											<UserCheck className="h-4 w-4" />
+											<span>Officials</span>
 										</Link>
 									</SidebarMenuButton>
 								</SidebarMenuItem>

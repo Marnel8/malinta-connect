@@ -13,7 +13,9 @@
 		"seed:simple": "node scripts/simple-seed.js",
 		"seed:events": "node scripts/seed-events.js",
 		"seed:certificates": "node scripts/seed-certificates.js",
-		"seed:reference-numbers": "node scripts/seed-reference-numbers.js"
+		"seed:reference-numbers": "node scripts/seed-reference-numbers.js",
+		"seed:officials": "node scripts/seed-officials.js",
+		"init:settings": "node scripts/initialize-settings.js"
 	},
 	"dependencies": {
 		"@hookform/resolvers": "latest",

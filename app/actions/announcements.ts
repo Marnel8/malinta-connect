@@ -1,0 +1,329 @@
+"use server";
+
+import { adminDatabase } from "@/app/firebase/admin";
+
+export interface Announcement {
+	id: string;
+	title: string;
+	description: string;
+	category: "Event" | "Notice" | "Important" | "Emergency";
+	status: "published" | "draft" | "expired";
+	visibility: "public" | "residents";
+	author: string;
+	publishedOn: string;
+	expiresOn: string;
+	createdAt: number;
+	updatedAt: number;
+}
+
+export interface CreateAnnouncementData {
+	title: string;
+	description: string;
+	category: "Event" | "Notice" | "Important" | "Emergency";
+	visibility: "public" | "residents";
+	author: string;
+	expiresOn: string;
+}
+
+export interface UpdateAnnouncementData extends Partial<CreateAnnouncementData> {
+	id: string;
+	status?: "published" | "draft" | "expired";
+}
+
+// Create new announcement
+export async function createAnnouncementAction(
+	announcementData: CreateAnnouncementData
+): Promise<{ success: boolean; announcementId?: string; error?: string }> {
+	try {
+		// Validate required fields
+		if (
+			!announcementData.title ||
+			!announcementData.description ||
+			!announcementData.category ||
+			!announcementData.visibility ||
+			!announcementData.author ||
+			!announcementData.expiresOn
+		) {
+			return {
+				success: false,
+				error: "All required fields must be filled out.",
+			};
+		}
+
+		// Generate meaningful reference number
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, "0");
+		const day = String(now.getDate()).padStart(2, "0");
+
+		// Get total announcement count to generate sequential number
+		const announcementsRef = adminDatabase.ref("announcements");
+		const snapshot = await announcementsRef.get();
+
+		let totalCount = 0;
+		if (snapshot.exists()) {
+			totalCount = Object.keys(snapshot.val()).length;
+		}
+
+		const sequenceNumber = String(totalCount + 1).padStart(3, "0");
+		const referenceNumber = `ANN-${year}-${month}${day}-${sequenceNumber}`;
+
+		const newAnnouncementRef = announcementsRef.push();
+
+		const announcement: Omit<Announcement, "id"> = {
+			...announcementData,
+			status: "draft",
+			publishedOn: now.toISOString().split('T')[0], // YYYY-MM-DD format
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		};
+
+		await newAnnouncementRef.set(announcement);
+
+		return {
+			success: true,
+			announcementId: referenceNumber,
+		};
+	} catch (error) {
+		console.error("Error creating announcement:", error);
+		return {
+			success: false,
+			error: "Failed to create announcement. Please check your connection and try again.",
+		};
+	}
+}
+
+// Get all announcements
+export async function getAllAnnouncementsAction(): Promise<{
+	success: boolean;
+	announcements?: Announcement[];
+	error?: string;
+}> {
+	try {
+		const announcementsRef = adminDatabase.ref("announcements");
+		const snapshot = await announcementsRef.get();
+
+		if (!snapshot.exists()) {
+			return { success: true, announcements: [] };
+		}
+
+		const announcements = snapshot.val();
+		const announcementsList: Announcement[] = [];
+
+		Object.entries(announcements).forEach(([id, announcement]: [string, any]) => {
+			announcementsList.push({
+				id,
+				...announcement,
+				status: announcement.status || "draft",
+				createdAt: announcement.createdAt || 0,
+				updatedAt: announcement.updatedAt || 0,
+			});
+		});
+
+		// Sort by creation date (newest first)
+		announcementsList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+		return { success: true, announcements: announcementsList };
+	} catch (error) {
+		console.error("Error fetching announcements:", error);
+		return {
+			success: false,
+			error: "Failed to fetch announcements. Please check your connection and try again.",
+		};
+	}
+}
+
+// Get single announcement
+export async function getAnnouncementAction(
+	id: string
+): Promise<{ success: boolean; announcement?: Announcement; error?: string }> {
+	try {
+		if (!id) {
+			return {
+				success: false,
+				error: "Announcement ID is required.",
+			};
+		}
+
+		const announcementRef = adminDatabase.ref(`announcements/${id}`);
+		const snapshot = await announcementRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Announcement not found.",
+			};
+		}
+
+		const announcement = snapshot.val();
+		return {
+			success: true,
+			announcement: {
+				id,
+				...announcement,
+				status: announcement.status || "draft",
+				createdAt: announcement.createdAt || 0,
+				updatedAt: announcement.updatedAt || 0,
+			},
+		};
+	} catch (error) {
+		console.error("Error fetching announcement:", error);
+		return {
+			success: false,
+			error: "Failed to fetch announcement. Please check your connection and try again.",
+		};
+	}
+}
+
+// Update announcement
+export async function updateAnnouncementAction(
+	updateData: UpdateAnnouncementData
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		if (!updateData.id) {
+			return {
+				success: false,
+				error: "Announcement ID is required.",
+			};
+		}
+
+		const announcementRef = adminDatabase.ref(`announcements/${updateData.id}`);
+		const snapshot = await announcementRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Announcement not found.",
+			};
+		}
+
+		const updatePayload: Partial<Announcement> = {
+			...updateData,
+			updatedAt: Date.now(),
+		};
+
+		// If status is being updated to published, set publishedOn
+		if (updateData.status === "published") {
+			updatePayload.publishedOn = new Date().toISOString().split('T')[0];
+		}
+
+		await announcementRef.update(updatePayload);
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error updating announcement:", error);
+		return {
+			success: false,
+			error: "Failed to update announcement. Please check your connection and try again.",
+		};
+	}
+}
+
+// Delete announcement
+export async function deleteAnnouncementAction(
+	id: string
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		if (!id) {
+			return {
+				success: false,
+				error: "Announcement ID is required.",
+			};
+		}
+
+		const announcementRef = adminDatabase.ref(`announcements/${id}`);
+		const snapshot = await announcementRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Announcement not found.",
+			};
+		}
+
+		await announcementRef.remove();
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error deleting announcement:", error);
+		return {
+			success: false,
+			error: "Failed to delete announcement. Please check your connection and try again.",
+		};
+	}
+}
+
+// Publish announcement
+export async function publishAnnouncementAction(
+	id: string
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		if (!id) {
+			return {
+				success: false,
+				error: "Announcement ID is required.",
+			};
+		}
+
+		const announcementRef = adminDatabase.ref(`announcements/${id}`);
+		const snapshot = await announcementRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Announcement not found.",
+			};
+		}
+
+		await announcementRef.update({
+			status: "published",
+			publishedOn: new Date().toISOString().split('T')[0],
+			updatedAt: Date.now(),
+		});
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error publishing announcement:", error);
+		return {
+			success: false,
+			error: "Failed to publish announcement. Please check your connection and try again.",
+		};
+	}
+}
+
+// Unpublish announcement
+export async function unpublishAnnouncementAction(
+	id: string
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		if (!id) {
+			return {
+				success: false,
+				error: "Announcement ID is required.",
+			};
+		}
+
+		const announcementRef = adminDatabase.ref(`announcements/${id}`);
+		const snapshot = await announcementRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Announcement not found.",
+			};
+		}
+
+		await announcementRef.update({
+			status: "draft",
+			updatedAt: Date.now(),
+		});
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error unpublishing announcement:", error);
+		return {
+			success: false,
+			error: "Failed to unpublish announcement. Please check your connection and try again.",
+		};
+	}
+} 

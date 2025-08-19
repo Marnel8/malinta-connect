@@ -1,9 +1,17 @@
 "use server";
 
 import { adminDatabase } from "@/app/firebase/admin";
+import {
+	sendAppointmentRequestReceivedEmail,
+	sendAppointmentStatusEmail,
+	type AppointmentEmailData,
+} from "@/mails";
 
 export interface Appointment {
+	// Database key (push key)
 	id: string;
+	// Human-readable reference number (e.g., APT-2025-0526-001)
+	referenceNumber: string;
 	title: string;
 	description: string;
 	date: string;
@@ -74,15 +82,30 @@ export async function createAppointmentAction(
 
 		const newAppointmentRef = appointmentsRef.push();
 
-		const appointment: Omit<Appointment, "id"> = {
+		const appointmentToSave = {
 			...appointmentData,
-			id: referenceNumber, // Set the meaningful reference number
-			status: "pending",
+			referenceNumber,
+			status: "pending" as const,
 			createdAt: Date.now(),
 			updatedAt: Date.now(),
 		};
 
-		await newAppointmentRef.set(appointment);
+
+		await newAppointmentRef.set(appointmentToSave);
+
+		// Send email notification to requester
+		const emailPayload: AppointmentEmailData = {
+			userName: appointmentData.requestedBy,
+			referenceNumber,
+			appointmentTitle: appointmentData.title,
+			appointmentDate: appointmentData.date,
+			appointmentTime: appointmentData.time,
+			purpose: appointmentData.description,
+			contactPhone: appointmentData.contactNumber,
+			contactEmail: appointmentData.email,
+			notes: appointmentData.notes,
+		};
+		await sendAppointmentRequestReceivedEmail(appointmentData.email, emailPayload);
 
 		return {
 			success: true,
@@ -117,9 +140,17 @@ export async function getAllAppointmentsAction(): Promise<{
 
 		Object.entries(appointments).forEach(([id, appointment]: [string, any]) => {
 			appointmentsList.push({
-				id,
-				...appointment,
+				id, // push key
+				referenceNumber: appointment.referenceNumber || id,
+				title: appointment.title,
+				description: appointment.description,
+				date: appointment.date,
+				time: appointment.time,
+				requestedBy: appointment.requestedBy,
+				contactNumber: appointment.contactNumber,
+				email: appointment.email,
 				status: appointment.status || "pending",
+				notes: appointment.notes,
 				createdAt: appointment.createdAt || 0,
 				updatedAt: appointment.updatedAt || 0,
 			});
@@ -191,6 +222,212 @@ export async function getAppointmentsCountAction(): Promise<{
 		return {
 			success: false,
 			error: "Failed to fetch appointment counts. Please try again.",
+		};
+	}
+}
+
+// Update appointment status
+export async function updateAppointmentStatusAction(
+	appointmentId: string,
+	status: Appointment["status"],
+	notes?: string
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		const appointmentRef = adminDatabase.ref(`appointments/${appointmentId}`);
+		const snapshot = await appointmentRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Appointment not found.",
+			};
+		}
+
+		const updateData: Partial<Appointment> = {
+			status,
+			updatedAt: Date.now(),
+		};
+
+		if (notes) {
+			updateData.notes = notes;
+		}
+
+		await appointmentRef.update(updateData);
+
+		const appointment = snapshot.val();
+		const emailPayload: AppointmentEmailData = {
+			userName: appointment.requestedBy,
+			referenceNumber: appointment.referenceNumber || appointmentId,
+			appointmentTitle: appointment.title,
+			appointmentDate: appointment.date,
+			appointmentTime: appointment.time,
+			purpose: appointment.description,
+			contactPhone: appointment.contactNumber,
+			contactEmail: appointment.email,
+			notes: notes || appointment.notes,
+		};
+		await sendAppointmentStatusEmail(appointment.email, status, emailPayload);
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error updating appointment status:", error);
+		return {
+			success: false,
+			error: "Failed to update appointment status. Please try again.",
+		};
+	}
+}
+
+// Update appointment details
+export async function updateAppointmentAction(
+	appointmentData: UpdateAppointmentData
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		const { id, ...updateData } = appointmentData;
+		const appointmentRef = adminDatabase.ref(`appointments/${id}`);
+		const snapshot = await appointmentRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Appointment not found.",
+			};
+		}
+
+		await appointmentRef.update({
+			...updateData,
+			updatedAt: Date.now(),
+		});
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error updating appointment:", error);
+		return {
+			success: false,
+			error: "Failed to update appointment. Please try again.",
+		};
+	}
+}
+
+// Delete appointment
+export async function deleteAppointmentAction(
+	appointmentId: string
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		const appointmentRef = adminDatabase.ref(`appointments/${appointmentId}`);
+		const snapshot = await appointmentRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Appointment not found.",
+			};
+		}
+
+		await appointmentRef.remove();
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error deleting appointment:", error);
+		return {
+			success: false,
+			error: "Failed to delete appointment. Please try again.",
+		};
+	}
+}
+
+// Get appointments by status
+export async function getAppointmentsByStatusAction(
+	status: Appointment["status"]
+): Promise<{
+	success: boolean;
+	appointments?: Appointment[];
+	error?: string;
+}> {
+	try {
+		const appointmentsRef = adminDatabase.ref("appointments");
+		const snapshot = await appointmentsRef.orderByChild("status").equalTo(status).get();
+
+		if (!snapshot.exists()) {
+			return { success: true, appointments: [] };
+		}
+
+		const appointments = snapshot.val();
+		const appointmentsList: Appointment[] = [];
+
+		Object.entries(appointments).forEach(([id, appointment]: [string, any]) => {
+			appointmentsList.push({
+				id,
+				referenceNumber: appointment.referenceNumber || id,
+				title: appointment.title,
+				description: appointment.description,
+				date: appointment.date,
+				time: appointment.time,
+				requestedBy: appointment.requestedBy,
+				contactNumber: appointment.contactNumber,
+				email: appointment.email,
+				status: appointment.status || "pending",
+				notes: appointment.notes,
+				createdAt: appointment.createdAt || 0,
+				updatedAt: appointment.updatedAt || 0,
+			});
+		});
+
+		// Sort by creation date (newest first)
+		appointmentsList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+		return { success: true, appointments: appointmentsList };
+	} catch (error) {
+		console.error("Error fetching appointments by status:", error);
+		return {
+			success: false,
+			error: "Failed to fetch appointments. Please try again.",
+		};
+	}
+}
+
+// Get appointment by ID
+export async function getAppointmentByIdAction(
+	appointmentId: string
+): Promise<{
+	success: boolean;
+	appointment?: Appointment;
+	error?: string;
+}> {
+	try {
+		const appointmentRef = adminDatabase.ref(`appointments/${appointmentId}`);
+		const snapshot = await appointmentRef.get();
+
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Appointment not found.",
+			};
+		}
+
+		const appointment = snapshot.val();
+		const appointmentData: Appointment = {
+			id: appointmentId,
+			referenceNumber: appointment.referenceNumber || appointmentId,
+			title: appointment.title,
+			description: appointment.description,
+			date: appointment.date,
+			time: appointment.time,
+			requestedBy: appointment.requestedBy,
+			contactNumber: appointment.contactNumber,
+			email: appointment.email,
+			status: appointment.status || "pending",
+			notes: appointment.notes,
+			createdAt: appointment.createdAt || 0,
+			updatedAt: appointment.updatedAt || 0,
+		};
+
+		return { success: true, appointment: appointmentData };
+	} catch (error) {
+		console.error("Error fetching appointment:", error);
+		return {
+			success: false,
+			error: "Failed to fetch appointment. Please try again.",
 		};
 	}
 }
