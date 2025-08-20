@@ -167,3 +167,143 @@ export async function ensureUserProfileAction(
 		};
 	}
 }
+
+export interface ResidentRegistrationData {
+	// Personal Information
+	firstName: string;
+	middleName?: string;
+	lastName: string;
+	suffix?: string;
+	dateOfBirth: string;
+	placeOfBirth: string;
+	gender: "male" | "female" | "other";
+	civilStatus: "single" | "married" | "widowed" | "divorced" | "separated";
+	
+	// Contact Information
+	email: string;
+	phoneNumber: string;
+	alternateNumber?: string;
+	
+	// Address Information
+	houseNumber: string;
+	street: string;
+	purok: string;
+	barangay: string;
+	city: string;
+	province: string;
+	zipCode: string;
+	
+	// Emergency Contact
+	emergencyContactName: string;
+	emergencyContactNumber: string;
+	emergencyContactRelation: string;
+	
+	// Account Information
+	password: string;
+	
+	// Photo URLs
+	idPhotoUrl: string;
+	selfiePhotoUrl: string;
+}
+
+export async function registerResidentAction(
+	data: ResidentRegistrationData
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		// Import Firebase admin auth
+		const { getAuth } = await import("firebase-admin/auth");
+		const { adminApp } = await import("@/app/firebase/admin");
+		
+		const auth = getAuth(adminApp);
+
+		// Create user with Firebase Auth
+		const userRecord = await auth.createUser({
+			email: data.email,
+			password: data.password,
+			displayName: `${data.firstName} ${data.lastName}`,
+		});
+
+		// Create detailed user profile
+		const userProfile: UserProfile = {
+			uid: userRecord.uid,
+			email: data.email,
+			role: "resident",
+			firstName: data.firstName,
+			middleName: data.middleName,
+			lastName: data.lastName,
+			suffix: data.suffix,
+			phoneNumber: data.phoneNumber,
+			address: `${data.houseNumber} ${data.street}, ${data.purok}, ${data.barangay}, ${data.city}, ${data.province} ${data.zipCode}`,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		};
+
+		// Save user profile to database
+		await adminDatabase.ref(`users/${userRecord.uid}`).set(userProfile);
+
+		// Save detailed resident information
+		const residentData = {
+			uid: userRecord.uid,
+			personalInfo: {
+				firstName: data.firstName,
+				middleName: data.middleName,
+				lastName: data.lastName,
+				suffix: data.suffix,
+				dateOfBirth: data.dateOfBirth,
+				placeOfBirth: data.placeOfBirth,
+				gender: data.gender,
+				civilStatus: data.civilStatus,
+			},
+			contactInfo: {
+				email: data.email,
+				phoneNumber: data.phoneNumber,
+				alternateNumber: data.alternateNumber,
+			},
+			addressInfo: {
+				houseNumber: data.houseNumber,
+				street: data.street,
+				purok: data.purok,
+				barangay: data.barangay,
+				city: data.city,
+				province: data.province,
+				zipCode: data.zipCode,
+				fullAddress: `${data.houseNumber} ${data.street}, ${data.purok}, ${data.barangay}, ${data.city}, ${data.province} ${data.zipCode}`,
+			},
+			emergencyContact: {
+				name: data.emergencyContactName,
+				phoneNumber: data.emergencyContactNumber,
+				relation: data.emergencyContactRelation,
+			},
+			verification: {
+				idPhotoUrl: data.idPhotoUrl,
+				selfiePhotoUrl: data.selfiePhotoUrl,
+				status: "pending", // Will be reviewed by admin
+				submittedAt: Date.now(),
+			},
+			registrationDate: Date.now(),
+			status: "active",
+		};
+
+		// Save detailed resident data
+		await adminDatabase.ref(`residents/${userRecord.uid}`).set(residentData);
+
+		return { success: true };
+	} catch (error: any) {
+		console.error("Resident registration error:", error);
+		
+		let errorMessage = "An error occurred during registration. Please try again.";
+		
+		if (error.code === "auth/email-already-exists") {
+			errorMessage = "An account with this email already exists.";
+		} else if (error.code === "auth/invalid-email") {
+			errorMessage = "Invalid email address.";
+		} else if (error.code === "auth/weak-password") {
+			errorMessage = "Password is too weak. Please choose a stronger password.";
+		}
+		
+		return {
+			success: false,
+			error: errorMessage,
+		};
+	}
+}

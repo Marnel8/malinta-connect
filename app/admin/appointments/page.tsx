@@ -56,6 +56,8 @@ export default function AdminAppointmentsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [formData, setFormData] = useState<CreateAppointmentData>({
     title: "",
     description: "",
@@ -193,6 +195,11 @@ export default function AdminAppointmentsPage() {
     } finally {
       setActionLoading(null)
     }
+  }
+
+  const handleViewAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment)
+    setViewDialogOpen(true)
   }
 
   const handleStatusFilter = async (status: string) => {
@@ -441,6 +448,96 @@ export default function AdminAppointmentsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* View Appointment Details Dialog */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Appointment Details</DialogTitle>
+              <DialogDescription>
+                View complete information about this appointment
+              </DialogDescription>
+            </DialogHeader>
+            {selectedAppointment && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Reference Number</Label>
+                    <p className="text-sm">{selectedAppointment.referenceNumber || selectedAppointment.id}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                    <div className="mt-1">{getStatusBadge(selectedAppointment.status)}</div>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Title</Label>
+                  <p className="text-sm font-medium">{selectedAppointment.title}</p>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Description</Label>
+                  <p className="text-sm">{selectedAppointment.description}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Requested By</Label>
+                    <p className="text-sm">{selectedAppointment.requestedBy}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Contact Number</Label>
+                    <p className="text-sm">{selectedAppointment.contactNumber}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+                  <p className="text-sm">{selectedAppointment.email}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Date</Label>
+                    <p className="text-sm">{formatDate(selectedAppointment.date)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Time</Label>
+                    <p className="text-sm">{selectedAppointment.time}</p>
+                  </div>
+                </div>
+
+                {selectedAppointment.notes && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Notes</Label>
+                    <p className="text-sm">{selectedAppointment.notes}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Created At</Label>
+                    <p className="text-sm">{selectedAppointment.createdAt ? formatDate(new Date(selectedAppointment.createdAt).toISOString()) : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Updated At</Label>
+                    <p className="text-sm">{selectedAppointment.updatedAt ? formatDate(new Date(selectedAppointment.updatedAt).toISOString()) : 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setViewDialogOpen(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex items-center space-x-2 mb-6">
@@ -525,7 +622,7 @@ export default function AdminAppointmentsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => {/* TODO: open view dialog */}}
+                          onClick={() => handleViewAppointment(appointment)}
                           disabled={actionLoading === appointment.id}
                         >
                           <Eye className="h-4 w-4 mr-2" />

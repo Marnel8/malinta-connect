@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { LoginForm } from "@/components/login-form";
-import { QuickAdminCreation } from "@/components/quick-admin-creation";
 import {
 	Card,
 	CardContent,
@@ -13,6 +12,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
 	const { user, userProfile, loading } = useAuth();
@@ -87,7 +87,13 @@ export default function LoginPage() {
 							</CardContent>
 						</Card>
 
-						<div className="mt-6 text-center text-sm text-gray-600">
+						<div className="mt-6 text-center text-sm text-gray-600 space-y-2">
+							<p>
+								Don't have an account?{" "}
+								<Link href="/register" className="text-primary hover:underline font-medium">
+									Register as a resident
+								</Link>
+							</p>
 							<p>
 								Having trouble? Contact support at{" "}
 								<a
@@ -99,13 +105,6 @@ export default function LoginPage() {
 							</p>
 						</div>
 					</div>
-
-					{/* Quick Admin Creation - Development Only */}
-					{process.env.NODE_ENV === "development" && (
-						<div className="w-full max-w-md mx-auto">
-							<QuickAdminCreation />
-						</div>
-					)}
 				</div>
 			</div>
 		</div>

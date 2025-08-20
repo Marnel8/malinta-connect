@@ -281,8 +281,106 @@ export default function CertificatesPage() {
 	const [formOpen, setFormOpen] = useState(false);
 	const [formLoading, setFormLoading] = useState(false);
 	const [photoUploading, setPhotoUploading] = useState(false);
+	const [photoValidating, setPhotoValidating] = useState(false);
 	const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 	const photoInputRef = useRef<HTMLInputElement | null>(null);
+
+	// Function to validate 1x1 image dimensions
+	const validateImageDimensions = (file: File): Promise<boolean> => {
+		return new Promise((resolve) => {
+			const img = new Image();
+			const url = URL.createObjectURL(file);
+			
+			img.onload = () => {
+				URL.revokeObjectURL(url);
+				const isSquare = Math.abs(img.width - img.height) < 10; // Allow small tolerance
+				resolve(isSquare);
+			};
+			
+			img.onerror = () => {
+				URL.revokeObjectURL(url);
+				resolve(false);
+			};
+			
+			img.src = url;
+		});
+	};
+
+	// Function to handle photo upload with validation
+	const handlePhotoUpload = async (file: File) => {
+		// Check file type
+		if (!file.type.startsWith('image/')) {
+			toast({
+				title: "Invalid file type",
+				description: "Please select an image file (PNG, JPG, JPEG, WebP)",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		// Check file size (5MB limit)
+		if (file.size > 5 * 1024 * 1024) {
+			toast({
+				title: "File too large",
+				description: "Please select an image smaller than 5MB",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		// Validate image dimensions
+		setPhotoValidating(true);
+		const isValidDimensions = await validateImageDimensions(file);
+		setPhotoValidating(false);
+		
+		if (!isValidDimensions) {
+			toast({
+				title: "Invalid image dimensions",
+				description: "Please upload a 1x1 (square) image. The image must have equal width and height.",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		const reader = new FileReader();
+		reader.onload = async () => {
+			const dataUrl = reader.result as string;
+			setPhotoPreview(dataUrl);
+			setPhotoUploading(true);
+			try {
+				const res = await uploadGoodMoralPhotoAction(dataUrl);
+				if (res.success && res.url) {
+					handleInputChange("requiresPicture", true);
+					setFormData((prev) => ({
+						...prev,
+						photoUrl: res.url,
+					} as any));
+					toast({
+						title: "Photo uploaded successfully",
+						description: "Your 1x1 photo has been uploaded",
+					});
+				} else {
+					toast({
+						title: "Upload failed",
+						description: res.error || "Failed to upload photo",
+						variant: "destructive",
+					});
+					setPhotoPreview(null);
+				}
+			} catch (error) {
+				toast({
+					title: "Upload failed",
+					description: "Failed to upload photo",
+					variant: "destructive",
+				});
+				setPhotoPreview(null);
+			} finally {
+				setPhotoUploading(false);
+			}
+		};
+		reader.readAsDataURL(file);
+	};
+
 	const [formData, setFormData] = useState<CertificateFormData>({
 		type: "",
 		requestedBy: userProfile
@@ -797,64 +895,53 @@ export default function CertificatesPage() {
 																/>
 																<div className="space-y-2">
 																	<Label htmlFor="photo">1x1 Picture *</Label>
+																	<div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+																		<p className="text-sm text-blue-800">
+																			<strong>Important:</strong> Only square (1:1 ratio) images are accepted. 
+																			Please ensure your photo has equal width and height dimensions.
+																		</p>
+																	</div>
 																	<div
-																		className="group relative rounded-lg border border-dashed p-4 sm:p-5 transition hover:border-primary/60 hover:bg-muted/40"
+																		className={`group relative rounded-lg border border-dashed p-4 sm:p-5 transition ${
+																			photoValidating 
+																				? "opacity-50 cursor-not-allowed" 
+																				: "hover:border-primary/60 hover:bg-muted/40"
+																		}`}
 																		onDragOver={(e) => e.preventDefault()}
 																		onDrop={async (e) => {
 																			e.preventDefault();
+																			if (photoValidating) return;
 																			const file = e.dataTransfer.files?.[0];
 																			if (!file) return;
-																			const reader = new FileReader();
-																			reader.onload = async () => {
-																				const dataUrl = reader.result as string;
-																				setPhotoPreview(dataUrl);
-																				setPhotoUploading(true);
-																				try {
-																					const res =
-																						await uploadGoodMoralPhotoAction(
-																							dataUrl
-																						);
-																					if (res.success && res.url) {
-																						handleInputChange(
-																							"requiresPicture",
-																							true
-																						);
-																						setFormData(
-																							(prev) =>
-																								({
-																									...prev,
-																									photoUrl: res.url,
-																								} as any)
-																						);
-																					}
-																				} finally {
-																					setPhotoUploading(false);
-																				}
-																			};
-																			reader.readAsDataURL(file);
+																			await handlePhotoUpload(file);
 																		}}
 																	>
-																		<div className="flex items-center gap-3">
-																			<div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 text-primary">
+																																			<div className="flex items-center gap-3">
+																		<div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 text-primary">
+																			{photoValidating ? (
+																				<Loader2 className="h-6 w-6 animate-spin" />
+																			) : (
 																				<UploadCloud className="h-6 w-6" />
-																			</div>
+																			)}
+																		</div>
 																			<div className="flex-1">
 																				<p className="text-sm font-medium">
-																					Drag & drop your 1x1 photo here
+																					{photoValidating ? "Validating image..." : "Drag & drop your 1x1 photo here"}
 																				</p>
 																				<p className="text-xs text-muted-foreground">
-																					PNG, JPG up to ~5MB
+																					{photoValidating ? "Checking dimensions..." : "PNG, JPG up to 5MB • Must be square (1:1 ratio)"}
 																				</p>
 																			</div>
 																			<Button
 																				type="button"
 																				variant="outline"
 																				className="h-8 px-3"
+																				disabled={photoValidating}
 																				onClick={() =>
 																					photoInputRef.current?.click()
 																				}
 																			>
-																				Browse
+																				{photoValidating ? "Validating..." : "Browse"}
 																			</Button>
 																		</div>
 																	</div>
@@ -866,71 +953,56 @@ export default function CertificatesPage() {
 																		onChange={async (e) => {
 																			const file = e.target.files?.[0];
 																			if (!file) return;
-																			const reader = new FileReader();
-																			reader.onload = async () => {
-																				const dataUrl = reader.result as string;
-																				setPhotoPreview(dataUrl);
-																				setPhotoUploading(true);
-																				try {
-																					const res =
-																						await uploadGoodMoralPhotoAction(
-																							dataUrl
-																						);
-																					if (res.success && res.url) {
-																						handleInputChange(
-																							"requiresPicture",
-																							true
-																						);
-																						setFormData(
-																							(prev) =>
-																								({
-																									...prev,
-																									photoUrl: res.url,
-																								} as any)
-																						);
-																					}
-																				} finally {
-																					setPhotoUploading(false);
-																				}
-																			};
-																			reader.readAsDataURL(file);
+																			await handlePhotoUpload(file);
 																		}}
 																	/>
 
 																	{photoPreview && (
 																		<div className="mt-2 flex items-center gap-3">
-																			<Image
-																				src={photoPreview}
-																				alt="1x1 Preview"
-																				width={72}
-																				height={72}
-																				className="rounded border"
-																			/>
-																			{photoUploading ? (
-																				<span className="text-xs text-muted-foreground">
-																					Uploading...
-																				</span>
-																			) : (
-																				<Button
-																					type="button"
-																					variant="ghost"
-																					size="sm"
-																					className="text-xs"
-																					onClick={() => {
-																						setPhotoPreview(null);
-																						setFormData(
-																							(prev) =>
-																								({
-																									...prev,
-																									photoUrl: undefined,
-																								} as any)
-																						);
-																					}}
-																				>
-																					<X className="h-4 w-4 mr-1" />
-																					Remove
-																				</Button>
-																			)}
+																			<div className="relative">
+																				<Image
+																					src={photoPreview}
+																					alt="1x1 Preview"
+																					width={72}
+																					height={72}
+																					className="rounded border"
+																				/>
+																				<div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1 rounded-full">
+																					1:1
+																				</div>
+																			</div>
+																			<div className="flex flex-col">
+																				{photoUploading ? (
+																					<span className="text-xs text-muted-foreground">
+																						Uploading...
+																					</span>
+																				) : (
+																					<>
+																						<span className="text-xs text-green-600 font-medium">
+																							✓ Valid 1x1 image
+																						</span>
+																						<Button
+																							type="button"
+																							variant="ghost"
+																							size="sm"
+																							className="text-xs"
+																							onClick={() => {
+																								setPhotoPreview(null);
+																								setFormData(
+																									(prev) =>
+																										({
+																											...prev,
+																											photoUrl: undefined,
+																										} as any)
+																								);
+																							}}
+																						>
+																							<X className="h-4 w-4 mr-1" />
+																							Remove
+																						</Button>
+																					</>
+																				)}
+																			</div>
 																		</div>
 																	)}
 																</div>

@@ -576,6 +576,11 @@ export default function AdminCertificatesPage() {
 										<div className="flex items-center">
 											<FileText className="mr-2 h-4 w-4 text-primary" />
 											{cert.type}
+											{cert.photoUrl && (
+												<Badge variant="secondary" className="ml-2 text-xs">
+													Photo
+												</Badge>
+											)}
 										</div>
 									</TableCell>
 									<TableCell>{cert.requestedBy}</TableCell>
@@ -942,6 +947,21 @@ export default function AdminCertificatesPage() {
 									<p className="text-sm text-muted-foreground mt-1">
 										{selectedCertificate.completedOn}
 									</p>
+								</div>
+							)}
+							{selectedCertificate.photoUrl && (
+								<div>
+									<Label className="text-sm font-medium">Uploaded Photo</Label>
+									<div className="mt-2">
+										<img
+											src={selectedCertificate.photoUrl}
+											alt="Certificate photo"
+											className="max-w-xs rounded-lg border shadow-sm"
+											onError={(e) => {
+												e.currentTarget.style.display = 'none';
+											}}
+										/>
+									</div>
 								</div>
 							)}
 						</div>

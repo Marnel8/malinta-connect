@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -18,55 +19,139 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Users, UserPlus, Mail, Phone, MapPin, CheckCircle, AlertCircle } from "lucide-react"
+import { Search, Users, UserPlus, Mail, Phone, MapPin, CheckCircle, AlertCircle, Eye, Loader2 } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-// Mock data for residents
-const residents = [
-  {
-    id: "RES-2025-001",
-    name: "Juan Dela Cruz",
-    email: "juan.delacruz@email.com",
-    phone: "+63 912 345 6789",
-    address: "Block 5, Lot 12, Main Street",
-    status: "verified",
-    registeredOn: "January 15, 2025",
-    type: "permanent",
-    voterStatus: "registered",
-    occupation: "Teacher",
-    imageUrl: "https://images.unsplash.com/photo-1599566150163-29194dcaad36",
-  },
-  {
-    id: "RES-2025-002",
-    name: "Maria Santos",
-    email: "maria.santos@email.com",
-    phone: "+63 923 456 7890",
-    address: "Block 3, Lot 7, Side Street",
-    status: "pending",
-    registeredOn: "February 20, 2025",
-    type: "temporary",
-    voterStatus: "unregistered",
-    occupation: "Business Owner",
-    imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
-  },
-  {
-    id: "RES-2025-003",
-    name: "Pedro Reyes",
-    email: "pedro.reyes@email.com",
-    phone: "+63 934 567 8901",
-    address: "Block 1, Lot 3, Park Avenue",
-    status: "verified",
-    registeredOn: "March 5, 2025",
-    type: "permanent",
-    voterStatus: "registered",
-    occupation: "Engineer",
-    imageUrl: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61",
-  },
-]
+import { useToast } from "@/hooks/use-toast"
+import { ResidentVerificationModal } from "@/components/admin/resident-verification-modal"
+import { 
+  getResidentsAction, 
+  getResidentDetailsAction, 
+  searchResidentsAction,
+  ResidentListItem,
+  ResidentData
+} from "@/app/actions/residents"
 
 export default function AdminResidentsPage() {
   const { t } = useLanguage()
+  const { toast } = useToast()
+  
+  const [residents, setResidents] = useState<ResidentListItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [isSearching, setIsSearching] = useState(false)
+  
+  // Verification modal state
+  const [verificationModal, setVerificationModal] = useState<{
+    isOpen: boolean
+    resident: ResidentData | null
+  }>({ isOpen: false, resident: null })
+  const [isLoadingResident, setIsLoadingResident] = useState(false)
+
+  const loadResidents = async () => {
+    setIsLoading(true)
+    try {
+      const result = await getResidentsAction()
+      if (result.success && result.residents) {
+        setResidents(result.residents)
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to load residents",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error loading residents:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while loading residents",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSearch = async () => {
+    setIsSearching(true)
+    try {
+      const result = await searchResidentsAction(searchQuery, statusFilter)
+      if (result.success && result.residents) {
+        setResidents(result.residents)
+      } else {
+        toast({
+          title: "Search Failed",
+          description: result.error || "Failed to search residents",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Search error:", error)
+      toast({
+        title: "Search Failed",
+        description: "An unexpected error occurred during search",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const openVerificationModal = async (uid: string) => {
+    setIsLoadingResident(true)
+    try {
+      const result = await getResidentDetailsAction(uid)
+      if (result.success && result.resident) {
+        setVerificationModal({
+          isOpen: true,
+          resident: result.resident,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to load resident details",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error loading resident details:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load resident details",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingResident(false)
+    }
+  }
+
+  const closeVerificationModal = () => {
+    setVerificationModal({ isOpen: false, resident: null })
+  }
+
+  const handleVerificationUpdate = () => {
+    loadResidents() // Reload the residents list
+  }
+
+  // Load residents on component mount
+  useEffect(() => {
+    loadResidents()
+  }, [])
+
+  // Handle search and filter changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim() !== "" || statusFilter !== "all") {
+        handleSearch()
+      } else {
+        loadResidents()
+      }
+    }, 500) // Debounce search
+
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, statusFilter])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -84,23 +169,11 @@ export default function AdminResidentsPage() {
             Pending Verification
           </Badge>
         )
-      default:
-        return null
-    }
-  }
-
-  const getResidentTypeBadge = (type: string) => {
-    switch (type) {
-      case "permanent":
+      case "rejected":
         return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-            Permanent
-          </Badge>
-        )
-      case "temporary":
-        return (
-          <Badge variant="outline" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-            Temporary
+          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+            <AlertCircle className="mr-1 h-3 w-3" />
+            Rejected
           </Badge>
         )
       default:
@@ -124,9 +197,18 @@ export default function AdminResidentsPage() {
       <div className="flex items-center space-x-2 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input type="search" placeholder="Search residents..." className="pl-8" />
+          <Input 
+            type="search" 
+            placeholder="Search residents by name, email, phone, or address..." 
+            className="pl-8" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {(isSearching || isLoading) && (
+            <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+          )}
         </div>
-        <Select defaultValue="all">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
@@ -134,28 +216,20 @@ export default function AdminResidentsPage() {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="verified">Verified</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="permanent">Permanent</SelectItem>
-            <SelectItem value="temporary">Temporary</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Voter Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="registered">Registered</SelectItem>
-            <SelectItem value="unregistered">Unregistered</SelectItem>
-          </SelectContent>
-        </Select>
+        <Button 
+          variant="outline" 
+          onClick={loadResidents}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "Refresh"
+          )}
+        </Button>
       </div>
 
       <div className="border rounded-lg">
@@ -166,61 +240,110 @@ export default function AdminResidentsPage() {
               <TableHead>Contact</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Type</TableHead>
               <TableHead>Registered On</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {residents.map((resident) => (
-              <TableRow key={resident.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={resident.imageUrl} alt={resident.name} />
-                      <AvatarFallback>{resident.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{resident.name}</div>
-                      <div className="text-sm text-muted-foreground">{resident.id}</div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-sm">
-                      <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-                      {resident.email}
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-                      {resident.phone}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center">
-                    <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                    {resident.address}
-                  </div>
-                </TableCell>
-                <TableCell>{getStatusBadge(resident.status)}</TableCell>
-                <TableCell>{getResidentTypeBadge(resident.type)}</TableCell>
-                <TableCell>{resident.registeredOn}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">View Profile</Button>
-                    <Button variant="outline" size="sm">Edit</Button>
-                    {resident.status === "pending" && (
-                      <Button size="sm">Verify</Button>
-                    )}
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading residents...
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : residents.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="text-muted-foreground">
+                    {searchQuery || statusFilter !== "all" ? "No residents found matching your criteria." : "No residents registered yet."}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              residents.map((resident) => (
+                <TableRow key={resident.uid}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src={resident.profileImageUrl} alt={resident.name} />
+                        <AvatarFallback>{resident.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{resident.name}</div>
+                        <div className="text-sm text-muted-foreground">{resident.uid}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center text-sm">
+                        <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {resident.email}
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {resident.phone}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{resident.address}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{getStatusBadge(resident.verificationStatus)}</TableCell>
+                  <TableCell>{resident.registeredOn}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => openVerificationModal(resident.uid)}
+                        disabled={isLoadingResident}
+                      >
+                        {isLoadingResident ? (
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Eye className="mr-1 h-3 w-3" />
+                        )}
+                        View Details
+                      </Button>
+                      {resident.verificationStatus === "pending" && (
+                        <Button 
+                          size="sm"
+                          onClick={() => openVerificationModal(resident.uid)}
+                          disabled={isLoadingResident}
+                        >
+                          {isLoadingResident ? (
+                            <>
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            "Review"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
+      
+      {/* Verification Modal */}
+      <ResidentVerificationModal
+        isOpen={verificationModal.isOpen}
+        onClose={closeVerificationModal}
+        resident={verificationModal.resident}
+        onVerificationUpdate={handleVerificationUpdate}
+      />
     </div>
   )
 } 
