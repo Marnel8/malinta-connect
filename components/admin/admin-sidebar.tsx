@@ -394,12 +394,14 @@ export function AdminSidebar() {
 					<div className="flex items-center gap-2">
 						<ModeToggle />
 						<LanguageSelector />
+						{/* Notification Bell - Commented out for now
 						<Button variant="ghost" size="icon" className="relative">
 							<Bell className="h-5 w-5" />
 							<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
 								3
 							</span>
 						</Button>
+						*/}
 					</div>
 					<Button variant="ghost" size="icon" onClick={handleLogout}>
 						<LogOut className="h-5 w-5" />

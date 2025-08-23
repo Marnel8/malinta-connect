@@ -90,7 +90,6 @@ export async function createAppointmentAction(
 			updatedAt: Date.now(),
 		};
 
-
 		await newAppointmentRef.set(appointmentToSave);
 
 		// Send email notification to requester
@@ -105,7 +104,40 @@ export async function createAppointmentAction(
 			contactEmail: appointmentData.email,
 			notes: appointmentData.notes,
 		};
-		await sendAppointmentRequestReceivedEmail(appointmentData.email, emailPayload);
+		await sendAppointmentRequestReceivedEmail(
+			appointmentData.email,
+			emailPayload
+		);
+
+		// Send push notification to admins about new appointment
+		try {
+			const { sendNotificationAction } = await import(
+				"@/app/actions/notifications"
+			);
+			await sendNotificationAction({
+				type: "appointment_update",
+				targetRoles: ["admin", "official"],
+				targetUids: [],
+				data: {
+					title: "New Appointment Request",
+					body: `${appointmentData.requestedBy} requested: ${appointmentData.title}`,
+					icon: "/images/malinta_logo.jpg",
+					clickAction: "/admin/appointments",
+					data: {
+						appointmentId: newAppointmentRef.key,
+						referenceNumber,
+						requestedBy: appointmentData.requestedBy,
+					},
+				},
+				priority: "normal",
+			});
+		} catch (notificationError) {
+			console.error(
+				"Error sending appointment notification:",
+				notificationError
+			);
+			// Don't fail the entire operation if notification fails
+		}
 
 		return {
 			success: true,
@@ -170,6 +202,56 @@ export async function getAllAppointmentsAction(): Promise<{
 	}
 }
 
+// Update appointment status and notify resident
+export async function updateAppointmentStatusAction(
+	appointmentId: string,
+	status: "confirmed" | "cancelled" | "completed",
+	notes?: string
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		const appointmentRef = adminDatabase.ref(`appointments/${appointmentId}`);
+		const snapshot = await appointmentRef.get();
+
+		if (!snapshot.exists()) {
+			return { success: false, error: "Appointment not found" };
+		}
+
+		const appointment = snapshot.val() as Appointment;
+
+		// Update appointment status
+		await appointmentRef.update({
+			status,
+			notes: notes || appointment.notes,
+			updatedAt: Date.now(),
+		});
+
+		// Send push notification to resident about status update
+		try {
+			const { sendAppointmentUpdateNotificationAction } = await import(
+				"@/app/actions/notifications"
+			);
+			await sendAppointmentUpdateNotificationAction(
+				appointment.requestedBy, // This should be UID in a real implementation
+				appointment.requestedBy, // Resident name
+				appointment.title,
+				status,
+				appointmentId
+			);
+		} catch (notificationError) {
+			console.error(
+				"Error sending appointment update notification:",
+				notificationError
+			);
+			// Don't fail the entire operation if notification fails
+		}
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error updating appointment status:", error);
+		return { success: false, error: "Failed to update appointment status" };
+	}
+}
+
 // Get count of appointments by status
 export async function getAppointmentsCountAction(): Promise<{
 	success: boolean;
@@ -222,58 +304,6 @@ export async function getAppointmentsCountAction(): Promise<{
 		return {
 			success: false,
 			error: "Failed to fetch appointment counts. Please try again.",
-		};
-	}
-}
-
-// Update appointment status
-export async function updateAppointmentStatusAction(
-	appointmentId: string,
-	status: Appointment["status"],
-	notes?: string
-): Promise<{ success: boolean; error?: string }> {
-	try {
-		const appointmentRef = adminDatabase.ref(`appointments/${appointmentId}`);
-		const snapshot = await appointmentRef.get();
-
-		if (!snapshot.exists()) {
-			return {
-				success: false,
-				error: "Appointment not found.",
-			};
-		}
-
-		const updateData: Partial<Appointment> = {
-			status,
-			updatedAt: Date.now(),
-		};
-
-		if (notes) {
-			updateData.notes = notes;
-		}
-
-		await appointmentRef.update(updateData);
-
-		const appointment = snapshot.val();
-		const emailPayload: AppointmentEmailData = {
-			userName: appointment.requestedBy,
-			referenceNumber: appointment.referenceNumber || appointmentId,
-			appointmentTitle: appointment.title,
-			appointmentDate: appointment.date,
-			appointmentTime: appointment.time,
-			purpose: appointment.description,
-			contactPhone: appointment.contactNumber,
-			contactEmail: appointment.email,
-			notes: notes || appointment.notes,
-		};
-		await sendAppointmentStatusEmail(appointment.email, status, emailPayload);
-
-		return { success: true };
-	} catch (error) {
-		console.error("Error updating appointment status:", error);
-		return {
-			success: false,
-			error: "Failed to update appointment status. Please try again.",
 		};
 	}
 }
@@ -346,7 +376,10 @@ export async function getAppointmentsByStatusAction(
 }> {
 	try {
 		const appointmentsRef = adminDatabase.ref("appointments");
-		const snapshot = await appointmentsRef.orderByChild("status").equalTo(status).get();
+		const snapshot = await appointmentsRef
+			.orderByChild("status")
+			.equalTo(status)
+			.get();
 
 		if (!snapshot.exists()) {
 			return { success: true, appointments: [] };
@@ -387,9 +420,7 @@ export async function getAppointmentsByStatusAction(
 }
 
 // Get appointment by ID
-export async function getAppointmentByIdAction(
-	appointmentId: string
-): Promise<{
+export async function getAppointmentByIdAction(appointmentId: string): Promise<{
 	success: boolean;
 	appointment?: Appointment;
 	error?: string;

@@ -24,6 +24,8 @@ import {
 import { useLanguage } from "@/contexts/language-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { requestForToken } from "@/app/firebase/firebase";
+import { useFCMToken } from "@/hooks/use-fcm-token";
 import {
 	getAllCertificatesAction,
 	createCertificateAction,
@@ -274,8 +276,9 @@ const getFieldLabel = (field: string) => {
 
 export default function CertificatesPage() {
 	const { t } = useLanguage();
-	const { userProfile } = useAuth();
+	const { user, userProfile } = useAuth();
 	const { toast } = useToast();
+	const { updateToken } = useFCMToken();
 	const [certificates, setCertificates] = useState<Certificate[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [formOpen, setFormOpen] = useState(false);
@@ -288,20 +291,20 @@ export default function CertificatesPage() {
 	// Function to validate 1x1 image dimensions
 	const validateImageDimensions = (file: File): Promise<boolean> => {
 		return new Promise((resolve) => {
-			const img = new Image();
+			const img = document.createElement("img");
 			const url = URL.createObjectURL(file);
-			
+
 			img.onload = () => {
 				URL.revokeObjectURL(url);
 				const isSquare = Math.abs(img.width - img.height) < 10; // Allow small tolerance
 				resolve(isSquare);
 			};
-			
+
 			img.onerror = () => {
 				URL.revokeObjectURL(url);
 				resolve(false);
 			};
-			
+
 			img.src = url;
 		});
 	};
@@ -309,7 +312,7 @@ export default function CertificatesPage() {
 	// Function to handle photo upload with validation
 	const handlePhotoUpload = async (file: File) => {
 		// Check file type
-		if (!file.type.startsWith('image/')) {
+		if (!file.type.startsWith("image/")) {
 			toast({
 				title: "Invalid file type",
 				description: "Please select an image file (PNG, JPG, JPEG, WebP)",
@@ -332,11 +335,12 @@ export default function CertificatesPage() {
 		setPhotoValidating(true);
 		const isValidDimensions = await validateImageDimensions(file);
 		setPhotoValidating(false);
-		
+
 		if (!isValidDimensions) {
 			toast({
 				title: "Invalid image dimensions",
-				description: "Please upload a 1x1 (square) image. The image must have equal width and height.",
+				description:
+					"Please upload a 1x1 (square) image. The image must have equal width and height.",
 				variant: "destructive",
 			});
 			return;
@@ -351,10 +355,13 @@ export default function CertificatesPage() {
 				const res = await uploadGoodMoralPhotoAction(dataUrl);
 				if (res.success && res.url) {
 					handleInputChange("requiresPicture", true);
-					setFormData((prev) => ({
-						...prev,
-						photoUrl: res.url,
-					} as any));
+					setFormData(
+						(prev) =>
+							({
+								...prev,
+								photoUrl: res.url,
+							} as any)
+					);
 					toast({
 						title: "Photo uploaded successfully",
 						description: "Your 1x1 photo has been uploaded",
@@ -431,6 +438,23 @@ export default function CertificatesPage() {
 	useEffect(() => {
 		fetchCertificates();
 	}, []);
+
+	// Register FCM token for notifications
+	useEffect(() => {
+		const registerFCMToken = async () => {
+			if (!user || !userProfile) return;
+			
+			const vapidKey = "BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
+			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
+			
+			if (token) {
+				console.log("FCM Token registered successfully on certificates page");
+				updateToken(token, user.uid, userProfile.role);
+			}
+		};
+
+		registerFCMToken();
+	}, [user, userProfile, updateToken]);
 
 	const fetchCertificates = async () => {
 		try {
@@ -897,14 +921,16 @@ export default function CertificatesPage() {
 																	<Label htmlFor="photo">1x1 Picture *</Label>
 																	<div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
 																		<p className="text-sm text-blue-800">
-																			<strong>Important:</strong> Only square (1:1 ratio) images are accepted. 
-																			Please ensure your photo has equal width and height dimensions.
+																			<strong>Important:</strong> Only square
+																			(1:1 ratio) images are accepted. Please
+																			ensure your photo has equal width and
+																			height dimensions.
 																		</p>
 																	</div>
 																	<div
 																		className={`group relative rounded-lg border border-dashed p-4 sm:p-5 transition ${
-																			photoValidating 
-																				? "opacity-50 cursor-not-allowed" 
+																			photoValidating
+																				? "opacity-50 cursor-not-allowed"
 																				: "hover:border-primary/60 hover:bg-muted/40"
 																		}`}
 																		onDragOver={(e) => e.preventDefault()}
@@ -916,20 +942,24 @@ export default function CertificatesPage() {
 																			await handlePhotoUpload(file);
 																		}}
 																	>
-																																			<div className="flex items-center gap-3">
-																		<div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 text-primary">
-																			{photoValidating ? (
-																				<Loader2 className="h-6 w-6 animate-spin" />
-																			) : (
-																				<UploadCloud className="h-6 w-6" />
-																			)}
-																		</div>
+																		<div className="flex items-center gap-3">
+																			<div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 text-primary">
+																				{photoValidating ? (
+																					<Loader2 className="h-6 w-6 animate-spin" />
+																				) : (
+																					<UploadCloud className="h-6 w-6" />
+																				)}
+																			</div>
 																			<div className="flex-1">
 																				<p className="text-sm font-medium">
-																					{photoValidating ? "Validating image..." : "Drag & drop your 1x1 photo here"}
+																					{photoValidating
+																						? "Validating image..."
+																						: "Drag & drop your 1x1 photo here"}
 																				</p>
 																				<p className="text-xs text-muted-foreground">
-																					{photoValidating ? "Checking dimensions..." : "PNG, JPG up to 5MB • Must be square (1:1 ratio)"}
+																					{photoValidating
+																						? "Checking dimensions..."
+																						: "PNG, JPG up to 5MB • Must be square (1:1 ratio)"}
 																				</p>
 																			</div>
 																			<Button
@@ -941,7 +971,9 @@ export default function CertificatesPage() {
 																					photoInputRef.current?.click()
 																				}
 																			>
-																				{photoValidating ? "Validating..." : "Browse"}
+																				{photoValidating
+																					? "Validating..."
+																					: "Browse"}
 																			</Button>
 																		</div>
 																	</div>

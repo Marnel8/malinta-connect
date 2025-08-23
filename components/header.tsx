@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -18,6 +19,10 @@ import {
 	Users,
 	ChevronDown,
 	Settings,
+	BarChart3,
+	ClipboardList,
+	Shield,
+	UserCheck,
 } from "lucide-react";
 import {
 	Sheet,
@@ -33,14 +38,50 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/auth-context";
+import { getCurrentUserProfileAction } from "@/app/actions/auth";
+import { UserProfile } from "@/app/actions/auth";
+import dynamic from "next/dynamic";
 
-export default function Header() {
+function HeaderContent() {
 	const pathname = usePathname();
 	const [open, setOpen] = useState(false);
 	const [scrolled, setScrolled] = useState(false);
 	const { t } = useLanguage();
-	const isAdmin =
-		pathname.startsWith("/official") || pathname.startsWith("/admin");
+	const { user, userProfile, loading } = useAuth();
+	const [currentUserProfile, setCurrentUserProfile] =
+		useState<UserProfile | null>(null);
+	const [profileLoading, setProfileLoading] = useState(true);
+
+	const isAdmin = currentUserProfile?.role === "admin";
+	const isOfficial = currentUserProfile?.role === "official";
+	const isResident = currentUserProfile?.role === "resident";
+
+	// Fetch user profile when user changes
+	useEffect(() => {
+		const fetchUserProfile = async () => {
+			if (user?.uid) {
+				setProfileLoading(true);
+				try {
+					const result = await getCurrentUserProfileAction(user.uid);
+					if (result.success && result.user) {
+						setCurrentUserProfile(result.user);
+					} else {
+						console.error("Failed to fetch user profile:", result.error);
+					}
+				} catch (error) {
+					console.error("Error fetching user profile:", error);
+				} finally {
+					setProfileLoading(false);
+				}
+			} else {
+				setCurrentUserProfile(null);
+				setProfileLoading(false);
+			}
+		};
+
+		fetchUserProfile();
+	}, [user?.uid]);
 
 	// Main navigation items
 	const mainNavigation = [{ name: t("nav.home"), href: "/", icon: Home }];
@@ -58,22 +99,40 @@ export default function Header() {
 		{ name: t("nav.officials"), href: "/officials", icon: Users },
 	];
 
-	// Admin navigation items (only shown to officials)
+	// Admin navigation items (only shown to officials and admins)
+	const adminNavigation = [
+		{ name: "Dashboard", href: "/admin", icon: BarChart3 },
+		{ name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+		{ name: "Announcements", href: "/admin/announcements", icon: Megaphone },
+		{ name: "Appointments", href: "/admin/appointments", icon: Calendar },
+		{ name: "Blotter", href: "/admin/blotter", icon: ClipboardList },
+		{ name: "Certificates", href: "/admin/certificates", icon: FileText },
+		{ name: "Events", href: "/admin/events", icon: Megaphone },
+		{ name: "Officials", href: "/admin/officials", icon: Shield },
+		{ name: "Residents", href: "/admin/residents", icon: UserCheck },
+		{ name: "Settings", href: "/admin/settings", icon: Settings },
+		{ name: "Staff", href: "/admin/staff", icon: Users },
+	];
 
 	// All navigation items for mobile menu
 	const allNavigation = [
 		...mainNavigation,
 		...servicesNavigation,
 		...communityNavigation,
+		...(isAdmin || isOfficial ? adminNavigation : []),
 	];
 
 	useEffect(() => {
 		const handleScroll = () => {
-			setScrolled(window.scrollY > 10);
+			if (typeof window !== "undefined") {
+				setScrolled(window.scrollY > 10);
+			}
 		};
 
-		window.addEventListener("scroll", handleScroll);
-		return () => window.removeEventListener("scroll", handleScroll);
+		if (typeof window !== "undefined") {
+			window.addEventListener("scroll", handleScroll);
+			return () => window.removeEventListener("scroll", handleScroll);
+		}
 	}, []);
 
 	// For the Services dropdown, add a check to highlight the dropdown trigger when any of its items are active
@@ -87,6 +146,29 @@ export default function Header() {
 	);
 
 	// For the Admin dropdown, add a check to highlight the dropdown trigger when any of its items are active
+	const isAdminActive = adminNavigation.some((item) => pathname === item.href);
+
+	// Don't render anything while loading to prevent SSR issues
+	if (profileLoading) {
+		return (
+			<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+				<div className="container flex h-16 items-center justify-between">
+					<div className="flex items-center gap-2">
+						<div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+						<div className="flex flex-col gap-2">
+							<div className="h-6 w-32 bg-muted animate-pulse rounded" />
+							<div className="h-3 w-24 bg-muted animate-pulse rounded" />
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="h-8 w-8 rounded bg-muted animate-pulse" />
+						<div className="h-8 w-8 rounded bg-muted animate-pulse" />
+						<div className="h-8 w-8 rounded bg-muted animate-pulse" />
+					</div>
+				</div>
+			</header>
+		);
+	}
 
 	return (
 		<header
@@ -269,7 +351,43 @@ export default function Header() {
 						</DropdownMenuContent>
 					</DropdownMenu>
 
-					{/* Admin dropdown (only shown to officials) */}
+					{/* Admin dropdown (only shown to officials and admins) */}
+					{(isAdmin || isOfficial) && (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="ghost"
+									className={cn(
+										"h-8 gap-1 px-2 relative",
+										isAdminActive && "text-primary font-medium"
+									)}
+								>
+									<span className="text-sm font-medium">Admin</span>
+									<ChevronDown className="h-4 w-4" />
+									{isAdminActive && (
+										<span className="absolute -bottom-[13px] left-0 h-0.5 w-full bg-primary"></span>
+									)}
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="center">
+								{adminNavigation.map((item) => (
+									<DropdownMenuItem key={item.href} asChild>
+										<Link
+											href={item.href}
+											className={cn(
+												"flex items-center gap-2 w-full",
+												pathname === item.href &&
+													"bg-accent/50 font-medium text-accent-foreground"
+											)}
+										>
+											<item.icon className="h-4 w-4" />
+											<span>{item.name}</span>
+										</Link>
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					)}
 				</nav>
 				<div className="flex items-center gap-2">
 					<LanguageSelector />
@@ -280,3 +398,26 @@ export default function Header() {
 		</header>
 	);
 }
+
+// Export the component with dynamic import to prevent SSR issues
+export default dynamic(() => Promise.resolve(HeaderContent), {
+	ssr: false,
+	loading: () => (
+		<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+			<div className="container flex h-16 items-center justify-between">
+				<div className="flex items-center gap-2">
+					<div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+					<div className="flex flex-col gap-2">
+						<div className="h-6 w-32 bg-muted animate-pulse rounded" />
+						<div className="h-3 w-24 bg-muted animate-pulse rounded" />
+					</div>
+				</div>
+				<div className="flex items-center gap-2">
+					<div className="h-8 w-8 rounded bg-muted animate-pulse" />
+					<div className="h-8 w-8 rounded bg-muted animate-pulse" />
+					<div className="h-8 w-8 rounded bg-muted animate-pulse" />
+				</div>
+			</div>
+		</header>
+	),
+});

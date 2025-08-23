@@ -101,6 +101,21 @@ export async function createEventAction(
 
 		await newEventRef.set(event);
 
+		// Send push notification to all residents about new event
+		try {
+			const { sendEventNotificationAction } = await import(
+				"@/app/actions/notifications"
+			);
+			await sendEventNotificationAction(
+				eventData.name,
+				eventData.date,
+				referenceNumber
+			);
+		} catch (notificationError) {
+			console.error("Error sending event notification:", notificationError);
+			// Don't fail the entire operation if notification fails
+		}
+
 		return {
 			success: true,
 			eventId: referenceNumber,

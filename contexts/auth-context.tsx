@@ -9,31 +9,8 @@ import {
 } from "react";
 import { User, onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/app/firebase/firebase";
-
-interface UserProfile {
-	uid: string;
-	email: string;
-	role: "resident" | "official" | "admin";
-	firstName?: string;
-	lastName?: string;
-	phoneNumber?: string;
-	address?: string;
-	position?: string;
-	createdAt: number;
-	updatedAt: number;
-	permissions?: {
-		canManageUsers: boolean;
-		canManageEvents: boolean;
-		canManageCertificates: boolean;
-		canManageAppointments: boolean;
-		canViewAnalytics: boolean;
-		canManageSettings: boolean;
-		canManageBlotter: boolean;
-		canManageOfficials: boolean;
-		canManageResidents: boolean;
-		canManageAnnouncements: boolean;
-	};
-}
+import { getCurrentUserProfileAction, UserProfile } from "@/app/actions/auth";
+import { removeFCMTokenFromLocalStorage } from "@/app/firebase/firebase";
 
 interface AuthContextType {
 	user: User | null;
@@ -41,6 +18,7 @@ interface AuthContextType {
 	loading: boolean;
 	logout: () => Promise<void>;
 	updateUserProfile: (profile: UserProfile) => void;
+	refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,52 +33,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			setUser(user);
 
 			if (user) {
-				// Try to get user profile from localStorage first
-				const storedProfile = localStorage.getItem(`userProfile_${user.uid}`);
-				if (storedProfile) {
-					try {
-						const profile = JSON.parse(storedProfile) as UserProfile;
-						setUserProfile(profile);
-					} catch (error) {
-						console.error("Error parsing stored profile:", error);
-						// If parsing fails, create a basic profile
-						const basicProfile: UserProfile = {
-							uid: user.uid,
-							email: user.email || "",
-							role: "resident",
-							createdAt: Date.now(),
-							updatedAt: Date.now(),
-						};
-						setUserProfile(basicProfile);
-					}
-				} else {
-					// No stored profile, try to get role from localStorage
-					const storedRole = localStorage.getItem(`userRole_${user.uid}`);
-					if (storedRole) {
-						// Create a basic profile with stored role
-						const basicProfile: UserProfile = {
-							uid: user.uid,
-							email: user.email || "",
-							role: storedRole as "resident" | "official" | "admin",
-							createdAt: Date.now(),
-							updatedAt: Date.now(),
-						};
-						setUserProfile(basicProfile);
-						localStorage.setItem(
-							`userProfile_${user.uid}`,
-							JSON.stringify(basicProfile)
-						);
+				try {
+					// Fetch user profile from server action
+					const result = await getCurrentUserProfileAction(user.uid);
+					if (result.success && result.user) {
+						setUserProfile(result.user);
 					} else {
-						// No stored data, create default resident profile
-						const defaultProfile: UserProfile = {
+						console.error("Failed to fetch user profile:", result.error);
+						// Set a basic profile as fallback
+						const basicProfile: UserProfile = {
 							uid: user.uid,
 							email: user.email || "",
 							role: "resident",
 							createdAt: Date.now(),
 							updatedAt: Date.now(),
 						};
-						setUserProfile(defaultProfile);
+						setUserProfile(basicProfile);
 					}
+				} catch (error) {
+					console.error("Error fetching user profile:", error);
+					// Set a basic profile as fallback
+					const basicProfile: UserProfile = {
+						uid: user.uid,
+						email: user.email || "",
+						role: "resident",
+						createdAt: Date.now(),
+						updatedAt: Date.now(),
+					};
+					setUserProfile(basicProfile);
 				}
 			} else {
 				setUserProfile(null);
@@ -110,15 +70,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		});
 
 		return () => unsubscribe();
-	}, []); // Remove userProfile from dependencies to prevent infinite loop
+	}, []);
 
 	const logout = async () => {
 		try {
-			if (user) {
-				// Clear stored profile and role
-				localStorage.removeItem(`userProfile_${user.uid}`);
-				localStorage.removeItem(`userRole_${user.uid}`);
+			// Clean up FCM token before logout
+			if (user?.uid) {
+				try {
+					// Remove from localStorage
+					removeFCMTokenFromLocalStorage();
+					
+					// Remove from server
+					const { removeFCMTokenAction } = await import(
+						"@/app/actions/notifications"
+					);
+					await removeFCMTokenAction(user.uid);
+				} catch (error) {
+					console.error("Error removing FCM token:", error);
+					// Don't block logout if FCM cleanup fails
+				}
 			}
+
 			await signOut(auth);
 			setUserProfile(null);
 		} catch (error) {
@@ -128,12 +100,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 	const updateUserProfile = (profile: UserProfile) => {
 		setUserProfile(profile);
-		if (profile.uid) {
-			localStorage.setItem(
-				`userProfile_${profile.uid}`,
-				JSON.stringify(profile)
-			);
-			localStorage.setItem(`userRole_${profile.uid}`, profile.role);
+	};
+
+	const refreshUserProfile = async () => {
+		if (!user) return;
+
+		try {
+			const result = await getCurrentUserProfileAction(user.uid);
+			if (result.success && result.user) {
+				setUserProfile(result.user);
+			}
+		} catch (error) {
+			console.error("Error refreshing user profile:", error);
 		}
 	};
 
@@ -145,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				loading,
 				logout,
 				updateUserProfile,
+				refreshUserProfile,
 			}}
 		>
 			{children}

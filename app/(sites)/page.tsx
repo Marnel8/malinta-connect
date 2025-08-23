@@ -11,12 +11,120 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { ChevronRight, Calendar, Users, Megaphone } from "lucide-react";
+import { ChevronRight, Users } from "lucide-react";
 import { ServicesSection } from "@/components/services-section";
+import { EventsSection } from "@/components/events-section";
 import { useLanguage } from "@/contexts/language-context";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+	requestForToken,
+	getNotificationPermissionStatus,
+	requestNotificationPermission,
+} from "../firebase/firebase";
+import { useFCMToken } from "@/hooks/use-fcm-token";
 
 export default function Home() {
 	const { t } = useLanguage();
+	const { user, userProfile, loading } = useAuth();
+	const router = useRouter();
+	const { updateToken, hasToken } = useFCMToken();
+
+	// Auto-redirect based on user role
+	useEffect(() => {
+		if (!loading && user && userProfile) {
+			console.log(userProfile.role);
+			// Redirect based on role
+			switch (userProfile.role) {
+				case "admin":
+					router.push("/admin");
+					break;
+				case "official":
+					router.push("/admin");
+					break;
+				case "resident":
+					// Residents stay on home page
+					break;
+				default:
+					// Default case - stay on home page
+					break;
+			}
+		}
+	}, [user, userProfile, loading, router]);
+
+	// Request FCM token for push notifications
+	useEffect(() => {
+		const getFCMToken = async () => {
+			// Only request token if user is logged in
+			if (!user || !userProfile) return;
+
+			const vapidKey =
+				"BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
+
+			// Check current permission status
+			const currentPermission = getNotificationPermissionStatus();
+			console.log("Current notification permission:", currentPermission);
+
+			if (currentPermission === "denied") {
+				console.log(
+					"Notification permission denied. User needs to enable it manually."
+				);
+				return;
+			}
+
+			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
+			if (token) {
+				console.log("FCM Token received and stored successfully");
+				// Update the token in the hook
+				if (user?.uid && userProfile?.role) {
+					updateToken(token, user.uid, userProfile.role);
+				}
+			} else {
+				console.log(
+					"Failed to get FCM token - this may be due to permission issues"
+				);
+			}
+		};
+
+		getFCMToken();
+	}, [user, userProfile, updateToken]); // Add dependencies to re-run when user changes
+
+	// State for notification permission
+	const [notificationStatus, setNotificationStatus] = useState<
+		"granted" | "denied" | "default"
+	>("default");
+
+	// Update notification status when component mounts
+	useEffect(() => {
+		setNotificationStatus(getNotificationPermissionStatus());
+	}, []);
+
+	// Update notification status when FCM token changes
+	useEffect(() => {
+		if (hasToken) {
+			setNotificationStatus("granted");
+		}
+	}, [hasToken]);
+
+	// Show loading while checking auth state
+	if (loading) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+			</div>
+		);
+	}
+
+	// If user is admin or official, don't render the home page content
+	// (they will be redirected)
+	if (
+		user &&
+		userProfile &&
+		(userProfile.role === "admin" || userProfile.role === "official")
+	) {
+		return null;
+	}
 
 	return (
 		<div className="flex flex-col">
@@ -106,6 +214,109 @@ export default function Home() {
 					</div>
 				</div>
 			</section>
+
+			{/* Notification Permission Status - Only show for logged-in residents */}
+			{user && userProfile?.role === "resident" && (
+				<section className="w-full py-8 bg-muted/50">
+					<div className="container px-4 md:px-6">
+						<div className="max-w-2xl mx-auto">
+							<Card className="border-2">
+								<CardHeader className="pb-3">
+									<CardTitle className="text-lg flex items-center gap-2">
+										🔔 Notification Settings
+									</CardTitle>
+									<CardDescription>
+										Stay updated with important announcements and updates
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<div className="space-y-3">
+										<div className="flex items-center justify-between">
+											<span className="text-sm font-medium">Status:</span>
+											<span
+												className={`text-sm px-2 py-1 rounded-full ${
+													notificationStatus === "granted"
+														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+														: notificationStatus === "denied"
+														? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+														: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+												}`}
+											>
+												{notificationStatus === "granted" && "✅ Enabled"}
+												{notificationStatus === "denied" && "❌ Disabled"}
+												{notificationStatus === "default" && "⏳ Not Set"}
+											</span>
+										</div>
+
+										<div className="flex items-center justify-between">
+											<span className="text-sm font-medium">FCM Token:</span>
+											<span
+												className={`text-sm px-2 py-1 rounded-full ${
+													hasToken
+														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+														: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+												}`}
+											>
+												{hasToken ? "✅ Active" : "❌ Not Registered"}
+											</span>
+										</div>
+
+										{notificationStatus === "default" && (
+											<div className="text-sm text-muted-foreground">
+												Click "Enable Notifications" to receive updates about
+												your requests, announcements, and events.
+											</div>
+										)}
+
+										{notificationStatus === "denied" && (
+											<div className="text-sm text-muted-foreground">
+												Notifications are currently disabled. To enable them,
+												click the lock icon in your browser's address bar and
+												allow notifications.
+											</div>
+										)}
+
+										{notificationStatus === "granted" && (
+											<div className="text-sm text-green-700 dark:text-green-300">
+												✅ You're all set! You'll receive notifications for
+												important updates.
+											</div>
+										)}
+									</div>
+								</CardContent>
+								<CardFooter>
+									{notificationStatus === "default" && (
+										<Button
+											onClick={async () => {
+												const permission =
+													await requestNotificationPermission();
+												setNotificationStatus(permission);
+											}}
+											className="w-full"
+										>
+											Enable Notifications
+										</Button>
+									)}
+									{notificationStatus === "denied" && (
+										<Button
+											variant="outline"
+											onClick={() =>
+												window.open(
+													"https://support.google.com/chrome/answer/3220216?hl=en",
+													"_blank"
+												)
+											}
+											className="w-full"
+										>
+											How to Enable Notifications
+										</Button>
+									)}
+								</CardFooter>
+							</Card>
+						</div>
+					</div>
+				</section>
+			)}
 
 			{/* Registered Voters Count Section */}
 			<section className="w-full py-16 bg-gradient-to-r from-primary/5 to-primary/10 border-y border-primary/10">
@@ -305,153 +516,7 @@ export default function Home() {
 			</section>
 
 			{/* Events and Announcements Preview */}
-			<section className="w-full py-12 md:py-24 lg:py-32">
-				<div className="container px-4 md:px-6">
-					<div className="flex flex-col items-center justify-center space-y-4 text-center mb-10">
-						<div className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-							{t("home.events.title")}
-						</div>
-						<h2 className="text-3xl font-bold tracking-tighter md:text-4xl lg:text-5xl">
-							{t("home.events.subtitle")}
-						</h2>
-						<p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed">
-							{t("home.events.description")}
-						</p>
-					</div>
-
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-						<Card className="overflow-hidden hover:shadow-md transition-all">
-							<div className="relative h-48 w-full">
-								<Image
-									src="https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=1170&auto=format&fit=crop"
-									alt="Community Clean-up Drive"
-									fill
-									className="object-cover"
-								/>
-								<div className="absolute top-2 right-2 bg-primary text-white text-xs font-medium px-2 py-1 rounded">
-									May 15, 2025
-								</div>
-							</div>
-							<CardHeader>
-								<CardTitle>Barangay Clean-up Drive</CardTitle>
-								<CardDescription>
-									Join us for our monthly community clean-up initiative
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="flex items-center text-sm">
-									<Calendar className="mr-2 h-4 w-4 text-primary" />
-									<span>7:00 AM - 11:00 AM @ Barangay Plaza</span>
-								</div>
-							</CardContent>
-							<CardFooter>
-								<Button
-									variant="outline"
-									size="sm"
-									className="w-full group"
-									asChild
-								>
-									<Link href="/events">
-										<span className="flex items-center">
-											<Megaphone className="mr-2 h-4 w-4" />
-											{t("events.viewMore")}
-											<ChevronRight className="ml-auto h-4 w-4 transition-transform group-hover:translate-x-1" />
-										</span>
-									</Link>
-								</Button>
-							</CardFooter>
-						</Card>
-
-						<Card className="overflow-hidden hover:shadow-md transition-all">
-							<div className="relative h-48 w-full">
-								<Image
-									src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=1170&auto=format&fit=crop"
-									alt="Health Seminar"
-									fill
-									className="object-cover"
-								/>
-								<div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded">
-									May 20, 2025
-								</div>
-							</div>
-							<CardHeader>
-								<CardTitle>Free Health Seminar and Check-up</CardTitle>
-								<CardDescription>
-									Learn about preventive healthcare and get a free check-up
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="flex items-center text-sm">
-									<Calendar className="mr-2 h-4 w-4 text-primary" />
-									<span>9:00 AM - 3:00 PM @ Barangay Health Center</span>
-								</div>
-							</CardContent>
-							<CardFooter>
-								<Button
-									variant="outline"
-									size="sm"
-									className="w-full group"
-									asChild
-								>
-									<Link href="/events">
-										<span className="flex items-center">
-											<Megaphone className="mr-2 h-4 w-4" />
-											{t("events.viewMore")}
-											<ChevronRight className="ml-auto h-4 w-4 transition-transform group-hover:translate-x-1" />
-										</span>
-									</Link>
-								</Button>
-							</CardFooter>
-						</Card>
-
-						<Card>
-							<CardHeader>
-								<div className="flex justify-between items-start">
-									<div>
-										<CardTitle>Water Service Interruption Notice</CardTitle>
-										<CardDescription>
-											{t("events.postedOn")}: April 25, 2025
-										</CardDescription>
-									</div>
-								</div>
-							</CardHeader>
-							<CardContent>
-								<p className="text-sm text-muted-foreground">
-									Please be informed that there will be a scheduled water
-									service interruption on May 2, 2025, from 10:00 PM to 5:00 AM
-									the following day. This is due to maintenance work on the main
-									water lines.
-								</p>
-							</CardContent>
-							<CardFooter>
-								<Button
-									variant="outline"
-									size="sm"
-									className="w-full group"
-									asChild
-								>
-									<Link href="/events?tab=announcements">
-										<span className="flex items-center">
-											<Megaphone className="mr-2 h-4 w-4" />
-											{t("events.readMore")}
-											<ChevronRight className="ml-auto h-4 w-4 transition-transform group-hover:translate-x-1" />
-										</span>
-									</Link>
-								</Button>
-							</CardFooter>
-						</Card>
-					</div>
-
-					<div className="flex justify-center">
-						<Button asChild size="lg">
-							<Link href="/events">
-								{t("home.events.viewAll")}
-								<ChevronRight className="ml-2 h-4 w-4" />
-							</Link>
-						</Button>
-					</div>
-				</div>
-			</section>
+			<EventsSection />
 
 			{/* How It Works Section */}
 			<section className="w-full py-12 md:py-24 lg:py-32 bg-muted relative overflow-hidden">

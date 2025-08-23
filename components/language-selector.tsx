@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useLanguage } from "@/contexts/language-context"
 import { Globe } from "lucide-react"
+import dynamic from "next/dynamic"
 
-export function LanguageSelector() {
+function LanguageSelectorContent() {
   const { language, setLanguage, t } = useLanguage()
 
   return (
@@ -27,3 +28,11 @@ export function LanguageSelector() {
     </DropdownMenu>
   )
 }
+
+// Export the component with dynamic import to prevent SSR issues
+export const LanguageSelector = dynamic(() => Promise.resolve(LanguageSelectorContent), {
+	ssr: false,
+	loading: () => (
+		<div className="h-8 w-8 rounded bg-muted animate-pulse" />
+	),
+});

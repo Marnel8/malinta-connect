@@ -4,8 +4,9 @@ import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import dynamic from "next/dynamic"
 
-export function ModeToggle() {
+function ModeToggleContent() {
   const { setTheme } = useTheme()
 
   return (
@@ -25,3 +26,11 @@ export function ModeToggle() {
     </DropdownMenu>
   )
 }
+
+// Export the component with dynamic import to prevent SSR issues
+export const ModeToggle = dynamic(() => Promise.resolve(ModeToggleContent), {
+	ssr: false,
+	loading: () => (
+		<div className="h-8 w-8 rounded bg-muted animate-pulse" />
+	),
+});

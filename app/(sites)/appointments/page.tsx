@@ -39,6 +39,8 @@ import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/language-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { requestForToken } from "@/app/firebase/firebase";
+import { useFCMToken } from "@/hooks/use-fcm-token";
 import { createAppointmentAction } from "@/app/actions/appointments";
 import { format } from "date-fns";
 
@@ -58,8 +60,9 @@ type UserAppointment = {
 
 export default function AppointmentsPage() {
 	const { t } = useLanguage();
-	const { userProfile } = useAuth();
+	const { user, userProfile } = useAuth();
 	const { toast } = useToast();
+	const { updateToken } = useFCMToken();
 	const [date, setDate] = useState<Date>();
 	const [time, setTime] = useState("");
 	const [serviceType, setServiceType] = useState("");
@@ -92,6 +95,23 @@ export default function AppointmentsPage() {
 			setEmail(userProfile.email || "");
 		}
 	}, [userProfile]);
+
+	// Register FCM token for notifications
+	useEffect(() => {
+		const registerFCMToken = async () => {
+			if (!user || !userProfile) return;
+			
+			const vapidKey = "BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
+			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
+			
+			if (token) {
+				console.log("FCM Token registered successfully on appointments page");
+				updateToken(token, user.uid, userProfile.role);
+			}
+		};
+
+		registerFCMToken();
+	}, [user, userProfile, updateToken]);
 
 	// Mock user appointments - in a real app, you'd fetch these based on user authentication
 	useEffect(() => {

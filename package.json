@@ -15,7 +15,8 @@
 		"seed:certificates": "node scripts/seed-certificates.js",
 		"seed:reference-numbers": "node scripts/seed-reference-numbers.js",
 		"seed:officials": "node scripts/seed-officials.js",
-		"init:settings": "node scripts/initialize-settings.js"
+		"init:settings": "node scripts/initialize-settings.js",
+		"update:verification": "node scripts/update-verification-status.js"
 	},
 	"dependencies": {
 		"@hookform/resolvers": "latest",
@@ -63,6 +64,8 @@
 		"next": "15.2.4",
 		"next-themes": "latest",
 		"nodemailer": "^7.0.5",
+		"pdf-lib": "^1.17.1",
+		"puppeteer": "^24.17.0",
 		"react": "^19",
 		"react-day-picker": "8.10.1",
 		"react-dom": "^19",

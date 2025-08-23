@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,10 +32,10 @@ import { auth } from "@/app/firebase/firebase";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
-export function UserButton() {
+function UserButtonContent() {
 	const [isLoginOpen, setIsLoginOpen] = useState(false);
 	const { t } = useLanguage();
-	const { user, userProfile, logout } = useAuth();
+	const { user, userProfile, loading, logout } = useAuth();
 	const router = useRouter();
 	const { toast } = useToast();
 
@@ -75,6 +76,30 @@ export function UserButton() {
 		return "U";
 	};
 
+	const getAvatarUrl = () => {
+		// First priority: user profile avatar
+		if (userProfile?.avatarUrl) {
+			return userProfile.avatarUrl;
+		}
+
+		// Second priority: placeholder image
+		return "/placeholder-user.jpg";
+	};
+
+	const getAvatarAlt = () => {
+		if (userProfile?.firstName && userProfile?.lastName) {
+			return `${userProfile.firstName} ${userProfile.lastName}`;
+		}
+		return user?.email || "User";
+	};
+
+	const handleAvatarError = (
+		event: React.SyntheticEvent<HTMLImageElement, Event>
+	) => {
+		// Fallback to placeholder if avatar fails to load
+		event.currentTarget.src = "/placeholder-user.jpg";
+	};
+
 	if (!user) {
 		return (
 			<>
@@ -105,6 +130,7 @@ export function UserButton() {
 
 	return (
 		<div className="flex items-center gap-2">
+			{/* Notification Bell - Commented out for now
 			<Button variant="ghost" size="icon" className="relative">
 				<Bell className="h-5 w-5" />
 				<Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
@@ -112,11 +138,16 @@ export function UserButton() {
 				</Badge>
 				<span className="sr-only">{t("notifications")}</span>
 			</Button>
+			*/}
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<Button variant="ghost" className="relative h-8 w-8 rounded-full">
 						<Avatar className="h-8 w-8 transition-transform duration-300 hover:scale-110">
-							<AvatarImage src="https://i.pravatar.cc/150?img=68" alt="User" />
+							<AvatarImage
+								src={getAvatarUrl()}
+								alt={getAvatarAlt()}
+								onError={handleAvatarError}
+							/>
 							<AvatarFallback>
 								{getInitials(userProfile?.firstName, userProfile?.lastName)}
 							</AvatarFallback>
@@ -169,3 +200,13 @@ export function UserButton() {
 		</div>
 	);
 }
+
+// Export the component with dynamic import to prevent SSR issues
+export const UserButton = dynamic(() => Promise.resolve(UserButtonContent), {
+	ssr: false,
+	loading: () => (
+		<div className="flex items-center gap-2">
+			<div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+		</div>
+	),
+});

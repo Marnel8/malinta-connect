@@ -24,20 +24,27 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { useLanguage } from "@/contexts/language-context";
 import { getAllEventsAction, type Event } from "@/app/actions/events";
+import {
+	getPublicAnnouncementsAction,
+	type Announcement,
+} from "@/app/actions/announcements";
 
 export default function EventsPage() {
 	const { t } = useLanguage();
 	const [activeTab, setActiveTab] = useState("events");
 	const [events, setEvents] = useState<Event[]>([]);
 	const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+	const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [categoryFilter, setCategoryFilter] = useState("all");
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFiltering, setIsFiltering] = useState(false);
+	const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
 
-	// Load events on component mount
+	// Load events and announcements on component mount
 	useEffect(() => {
 		loadEvents();
+		loadAnnouncements();
 	}, []);
 
 	// Filter events when search or category changes
@@ -74,6 +81,20 @@ export default function EventsPage() {
 		}
 	};
 
+	const loadAnnouncements = async () => {
+		setIsLoadingAnnouncements(true);
+		try {
+			const result = await getPublicAnnouncementsAction();
+			if (result.success && result.announcements) {
+				setAnnouncements(result.announcements);
+			}
+		} catch (error) {
+			console.error("Error loading announcements:", error);
+		} finally {
+			setIsLoadingAnnouncements(false);
+		}
+	};
+
 	const formatDate = (dateString: string) => {
 		const date = new Date(dateString);
 		return date.toLocaleDateString("en-US", {
@@ -86,6 +107,21 @@ export default function EventsPage() {
 	const formatTime = (timeString: string) => {
 		// Assuming time is in format "HH:MM - HH:MM"
 		return timeString;
+	};
+
+	const getCategoryBadgeVariant = (category: string) => {
+		switch (category) {
+			case "Important":
+				return "destructive";
+			case "Emergency":
+				return "destructive";
+			case "Notice":
+				return "secondary";
+			case "Event":
+				return "default";
+			default:
+				return "outline";
+		}
 	};
 
 	if (isLoading) {
@@ -262,94 +298,62 @@ export default function EventsPage() {
 				</TabsContent>
 
 				<TabsContent value="announcements" className="mt-4 space-y-6">
-					<Card className="hover:shadow-md transition-all">
-						<CardHeader className="px-4 sm:px-6 py-4">
-							<div className="flex justify-between items-start">
-								<div>
-									<CardTitle className="text-lg sm:text-xl">
-										Water Service Interruption Notice
-									</CardTitle>
-									<CardDescription>
-										{t("events.postedOn")}: April 25, 2025
-									</CardDescription>
-								</div>
-								<Badge>Important</Badge>
+					{isLoadingAnnouncements ? (
+						<div className="flex justify-center py-8">
+							<div className="flex items-center space-x-2">
+								<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+								<span className="text-muted-foreground">
+									Loading announcements...
+								</span>
 							</div>
-						</CardHeader>
-						<CardContent className="px-4 sm:px-6 py-2">
-							<p className="text-sm text-muted-foreground">
-								Please be informed that there will be a scheduled water service
-								interruption on May 2, 2025, from 10:00 PM to 5:00 AM the
-								following day. This is due to maintenance work on the main water
-								lines. We advise all residents to store enough water for their
-								needs during this period.
+						</div>
+					) : announcements.length === 0 ? (
+						<div className="text-center py-12">
+							<p className="text-muted-foreground text-lg">
+								No announcements available at the moment.
 							</p>
-						</CardContent>
-						<CardFooter className="px-4 sm:px-6 py-3 sm:py-4">
-							<Button variant="outline" size="sm" className="w-full sm:w-auto">
-								{t("events.readMore")}
-							</Button>
-						</CardFooter>
-					</Card>
-
-					<Card className="hover:shadow-md transition-all">
-						<CardHeader className="px-4 sm:px-6 py-4">
-							<div className="flex justify-between items-start">
-								<div>
-									<CardTitle className="text-lg sm:text-xl">
-										New Garbage Collection Schedule
-									</CardTitle>
-									<CardDescription>
-										{t("events.postedOn")}: April 20, 2025
-									</CardDescription>
-								</div>
-								<Badge variant="outline">Notice</Badge>
-							</div>
-						</CardHeader>
-						<CardContent className="px-4 sm:px-6 py-2">
-							<p className="text-sm text-muted-foreground">
-								Starting May 1, 2025, we will implement a new garbage collection
-								schedule. Biodegradable waste will be collected on Mondays and
-								Thursdays, while non-biodegradable waste will be collected on
-								Tuesdays and Fridays. Please ensure proper segregation of your
-								waste.
-							</p>
-						</CardContent>
-						<CardFooter className="px-4 sm:px-6 py-3 sm:py-4">
-							<Button variant="outline" size="sm" className="w-full sm:w-auto">
-								{t("events.readMore")}
-							</Button>
-						</CardFooter>
-					</Card>
-
-					<Card className="hover:shadow-md transition-all">
-						<CardHeader className="px-4 sm:px-6 py-4">
-							<div className="flex justify-between items-start">
-								<div>
-									<CardTitle className="text-lg sm:text-xl">
-										Barangay ID Renewal Period
-									</CardTitle>
-									<CardDescription>
-										{t("events.postedOn")}: April 15, 2025
-									</CardDescription>
-								</div>
-								<Badge variant="outline">Notice</Badge>
-							</div>
-						</CardHeader>
-						<CardContent className="px-4 sm:px-6 py-2">
-							<p className="text-sm text-muted-foreground">
-								The annual Barangay ID renewal period will be from May 1 to June
-								30, 2025. Residents can visit the Barangay Hall from Monday to
-								Friday, 8:00 AM to 5:00 PM, to renew their IDs. Please bring
-								your old Barangay ID and proof of residency.
-							</p>
-						</CardContent>
-						<CardFooter className="px-4 sm:px-6 py-3 sm:py-4">
-							<Button variant="outline" size="sm" className="w-full sm:w-auto">
-								{t("events.readMore")}
-							</Button>
-						</CardFooter>
-					</Card>
+						</div>
+					) : (
+						announcements.map((announcement) => (
+							<Card
+								key={announcement.id}
+								className="hover:shadow-md transition-all"
+							>
+								<CardHeader className="px-4 sm:px-6 py-4">
+									<div className="flex justify-between items-start">
+										<div>
+											<CardTitle className="text-lg sm:text-xl">
+												{announcement.title}
+											</CardTitle>
+											<CardDescription>
+												{t("events.postedOn")}:{" "}
+												{formatDate(announcement.publishedOn)}
+											</CardDescription>
+										</div>
+										<Badge
+											variant={getCategoryBadgeVariant(announcement.category)}
+										>
+											{announcement.category}
+										</Badge>
+									</div>
+								</CardHeader>
+								<CardContent className="px-4 sm:px-6 py-2">
+									<p className="text-sm text-muted-foreground">
+										{announcement.description}
+									</p>
+								</CardContent>
+								<CardFooter className="px-4 sm:px-6 py-3 sm:py-4">
+									<Button
+										variant="outline"
+										size="sm"
+										className="w-full sm:w-auto"
+									>
+										{t("events.readMore")}
+									</Button>
+								</CardFooter>
+							</Card>
+						))
+					)}
 				</TabsContent>
 			</Tabs>
 		</div>

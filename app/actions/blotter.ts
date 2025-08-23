@@ -99,6 +99,34 @@ export async function createBlotterEntryAction(
 
 		await newBlotterRef.set(blotterEntry);
 
+		// Send push notification to admins about new blotter entry
+		try {
+			const { sendNotificationAction } = await import(
+				"@/app/actions/notifications"
+			);
+			await sendNotificationAction({
+				type: "request_update",
+				targetRoles: ["admin", "official"],
+				targetUids: [],
+				data: {
+					title: "New Case Report",
+					body: `${blotterData.reportedBy} reported: ${blotterData.type}`,
+					icon: "/images/malinta_logo.jpg",
+					clickAction: "/admin/blotter",
+					data: {
+						caseId: referenceNumber,
+						caseType: blotterData.type,
+						reportedBy: blotterData.reportedBy,
+						priority: blotterData.priority,
+					},
+				},
+				priority: blotterData.priority === "high" ? "high" : "normal",
+			});
+		} catch (notificationError) {
+			console.error("Error sending blotter notification:", notificationError);
+			// Don't fail the entire operation if notification fails
+		}
+
 		return {
 			success: true,
 			entryId: referenceNumber,
@@ -301,6 +329,28 @@ export async function updateBlotterStatusAction(
 			}
 		} catch (emailError) {
 			console.error("Failed to send blotter status email:", emailError);
+		}
+
+		// Send push notification to resident about case update
+		try {
+			const current = snapshot.val();
+			const { sendBlotterUpdateNotificationAction } = await import(
+				"@/app/actions/notifications"
+			);
+			await sendBlotterUpdateNotificationAction(
+				current.reportedBy, // This should be UID in a real implementation
+				current.reportedBy, // Resident name
+				current.type || current.title || "General Report",
+				status,
+				id,
+				notes
+			);
+		} catch (notificationError) {
+			console.error(
+				"Error sending case update notification:",
+				notificationError
+			);
+			// Don't fail the entire operation if notification fails
 		}
 
 		return { success: true };

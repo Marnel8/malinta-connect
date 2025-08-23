@@ -4,8 +4,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { Facebook, Twitter, Instagram, Mail, Phone, MapPin } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
+import dynamic from "next/dynamic"
 
-export default function Footer() {
+function FooterContent() {
   const { t } = useLanguage()
 
   return (
@@ -131,3 +132,60 @@ export default function Footer() {
     </footer>
   )
 }
+
+// Export the component with dynamic import to prevent SSR issues
+export default dynamic(() => Promise.resolve(FooterContent), {
+	ssr: false,
+	loading: () => (
+		<footer className="border-t bg-background">
+			<div className="container py-8 md:py-12">
+				<div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+					<div className="space-y-4">
+						<div className="h-12 w-12 rounded-full bg-muted animate-pulse" />
+						<div className="space-y-2">
+							<div className="h-6 w-32 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-48 bg-muted animate-pulse rounded" />
+						</div>
+					</div>
+					<div className="space-y-4">
+						<div className="h-6 w-24 bg-muted animate-pulse rounded" />
+						<div className="space-y-2">
+							<div className="h-4 w-20 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-24 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-28 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-22 bg-muted animate-pulse rounded" />
+						</div>
+					</div>
+					<div className="space-y-4">
+						<div className="h-6 w-20 bg-muted animate-pulse rounded" />
+						<div className="space-y-2">
+							<div className="h-4 w-16 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-20 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-28 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-24 bg-muted animate-pulse rounded" />
+						</div>
+					</div>
+					<div className="space-y-4">
+						<div className="h-6 w-24 bg-muted animate-pulse rounded" />
+						<div className="space-y-2">
+							<div className="h-4 w-48 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-32 bg-muted animate-pulse rounded" />
+							<div className="h-4 w-40 bg-muted animate-pulse rounded" />
+						</div>
+						<div className="mt-4">
+							<div className="h-16 w-16 rounded-full bg-muted animate-pulse" />
+						</div>
+					</div>
+				</div>
+				<div className="mt-8 border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+					<div className="h-4 w-48 bg-muted animate-pulse rounded" />
+					<div className="flex gap-4">
+						<div className="h-4 w-16 bg-muted animate-pulse rounded" />
+						<div className="h-4 w-12 bg-muted animate-pulse rounded" />
+						<div className="h-4 w-20 bg-muted animate-pulse rounded" />
+					</div>
+				</div>
+			</div>
+		</footer>
+	),
+});

@@ -25,7 +25,8 @@ export interface CreateAnnouncementData {
 	expiresOn: string;
 }
 
-export interface UpdateAnnouncementData extends Partial<CreateAnnouncementData> {
+export interface UpdateAnnouncementData
+	extends Partial<CreateAnnouncementData> {
 	id: string;
 	status?: "published" | "draft" | "expired";
 }
@@ -73,12 +74,30 @@ export async function createAnnouncementAction(
 		const announcement: Omit<Announcement, "id"> = {
 			...announcementData,
 			status: "draft",
-			publishedOn: now.toISOString().split('T')[0], // YYYY-MM-DD format
+			publishedOn: now.toISOString().split("T")[0], // YYYY-MM-DD format
 			createdAt: Date.now(),
 			updatedAt: Date.now(),
 		};
 
 		await newAnnouncementRef.set(announcement);
+
+		// Send push notification to residents about new announcement
+		try {
+			const { sendAnnouncementNotificationAction } = await import(
+				"@/app/actions/notifications"
+			);
+			await sendAnnouncementNotificationAction(
+				announcementData.title,
+				announcementData.description,
+				referenceNumber
+			);
+		} catch (notificationError) {
+			console.error(
+				"Error sending announcement notification:",
+				notificationError
+			);
+			// Don't fail the entire operation if notification fails
+		}
 
 		return {
 			success: true,
@@ -88,7 +107,8 @@ export async function createAnnouncementAction(
 		console.error("Error creating announcement:", error);
 		return {
 			success: false,
-			error: "Failed to create announcement. Please check your connection and try again.",
+			error:
+				"Failed to create announcement. Please check your connection and try again.",
 		};
 	}
 }
@@ -110,15 +130,17 @@ export async function getAllAnnouncementsAction(): Promise<{
 		const announcements = snapshot.val();
 		const announcementsList: Announcement[] = [];
 
-		Object.entries(announcements).forEach(([id, announcement]: [string, any]) => {
-			announcementsList.push({
-				id,
-				...announcement,
-				status: announcement.status || "draft",
-				createdAt: announcement.createdAt || 0,
-				updatedAt: announcement.updatedAt || 0,
-			});
-		});
+		Object.entries(announcements).forEach(
+			([id, announcement]: [string, any]) => {
+				announcementsList.push({
+					id,
+					...announcement,
+					status: announcement.status || "draft",
+					createdAt: announcement.createdAt || 0,
+					updatedAt: announcement.updatedAt || 0,
+				});
+			}
+		);
 
 		// Sort by creation date (newest first)
 		announcementsList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -128,7 +150,8 @@ export async function getAllAnnouncementsAction(): Promise<{
 		console.error("Error fetching announcements:", error);
 		return {
 			success: false,
-			error: "Failed to fetch announcements. Please check your connection and try again.",
+			error:
+				"Failed to fetch announcements. Please check your connection and try again.",
 		};
 	}
 }
@@ -170,7 +193,8 @@ export async function getAnnouncementAction(
 		console.error("Error fetching announcement:", error);
 		return {
 			success: false,
-			error: "Failed to fetch announcement. Please check your connection and try again.",
+			error:
+				"Failed to fetch announcement. Please check your connection and try again.",
 		};
 	}
 }
@@ -204,7 +228,7 @@ export async function updateAnnouncementAction(
 
 		// If status is being updated to published, set publishedOn
 		if (updateData.status === "published") {
-			updatePayload.publishedOn = new Date().toISOString().split('T')[0];
+			updatePayload.publishedOn = new Date().toISOString().split("T")[0];
 		}
 
 		await announcementRef.update(updatePayload);
@@ -214,7 +238,8 @@ export async function updateAnnouncementAction(
 		console.error("Error updating announcement:", error);
 		return {
 			success: false,
-			error: "Failed to update announcement. Please check your connection and try again.",
+			error:
+				"Failed to update announcement. Please check your connection and try again.",
 		};
 	}
 }
@@ -248,7 +273,8 @@ export async function deleteAnnouncementAction(
 		console.error("Error deleting announcement:", error);
 		return {
 			success: false,
-			error: "Failed to delete announcement. Please check your connection and try again.",
+			error:
+				"Failed to delete announcement. Please check your connection and try again.",
 		};
 	}
 }
@@ -277,7 +303,7 @@ export async function publishAnnouncementAction(
 
 		await announcementRef.update({
 			status: "published",
-			publishedOn: new Date().toISOString().split('T')[0],
+			publishedOn: new Date().toISOString().split("T")[0],
 			updatedAt: Date.now(),
 		});
 
@@ -286,7 +312,8 @@ export async function publishAnnouncementAction(
 		console.error("Error publishing announcement:", error);
 		return {
 			success: false,
-			error: "Failed to publish announcement. Please check your connection and try again.",
+			error:
+				"Failed to publish announcement. Please check your connection and try again.",
 		};
 	}
 }
@@ -323,7 +350,61 @@ export async function unpublishAnnouncementAction(
 		console.error("Error unpublishing announcement:", error);
 		return {
 			success: false,
-			error: "Failed to unpublish announcement. Please check your connection and try again.",
+			error:
+				"Failed to unpublish announcement. Please check your connection and try again.",
 		};
 	}
-} 
+}
+
+// Get public published announcements for client-side display
+export async function getPublicAnnouncementsAction(): Promise<{
+	success: boolean;
+	announcements?: Announcement[];
+	error?: string;
+}> {
+	try {
+		const announcementsRef = adminDatabase.ref("announcements");
+		const snapshot = await announcementsRef.get();
+
+		if (!snapshot.exists()) {
+			return { success: true, announcements: [] };
+		}
+
+		const announcements = snapshot.val();
+		const publicAnnouncements: Announcement[] = [];
+
+		Object.entries(announcements).forEach(
+			([id, announcement]: [string, any]) => {
+				// Only include published announcements that are public
+				if (
+					announcement.status === "published" &&
+					announcement.visibility === "public"
+				) {
+					publicAnnouncements.push({
+						id,
+						...announcement,
+						status: announcement.status || "published",
+						createdAt: announcement.createdAt || 0,
+						updatedAt: announcement.updatedAt || 0,
+					});
+				}
+			}
+		);
+
+		// Sort by published date (newest first)
+		publicAnnouncements.sort((a, b) => {
+			const dateA = new Date(a.publishedOn).getTime();
+			const dateB = new Date(b.publishedOn).getTime();
+			return dateB - dateA;
+		});
+
+		return { success: true, announcements: publicAnnouncements };
+	} catch (error) {
+		console.error("Error fetching public announcements:", error);
+		return {
+			success: false,
+			error:
+				"Failed to fetch announcements. Please check your connection and try again.",
+		};
+	}
+}

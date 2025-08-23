@@ -1,5 +1,6 @@
 import type React from "react";
 import "@/app/globals.css";
+import "@/styles/certificate-preview.css";
 import { Inter, Montserrat } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";

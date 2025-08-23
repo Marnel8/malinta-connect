@@ -69,7 +69,10 @@ export function LoginForm({
 			const user = userCredential.user;
 
 			// Use server action to get/create user profile
-			const profileResult = await ensureUserProfileAction(user.uid, user.email || "");
+			const profileResult = await ensureUserProfileAction(
+				user.uid,
+				user.email || ""
+			);
 
 			if (profileResult.success && profileResult.user) {
 				const userProfile = profileResult.user;
@@ -118,10 +121,17 @@ export function LoginForm({
 			} else {
 				// Handle error from server action
 				toast({
-					title: "Profile Error",
-					description: profileResult.error || "Failed to get user profile. Please try again.",
+					title: "Login Failed",
+					description:
+						profileResult.error ||
+						"Failed to get user profile. Please try again.",
 					variant: "destructive",
 				});
+
+				// Sign out the user if verification failed
+				if (auth.currentUser) {
+					await auth.signOut();
+				}
 			}
 		} catch (error: any) {
 			console.error("Login error:", error);
@@ -232,6 +242,9 @@ export function LoginForm({
 							<Link href="/register" className="text-primary hover:underline">
 								{t("login.registerLink")}
 							</Link>
+						</div>
+						<div className="text-center text-xs text-muted-foreground mt-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+							{t("login.verificationMessage")}
 						</div>
 					</form>
 				</Form>

@@ -1,24 +1,36 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false)
+	const [isMobile, setIsMobile] = useState(false);
+	const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
+	useEffect(() => {
+		setIsClient(true);
 
-    // Initial check
-    checkIfMobile()
+		const checkIfMobile = () => {
+			if (typeof window !== "undefined") {
+				setIsMobile(window.innerWidth < 768);
+			}
+		};
 
-    // Add event listener
-    window.addEventListener("resize", checkIfMobile)
+		// Initial check
+		checkIfMobile();
 
-    // Clean up
-    return () => window.removeEventListener("resize", checkIfMobile)
-  }, [])
+		// Add event listener
+		if (typeof window !== "undefined") {
+			window.addEventListener("resize", checkIfMobile);
 
-  return isMobile
+			// Clean up
+			return () => window.removeEventListener("resize", checkIfMobile);
+		}
+	}, []);
+
+	// Return false during SSR to prevent hydration mismatch
+	if (!isClient) {
+		return false;
+	}
+
+	return isMobile;
 }

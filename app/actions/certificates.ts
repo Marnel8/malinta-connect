@@ -9,6 +9,7 @@ import {
 	sendCertificateRejectedEmail,
 	sendCertificateAdditionalInfoEmail,
 } from "@/mails";
+import { v2 as cloudinary } from "cloudinary";
 
 export interface Certificate {
 	id: string;
@@ -31,6 +32,12 @@ export interface Certificate {
 	rejectedReason?: string;
 	createdAt: number;
 	updatedAt: number;
+	// PDF generation fields
+	pdfUrl?: string; // URL of generated PDF certificate
+	signatureUrl?: string; // URL of attached signature image
+	hasSignature?: boolean; // Whether signature is attached
+	generatedBy?: string; // Staff/admin who generated the certificate
+	generatedOn?: string; // Date when certificate was generated
 	// Additional fields for specific certificate types
 	age?: string;
 	address?: string;
@@ -58,6 +65,12 @@ export interface CreateCertificateData {
 	estimatedCompletion?: string;
 	notes?: string;
 	photoUrl?: string;
+	// PDF generation fields
+	pdfUrl?: string;
+	signatureUrl?: string;
+	hasSignature?: boolean;
+	generatedBy?: string;
+	generatedOn?: string;
 	// Additional fields for specific certificate types
 	age?: string;
 	address?: string;
@@ -225,6 +238,37 @@ export async function createCertificateAction(
 
 		await certificateRef.set(certificate);
 
+		// Send push notification to admins about new certificate request
+		try {
+			const { sendNotificationAction } = await import(
+				"@/app/actions/notifications"
+			);
+			await sendNotificationAction({
+				type: "certificate_update",
+				targetRoles: ["admin", "official"],
+				targetUids: [],
+				data: {
+					title: "New Certificate Request",
+					body: `${certificateData.requestedBy} requested: ${certificateData.type}`,
+					icon: "/images/malinta_logo.jpg",
+					clickAction: "/admin/certificates",
+					data: {
+						certificateId: referenceNumber,
+						certificateType: certificateData.type,
+						requestedBy: certificateData.requestedBy,
+						emailToNotify: certificateData.emailToNotify,
+					},
+				},
+				priority: "normal",
+			});
+		} catch (notificationError) {
+			console.error(
+				"Error sending certificate notification:",
+				notificationError
+			);
+			// Don't fail the entire operation if notification fails
+		}
+
 		return {
 			success: true,
 			certificateId: referenceNumber,
@@ -387,6 +431,27 @@ export async function updateCertificateStatusAction(
 		} catch (emailError) {
 			console.error("Failed to send status update email:", emailError);
 			// Don't fail the status update if email fails
+		}
+
+		// Send push notification to resident about certificate status update
+		try {
+			const { sendCertificateUpdateNotificationAction } = await import(
+				"@/app/actions/notifications"
+			);
+			await sendCertificateUpdateNotificationAction(
+				certificate.requestedBy, // This should be UID in a real implementation
+				certificate.requestedBy, // Resident name
+				certificate.type,
+				status,
+				id,
+				additionalData?.rejectedReason || additionalData?.notes
+			);
+		} catch (notificationError) {
+			console.error(
+				"Error sending certificate update notification:",
+				notificationError
+			);
+			// Don't fail the entire operation if notification fails
 		}
 
 		return { success: true };
@@ -752,6 +817,136 @@ export async function fixCertificateIdsAction(): Promise<{
 		return {
 			success: false,
 			error: "Failed to fix certificate IDs",
+		};
+	}
+}
+
+// Generate and upload certificate PDF
+export async function generateCertificatePDFAction(
+	certificateId: string,
+	signatureFile?: File,
+	generatedBy?: string
+): Promise<{ success: boolean; pdfUrl?: string; error?: string }> {
+	try {
+		// Get certificate data
+		const certificateResult = await getCertificateAction(certificateId);
+		if (!certificateResult.success || !certificateResult.certificate) {
+			return {
+				success: false,
+				error: "Certificate not found",
+			};
+		}
+
+		const certificate = certificateResult.certificate;
+
+		// Configure Cloudinary
+		cloudinary.config({
+			cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+			api_key: process.env.CLOUDINARY_API_KEY,
+			api_secret: process.env.CLOUDINARY_API_SECRET,
+		});
+
+		let signatureUrl = certificate.signatureUrl;
+		let hasSignature = certificate.hasSignature || false;
+
+		// Upload signature if provided
+		if (signatureFile) {
+			try {
+				const bytes = await signatureFile.arrayBuffer();
+				const buffer = Buffer.from(bytes);
+				const base64Data = buffer.toString("base64");
+				const dataURI = `data:${signatureFile.type};base64,${base64Data}`;
+
+				const signatureUploadResult = await cloudinary.uploader.upload(
+					dataURI,
+					{
+						folder: "malinta-connect/signatures",
+						public_id: `signature_${certificateId}_${Date.now()}`,
+						resource_type: "image",
+					}
+				);
+
+				signatureUrl = signatureUploadResult.secure_url;
+				hasSignature = true;
+			} catch (signatureError) {
+				console.error("Error uploading signature:", signatureError);
+				// Continue without signature if upload fails
+			}
+		}
+
+		// Update certificate with signature info and generation details
+		const updateData: any = {
+			hasSignature,
+			generatedBy: generatedBy || "System",
+			generatedOn: new Date().toLocaleDateString("en-US", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			}),
+		};
+
+		if (signatureUrl) {
+			updateData.signatureUrl = signatureUrl;
+		}
+
+		await updateCertificateAction({
+			id: certificateId,
+			...updateData,
+		});
+
+		return {
+			success: true,
+			pdfUrl: signatureUrl, // For now, return signature URL until we implement full PDF generation
+		};
+	} catch (error) {
+		console.error("Error generating certificate PDF:", error);
+		return {
+			success: false,
+			error: "Failed to generate certificate PDF",
+		};
+	}
+}
+
+// Upload signature for certificate
+export async function uploadSignatureAction(
+	certificateId: string,
+	signatureFile: File
+): Promise<{ success: boolean; signatureUrl?: string; error?: string }> {
+	try {
+		// Configure Cloudinary
+		cloudinary.config({
+			cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+			api_key: process.env.CLOUDINARY_API_KEY,
+			api_secret: process.env.CLOUDINARY_API_SECRET,
+		});
+
+		const bytes = await signatureFile.arrayBuffer();
+		const buffer = Buffer.from(bytes);
+		const base64Data = buffer.toString("base64");
+		const dataURI = `data:${signatureFile.type};base64,${base64Data}`;
+
+		const uploadResult = await cloudinary.uploader.upload(dataURI, {
+			folder: "malinta-connect/signatures",
+			public_id: `signature_${certificateId}_${Date.now()}`,
+			resource_type: "image",
+		});
+
+		// Update certificate with signature
+		await updateCertificateAction({
+			id: certificateId,
+			signatureUrl: uploadResult.secure_url,
+			hasSignature: true,
+		});
+
+		return {
+			success: true,
+			signatureUrl: uploadResult.secure_url,
+		};
+	} catch (error) {
+		console.error("Error uploading signature:", error);
+		return {
+			success: false,
+			error: "Failed to upload signature",
 		};
 	}
 }
