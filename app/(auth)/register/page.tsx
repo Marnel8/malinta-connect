@@ -183,15 +183,58 @@ function CameraModal({
 	const handleFileUpload = useCallback(
 		(event: React.ChangeEvent<HTMLInputElement>) => {
 			const file = event.target.files?.[0];
-			if (file) {
-				const reader = new FileReader();
-				reader.onload = (e) => {
-					const dataUrl = e.target?.result as string;
-					onCapture(dataUrl);
-					onClose();
-				};
-				reader.readAsDataURL(file);
+			if (!file) return;
+
+			if (!file.type.startsWith("image/")) {
+				setError("Unsupported file type. Please select an image.");
+				return;
 			}
+
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				const originalDataUrl = e.target?.result as string;
+				// Downscale/compress large images from disk to avoid oversized payloads
+				const img = document.createElement("img");
+				img.onload = () => {
+					try {
+						const MAX_WIDTH = 1200;
+						const MAX_HEIGHT = 1200;
+						let targetWidth = img.width;
+						let targetHeight = img.height;
+
+						// Maintain aspect ratio while constraining to max bounds
+						if (targetWidth > MAX_WIDTH || targetHeight > MAX_HEIGHT) {
+							const widthRatio = MAX_WIDTH / targetWidth;
+							const heightRatio = MAX_HEIGHT / targetHeight;
+							const scale = Math.min(widthRatio, heightRatio);
+							targetWidth = Math.round(targetWidth * scale);
+							targetHeight = Math.round(targetHeight * scale);
+						}
+
+						const canvas = document.createElement("canvas");
+						canvas.width = targetWidth;
+						canvas.height = targetHeight;
+						const ctx = canvas.getContext("2d");
+						if (!ctx) throw new Error("Failed to get canvas context");
+						ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+						// Export as JPEG with quality to keep size reasonable
+						const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+						onCapture(compressedDataUrl || originalDataUrl);
+						onClose();
+					} catch (err) {
+						console.error("Image compression failed:", err);
+						// Fallback to original if compression fails
+						onCapture(originalDataUrl);
+						onClose();
+					}
+				};
+				img.onerror = () => {
+					setError("Failed to read image. Please try a different file.");
+				};
+				img.src = originalDataUrl;
+			};
+			reader.readAsDataURL(file);
 		},
 		[onCapture, onClose]
 	);
@@ -371,6 +414,7 @@ export default function RegisterPage() {
 
 	const onSubmit = async (data: RegistrationData) => {
 		if (!idPhoto || !selfiePhoto) {
+			console.error("Registration failed: Missing photos");
 			toast({
 				title: "Missing Photos",
 				description: "Please provide both ID photo and selfie photo.",
@@ -395,8 +439,19 @@ export default function RegisterPage() {
 			});
 
 			if (!imageUploadResult.success) {
-				console.error("Image upload failed:", imageUploadResult.error);
-				throw new Error(imageUploadResult.error || "Failed to upload images");
+				console.error(
+					"Registration failed: Image upload error -",
+					imageUploadResult.error
+				);
+				toast({
+					title: "Image upload failed",
+					description:
+						imageUploadResult.error ||
+						"Image upload service is not configured. Please contact support.",
+					variant: "destructive",
+				});
+				setIsLoading(false);
+				return;
 			}
 
 			console.log("Images uploaded successfully");
@@ -412,12 +467,24 @@ export default function RegisterPage() {
 			});
 
 			if (!registrationResult.success) {
-				console.error("User registration failed:", registrationResult.error);
-				throw new Error(registrationResult.error || "Registration failed");
+				console.error(
+					"Registration failed: User registration error -",
+					registrationResult.error
+				);
+				toast({
+					title: "Registration failed",
+					description:
+						registrationResult.error ||
+						"An error occurred during registration.",
+					variant: "destructive",
+				});
+				setIsLoading(false);
+				return;
 			}
 
 			console.log("User registered successfully");
 
+			console.log("Registration successful");
 			toast({
 				title: "Registration Successful!",
 				description: "Your account has been created. You can now sign in.",
@@ -425,8 +492,6 @@ export default function RegisterPage() {
 
 			router.push("/login?registered=true");
 		} catch (error: any) {
-			console.error("Registration error:", error);
-
 			// Provide more specific error messages
 			let errorMessage =
 				"An error occurred during registration. Please try again.";
@@ -448,6 +513,12 @@ export default function RegisterPage() {
 				}
 			}
 
+			console.error(
+				"Registration failed:",
+				error,
+				"Error message:",
+				errorMessage
+			);
 			toast({
 				title: "Registration Failed",
 				description: errorMessage,

@@ -89,6 +89,9 @@ export function LoginForm({
 						router.push("/admin");
 					} else {
 						// User tried to login as resident but is an official
+						console.error(
+							"Login failed: Official account tried to login as resident"
+						);
 						toast({
 							title: "Access Denied",
 							description:
@@ -105,6 +108,9 @@ export function LoginForm({
 						router.push("/");
 					} else {
 						// User tried to login as official but is a resident
+						console.error(
+							"Login failed: Resident account tried to login as official"
+						);
 						toast({
 							title: "Access Denied",
 							description:
@@ -120,6 +126,10 @@ export function LoginForm({
 				onLogin();
 			} else {
 				// Handle error from server action
+				console.error(
+					"Login failed: User profile error -",
+					profileResult.error
+				);
 				toast({
 					title: "Login Failed",
 					description:
@@ -148,6 +158,7 @@ export function LoginForm({
 				errorMessage = "Too many failed attempts. Please try again later.";
 			}
 
+			console.error("Login failed:", error, "Error message:", errorMessage);
 			toast({
 				title: "Login Failed",
 				description: errorMessage,

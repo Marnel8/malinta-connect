@@ -100,10 +100,11 @@ export default function AppointmentsPage() {
 	useEffect(() => {
 		const registerFCMToken = async () => {
 			if (!user || !userProfile) return;
-			
-			const vapidKey = "BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
+
+			const vapidKey =
+				"BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
 			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
-			
+
 			if (token) {
 				console.log("FCM Token registered successfully on appointments page");
 				updateToken(token, user.uid, userProfile.role);
@@ -169,6 +170,7 @@ export default function AppointmentsPage() {
 			!contactNumber ||
 			!email
 		) {
+			console.error("Appointment scheduling failed: Missing required fields");
 			toast({
 				title: "Error",
 				description: "Please fill in all required fields",
@@ -192,6 +194,10 @@ export default function AppointmentsPage() {
 
 			const result = await createAppointmentAction(appointmentData);
 			if (result.success) {
+				console.log(
+					"Appointment scheduled successfully with ID:",
+					result.appointmentId
+				);
 				toast({
 					title: "Success",
 					description:
@@ -228,6 +234,7 @@ export default function AppointmentsPage() {
 					]);
 				}
 			} else {
+				console.error("Appointment scheduling failed:", result.error);
 				toast({
 					title: "Error",
 					description: result.error || "Failed to schedule appointment",
@@ -235,6 +242,7 @@ export default function AppointmentsPage() {
 				});
 			}
 		} catch (error) {
+			console.error("Appointment scheduling error:", error);
 			toast({
 				title: "Error",
 				description: "Failed to schedule appointment",

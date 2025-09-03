@@ -313,6 +313,7 @@ export default function CertificatesPage() {
 	const handlePhotoUpload = async (file: File) => {
 		// Check file type
 		if (!file.type.startsWith("image/")) {
+			console.error("Photo upload failed: Invalid file type -", file.type);
 			toast({
 				title: "Invalid file type",
 				description: "Please select an image file (PNG, JPG, JPEG, WebP)",
@@ -323,6 +324,11 @@ export default function CertificatesPage() {
 
 		// Check file size (5MB limit)
 		if (file.size > 5 * 1024 * 1024) {
+			console.error(
+				"Photo upload failed: File too large -",
+				file.size,
+				"bytes"
+			);
 			toast({
 				title: "File too large",
 				description: "Please select an image smaller than 5MB",
@@ -337,6 +343,9 @@ export default function CertificatesPage() {
 		setPhotoValidating(false);
 
 		if (!isValidDimensions) {
+			console.error(
+				"Photo upload failed: Invalid image dimensions - not square"
+			);
 			toast({
 				title: "Invalid image dimensions",
 				description:
@@ -362,11 +371,13 @@ export default function CertificatesPage() {
 								photoUrl: res.url,
 							} as any)
 					);
+					console.log("Photo uploaded successfully");
 					toast({
 						title: "Photo uploaded successfully",
 						description: "Your 1x1 photo has been uploaded",
 					});
 				} else {
+					console.error("Photo upload failed:", res.error);
 					toast({
 						title: "Upload failed",
 						description: res.error || "Failed to upload photo",
@@ -375,6 +386,7 @@ export default function CertificatesPage() {
 					setPhotoPreview(null);
 				}
 			} catch (error) {
+				console.error("Photo upload error:", error);
 				toast({
 					title: "Upload failed",
 					description: "Failed to upload photo",
@@ -443,10 +455,11 @@ export default function CertificatesPage() {
 	useEffect(() => {
 		const registerFCMToken = async () => {
 			if (!user || !userProfile) return;
-			
-			const vapidKey = "BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
+
+			const vapidKey =
+				"BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
 			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
-			
+
 			if (token) {
 				console.log("FCM Token registered successfully on certificates page");
 				updateToken(token, user.uid, userProfile.role);
@@ -464,6 +477,7 @@ export default function CertificatesPage() {
 			if (result.success && result.certificates) {
 				setCertificates(result.certificates);
 			} else {
+				console.error("Failed to fetch certificates:", result.error);
 				toast({
 					title: "Error",
 					description: result.error || "Failed to fetch certificates",
@@ -471,6 +485,7 @@ export default function CertificatesPage() {
 				});
 			}
 		} catch (error) {
+			console.error("Error fetching certificates:", error);
 			toast({
 				title: "Error",
 				description: "Failed to fetch certificates",
@@ -492,6 +507,7 @@ export default function CertificatesPage() {
 			(formData.type === "Good Moral (With 1X1 Picture)" &&
 				!formData.requiresPicture)
 		) {
+			console.error("Certificate request failed: Missing required fields");
 			toast({
 				title: "Error",
 				description:
@@ -535,6 +551,7 @@ export default function CertificatesPage() {
 			});
 
 			if (result.success) {
+				console.log("Certificate request submitted successfully");
 				toast({
 					title: "Success",
 					description: "Certificate request submitted successfully",
@@ -578,6 +595,7 @@ export default function CertificatesPage() {
 				// Refresh certificates
 				await fetchCertificates();
 			} else {
+				console.error("Certificate request failed:", result.error);
 				toast({
 					title: "Error",
 					description: result.error || "Failed to submit certificate request",
@@ -585,6 +603,7 @@ export default function CertificatesPage() {
 				});
 			}
 		} catch (error) {
+			console.error("Certificate request error:", error);
 			toast({
 				title: "Error",
 				description: "Failed to submit certificate request",

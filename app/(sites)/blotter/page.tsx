@@ -110,6 +110,7 @@ export default function BlotterPage() {
 			if (result.success && result.entries) {
 				setBlotterEntries(result.entries);
 			} else {
+				console.error("Failed to load blotter entries:", result.error);
 				toast({
 					title: "Error",
 					description: result.error || "Failed to load blotter entries",
@@ -117,6 +118,7 @@ export default function BlotterPage() {
 				});
 			}
 		} catch (error) {
+			console.error("Error loading blotter entries:", error);
 			toast({
 				title: "Error",
 				description: "Failed to load blotter entries",
@@ -141,6 +143,7 @@ export default function BlotterPage() {
 			if (result.success && result.entries) {
 				setBlotterEntries(result.entries);
 			} else {
+				console.error("Failed to search blotter entries:", result.error);
 				toast({
 					title: "Error",
 					description: result.error || "Failed to search blotter entries",
@@ -148,6 +151,7 @@ export default function BlotterPage() {
 				});
 			}
 		} catch (error) {
+			console.error("Error searching blotter entries:", error);
 			toast({
 				title: "Error",
 				description: "Failed to search blotter entries",
@@ -174,6 +178,7 @@ export default function BlotterPage() {
 			if (result.success && result.entries) {
 				setBlotterEntries(result.entries);
 			} else {
+				console.error("Failed to filter blotter entries:", result.error);
 				toast({
 					title: "Error",
 					description: result.error || "Failed to filter blotter entries",
@@ -181,6 +186,7 @@ export default function BlotterPage() {
 				});
 			}
 		} catch (error) {
+			console.error("Error filtering blotter entries:", error);
 			toast({
 				title: "Error",
 				description: "Failed to filter blotter entries",
@@ -199,6 +205,10 @@ export default function BlotterPage() {
 			try {
 				const result = await createBlotterEntryAction(newReportForm);
 				if (result.success) {
+					console.log(
+						"Blotter report created successfully with ID:",
+						result.entryId
+					);
 					toast({
 						title: "Success",
 						description: `New blotter report created with ID: ${result.entryId}`,
@@ -223,6 +233,7 @@ export default function BlotterPage() {
 					});
 					loadBlotterEntries();
 				} else {
+					console.error("Failed to create blotter report:", result.error);
 					toast({
 						title: "Error",
 						description: result.error || "Failed to create blotter report",
@@ -230,6 +241,7 @@ export default function BlotterPage() {
 					});
 				}
 			} catch (error) {
+				console.error("Error creating blotter report:", error);
 				toast({
 					title: "Error",
 					description: "Failed to create blotter report",
