@@ -312,9 +312,9 @@ export default function RegisterPage() {
 			street: "",
 			purok: "",
 			barangay: "Malinta",
-			city: "Valenzuela City",
-			province: "Metro Manila",
-			zipCode: "1440",
+			city: "Los Baños City",
+			province: "Laguna",
+			zipCode: "4030",
 
 			// Emergency Contact
 			emergencyContactName: "",
