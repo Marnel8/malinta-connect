@@ -42,7 +42,6 @@ import {
 	AppointmentItem,
 	BlotterItem,
 } from "@/app/actions/admin-dashboard";
-import { FCMDebug } from "@/components/debug/fcm-debug";
 
 export default function AdminDashboardPage() {
 	const { t } = useLanguage();
@@ -788,7 +787,6 @@ export default function AdminDashboardPage() {
 					</div>
 				</div>
 			)}
-			<FCMDebug />
 		</div>
 	);
 }

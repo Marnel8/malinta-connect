@@ -82,9 +82,9 @@ const registrationSchema = z
 		street: z.string().min(2, "Street is required"),
 		purok: z.string().min(1, "Purok is required"),
 		barangay: z.string().default("Malinta"),
-		city: z.string().default("Valenzuela City"),
-		province: z.string().default("Metro Manila"),
-		zipCode: z.string().default("1440"),
+		city: z.string().default("Los Baños City"),
+		province: z.string().default("Laguna"),
+		zipCode: z.string().default("4030"),
 
 		// Emergency Contact
 		emergencyContactName: z
@@ -287,7 +287,10 @@ export default function RegisterPage() {
 	const { toast } = useToast();
 
 	const form = useForm<RegistrationData>({
-		resolver: zodResolver(registrationSchema),
+		// Explicitly type resolver to align generics
+		resolver: zodResolver(
+			registrationSchema
+		) as unknown as import("react-hook-form").Resolver<RegistrationData>,
 		defaultValues: {
 			// Personal Information
 			firstName: "",
@@ -296,8 +299,8 @@ export default function RegisterPage() {
 			suffix: "",
 			dateOfBirth: "",
 			placeOfBirth: "",
-			gender: undefined,
-			civilStatus: undefined,
+			gender: undefined as unknown as RegistrationData["gender"],
+			civilStatus: undefined as unknown as RegistrationData["civilStatus"],
 
 			// Contact Information
 			email: "",
@@ -324,7 +327,7 @@ export default function RegisterPage() {
 
 			// Terms and Conditions
 			agreeToTerms: false,
-		},
+		} as RegistrationData,
 	});
 
 	const totalSteps = 5;

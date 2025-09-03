@@ -47,3 +47,4 @@ If you have Node.js installed and want to use the automated script:
 
 The HTML file is already generated and ready for conversion. The browser print method is the simplest and most reliable way to create a professional PDF document.
 
+
