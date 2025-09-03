@@ -4,7 +4,7 @@ import "@/styles/certificate-preview.css";
 import { Inter, Montserrat } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { LanguageProvider } from "@/contexts/language-context";
 import { AuthProvider } from "@/contexts/auth-context";
 
@@ -55,7 +55,7 @@ export default function RootLayout({
 					<LanguageProvider>
 						<AuthProvider>
 							{children}
-							<Toaster position="bottom-right" />
+							<Toaster />
 						</AuthProvider>
 					</LanguageProvider>
 				</ThemeProvider>
