@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { LanguageProvider } from "@/contexts/language-context";
 import { AuthProvider } from "@/contexts/auth-context";
+import { FCMInitializer } from "@/components/fcm-initializer";
 
 // Font for body text
 const inter = Inter({
@@ -54,8 +55,10 @@ export default function RootLayout({
 				>
 					<LanguageProvider>
 						<AuthProvider>
-							{children}
-							<Toaster />
+							<FCMInitializer>
+								{children}
+								<Toaster />
+							</FCMInitializer>
 						</AuthProvider>
 					</LanguageProvider>
 				</ThemeProvider>

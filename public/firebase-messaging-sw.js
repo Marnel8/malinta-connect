@@ -4,10 +4,10 @@
 
 // Import and configure Firebase
 importScripts(
-	"https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"
+	"https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"
 );
 importScripts(
-	"https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"
+	"https://www.gstatic.com/firebasejs/12.1.0/firebase-messaging-compat.js"
 );
 
 // Firebase configuration - matches the main app configuration

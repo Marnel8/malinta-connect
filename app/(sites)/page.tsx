@@ -20,8 +20,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
 	requestForToken,
-	getNotificationPermissionStatus,
-	requestNotificationPermission,
 } from "../firebase/firebase";
 import { useFCMToken } from "@/hooks/use-fcm-token";
 
@@ -62,17 +60,6 @@ export default function Home() {
 			const vapidKey =
 				"BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
 
-			// Check current permission status
-			const currentPermission = getNotificationPermissionStatus();
-			console.log("Current notification permission:", currentPermission);
-
-			if (currentPermission === "denied") {
-				console.log(
-					"Notification permission denied. User needs to enable it manually."
-				);
-				return;
-			}
-
 			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
 			if (token) {
 				console.log("FCM Token received and stored successfully");
@@ -80,32 +67,12 @@ export default function Home() {
 				if (user?.uid && userProfile?.role) {
 					updateToken(token, user.uid, userProfile.role);
 				}
-			} else {
-				console.log(
-					"Failed to get FCM token - this may be due to permission issues"
-				);
 			}
 		};
 
 		getFCMToken();
-	}, [user, userProfile, updateToken]); // Add dependencies to re-run when user changes
+	}, [user, userProfile, updateToken]);
 
-	// State for notification permission
-	const [notificationStatus, setNotificationStatus] = useState<
-		"granted" | "denied" | "default"
-	>("default");
-
-	// Update notification status when component mounts
-	useEffect(() => {
-		setNotificationStatus(getNotificationPermissionStatus());
-	}, []);
-
-	// Update notification status when FCM token changes
-	useEffect(() => {
-		if (hasToken) {
-			setNotificationStatus("granted");
-		}
-	}, [hasToken]);
 
 	// Show loading while checking auth state
 	if (loading) {
@@ -129,11 +96,11 @@ export default function Home() {
 	return (
 		<div className="flex flex-col">
 			{/* Hero Section with Image Background and White Overlay */}
-			<section className="relative w-full min-h-[650px] flex items-center">
+			<section className="relative w-full min-h-screen flex items-center">
 				{/* Background Image */}
 				<div className="absolute inset-0 z-0">
 					<Image
-						src="https://images.unsplash.com/photo-1542887800-faca0261c9e1?q=80&w=1974&auto=format&fit=crop"
+						src="/images/front.jpg"
 						alt="Barangay Malinta Background"
 						fill
 						className="object-cover"
@@ -142,12 +109,12 @@ export default function Home() {
 				</div>
 
 				{/* White Overlay with gradient - dark mode compatible */}
-				<div className="absolute inset-0 z-10 bg-gradient-to-r from-white/95 via-white/90 to-white/80 dark:from-black/95 dark:via-black/90 dark:to-black/80"></div>
+				<div className="absolute inset-0 z-10 bg-gradient-to-r from-white/65 via-white/90 to-white/80 dark:from-black/95 dark:via-black/90 dark:to-black/80"></div>
 
 				{/* Content */}
 				<div className="container relative z-20 px-4 md:px-6 py-16 md:py-24">
-					<div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-						<div className="md:col-span-7 md:col-start-1">
+					<div className="grid grid-cols-1 md:grid-cols-14 lg:grid-cols-12 gap-8 items-center">
+						<div className="md:col-span-5">
 							<div className="flex items-center gap-4 mb-6">
 								<div className="relative h-20 w-20 overflow-hidden rounded-full border-4 border-white dark:border-gray-800 shadow-md">
 									<Image
@@ -195,10 +162,10 @@ export default function Home() {
 							</div>
 						</div>
 
-						<div className="md:col-span-5 flex justify-center">
-							<div className="relative w-full max-w-[400px] aspect-[3/4] rounded-lg overflow-hidden shadow-xl">
+						<div className="w-full md:col-span-7 flex justify-center">
+							<div className="relative w-full max-w-[800px] max-h-[380px] aspect-[3/4] rounded-lg overflow-hidden shadow-xl">
 								<Image
-									src="https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=1170&auto=format&fit=crop"
+									src="/images/group_pic.jpg"
 									alt="Barangay Malinta Community"
 									fill
 									className="object-cover"
@@ -215,108 +182,6 @@ export default function Home() {
 				</div>
 			</section>
 
-			{/* Notification Permission Status - Only show for logged-in residents */}
-			{user && userProfile?.role === "resident" && (
-				<section className="w-full py-8 bg-muted/50">
-					<div className="container px-4 md:px-6">
-						<div className="max-w-2xl mx-auto">
-							<Card className="border-2">
-								<CardHeader className="pb-3">
-									<CardTitle className="text-lg flex items-center gap-2">
-										🔔 Notification Settings
-									</CardTitle>
-									<CardDescription>
-										Stay updated with important announcements and updates
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<div className="space-y-3">
-										<div className="flex items-center justify-between">
-											<span className="text-sm font-medium">Status:</span>
-											<span
-												className={`text-sm px-2 py-1 rounded-full ${
-													notificationStatus === "granted"
-														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-														: notificationStatus === "denied"
-														? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-														: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-												}`}
-											>
-												{notificationStatus === "granted" && "✅ Enabled"}
-												{notificationStatus === "denied" && "❌ Disabled"}
-												{notificationStatus === "default" && "⏳ Not Set"}
-											</span>
-										</div>
-
-										<div className="flex items-center justify-between">
-											<span className="text-sm font-medium">FCM Token:</span>
-											<span
-												className={`text-sm px-2 py-1 rounded-full ${
-													hasToken
-														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-														: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-												}`}
-											>
-												{hasToken ? "✅ Active" : "❌ Not Registered"}
-											</span>
-										</div>
-
-										{notificationStatus === "default" && (
-											<div className="text-sm text-muted-foreground">
-												Click "Enable Notifications" to receive updates about
-												your requests, announcements, and events.
-											</div>
-										)}
-
-										{notificationStatus === "denied" && (
-											<div className="text-sm text-muted-foreground">
-												Notifications are currently disabled. To enable them,
-												click the lock icon in your browser's address bar and
-												allow notifications.
-											</div>
-										)}
-
-										{notificationStatus === "granted" && (
-											<div className="text-sm text-green-700 dark:text-green-300">
-												✅ You're all set! You'll receive notifications for
-												important updates.
-											</div>
-										)}
-									</div>
-								</CardContent>
-								<CardFooter>
-									{notificationStatus === "default" && (
-										<Button
-											onClick={async () => {
-												const permission =
-													await requestNotificationPermission();
-												setNotificationStatus(permission);
-											}}
-											className="w-full"
-										>
-											Enable Notifications
-										</Button>
-									)}
-									{notificationStatus === "denied" && (
-										<Button
-											variant="outline"
-											onClick={() =>
-												window.open(
-													"https://support.google.com/chrome/answer/3220216?hl=en",
-													"_blank"
-												)
-											}
-											className="w-full"
-										>
-											How to Enable Notifications
-										</Button>
-									)}
-								</CardFooter>
-							</Card>
-						</div>
-					</div>
-				</section>
-			)}
 
 			{/* Registered Voters Count Section */}
 			<section className="w-full py-16 bg-gradient-to-r from-primary/5 to-primary/10 border-y border-primary/10">

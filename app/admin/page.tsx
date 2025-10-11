@@ -145,53 +145,6 @@ export default function AdminDashboardPage() {
 				)}
 			</div>
 
-			{/* Notification Permission Status */}
-			<Card className="border-2 border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
-				<CardHeader className="pb-3">
-					<CardTitle className="text-lg flex items-center gap-2 text-blue-800 dark:text-blue-200">
-						🔔 Enable Notifications
-					</CardTitle>
-					<CardDescription className="text-blue-700 dark:text-blue-300">
-						Stay updated with resident requests, appointments, and important
-						updates
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="flex items-center justify-between">
-						<div className="text-sm text-blue-700 dark:text-blue-300">
-							{typeof window !== "undefined" &&
-							Notification.permission === "granted"
-								? "✅ Notifications are enabled - you'll receive updates automatically"
-								: typeof window !== "undefined" &&
-								  Notification.permission === "denied"
-								? "❌ Notifications are disabled - check your browser settings"
-								: "⏳ Click the button to enable notifications for important updates"}
-						</div>
-						{typeof window !== "undefined" &&
-							Notification.permission === "default" && (
-								<Button
-									onClick={async () => {
-										try {
-											const permission = await Notification.requestPermission();
-											if (permission === "granted") {
-												// Refresh the page to show updated status
-												window.location.reload();
-											}
-										} catch (error) {
-											console.error(
-												"Error requesting notification permission:",
-												error
-											);
-										}
-									}}
-									className="bg-blue-600 hover:bg-blue-700 text-white"
-								>
-									Enable Notifications
-								</Button>
-							)}
-					</div>
-				</CardContent>
-			</Card>
 
 			{/* Stats Overview */}
 			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -442,9 +395,9 @@ export default function AdminDashboardPage() {
 																	cert.requestedOn
 																).toLocaleDateString()}
 															</p>
-															<p className="text-sm">
+															{/* <p className="text-sm">
 																Reference #: {cert.referenceNumber}
-															</p>
+															</p> */}
 														</div>
 														<div className="flex flex-col md:items-end gap-2">
 															<span

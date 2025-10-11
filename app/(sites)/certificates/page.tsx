@@ -200,7 +200,6 @@ interface CertificateFormData {
 	requestedBy: string;
 	emailToNotify: string;
 	purpose: string;
-	estimatedCompletion: string;
 	notes: string;
 	// Additional fields for specific certificate types
 	age: string;
@@ -409,7 +408,6 @@ export default function CertificatesPage() {
 			: "",
 		emailToNotify: userProfile?.email || "",
 		purpose: "",
-		estimatedCompletion: "",
 		notes: "",
 		// Additional fields for specific certificate types
 		age: "",
@@ -456,13 +454,20 @@ export default function CertificatesPage() {
 		const registerFCMToken = async () => {
 			if (!user || !userProfile) return;
 
-			const vapidKey =
-				"BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
-			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
+			try {
+				const vapidKey =
+					"BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
+				const token = await requestForToken(vapidKey, user.uid, userProfile.role);
 
-			if (token) {
-				console.log("FCM Token registered successfully on certificates page");
-				updateToken(token, user.uid, userProfile.role);
+				if (token) {
+					console.log("FCM Token registered successfully on certificates page");
+					updateToken(token, user.uid, userProfile.role);
+				} else {
+					console.log("FCM token registration failed or permission denied");
+				}
+			} catch (error) {
+				console.error("Error registering FCM token:", error);
+				// Don't show error toast for FCM registration failures as it's not critical
 			}
 		};
 
@@ -528,7 +533,6 @@ export default function CertificatesPage() {
 				requestedBy: formData.requestedBy,
 				emailToNotify: formData.emailToNotify,
 				purpose: formData.purpose,
-				estimatedCompletion: formData.estimatedCompletion || undefined,
 				notes: formData.notes || undefined,
 				// Include dynamic fields
 				age: formData.age || undefined,
@@ -569,7 +573,6 @@ export default function CertificatesPage() {
 						: "",
 					emailToNotify: userProfile?.email || "",
 					purpose: "",
-					estimatedCompletion: "",
 					notes: "",
 					age: "",
 					address: "",
@@ -869,19 +872,6 @@ export default function CertificatesPage() {
 									/>
 								</div>
 
-								<div className="space-y-2">
-									<Label htmlFor="estimatedCompletion">
-										Preferred Completion Date
-									</Label>
-									<Input
-										id="estimatedCompletion"
-										type="date"
-										value={formData.estimatedCompletion}
-										onChange={(e) =>
-											handleInputChange("estimatedCompletion", e.target.value)
-										}
-									/>
-								</div>
 
 								{/* Dynamic fields based on certificate type */}
 								{getRequiredFieldsForCertificate(formData.type).length > 0 && (

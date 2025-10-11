@@ -72,6 +72,9 @@ export async function requestForToken(
 			return null;
 		}
 
+		// Ensure service worker is registered before getting token
+		await ensureServiceWorkerRegistered();
+
 		console.log("Getting FCM token...");
 		const token = await fbGetToken(messaging, { vapidKey });
 
@@ -191,4 +194,31 @@ export function isFCMTokenValid(): boolean {
 	const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 	return tokenAge < maxAge;
+}
+
+// Helper function to ensure service worker is registered
+export async function ensureServiceWorkerRegistered(): Promise<void> {
+	if (typeof window === "undefined") return;
+
+	try {
+		// Check if service worker is already registered
+		if ("serviceWorker" in navigator) {
+			const registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+			
+			if (!registration) {
+				console.log("Registering Firebase messaging service worker...");
+				await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+					scope: "/"
+				});
+				console.log("Service worker registered successfully");
+			} else {
+				console.log("Service worker already registered");
+			}
+		} else {
+			console.warn("Service workers are not supported in this browser");
+		}
+	} catch (error) {
+		console.error("Error registering service worker:", error);
+		throw error;
+	}
 }

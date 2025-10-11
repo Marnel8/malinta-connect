@@ -15,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/contexts/language-context";
 import { useRouter } from "next/navigation";
@@ -43,6 +43,7 @@ export function LoginForm({
 }) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [activeTab, setActiveTab] = useState("resident");
+	const [showPassword, setShowPassword] = useState(false);
 	const { t } = useLanguage();
 	const router = useRouter();
 	const { toast } = useToast();
@@ -215,12 +216,27 @@ export function LoginForm({
 								<FormItem>
 									<FormLabel>{t("login.password")}</FormLabel>
 									<FormControl>
-										<Input
-											type="password"
-											placeholder="••••••••"
-											{...field}
-											className="transition-all focus-visible:ring-primary"
-										/>
+										<div className="relative">
+											<Input
+												type={showPassword ? "text" : "password"}
+												placeholder="••••••••"
+												{...field}
+												className="transition-all focus-visible:ring-primary pr-10"
+											/>
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+												onClick={() => setShowPassword(!showPassword)}
+											>
+												{showPassword ? (
+													<EyeOff className="h-4 w-4 text-gray-500" />
+												) : (
+													<Eye className="h-4 w-4 text-gray-500" />
+												)}
+											</Button>
+										</div>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -290,12 +306,27 @@ export function LoginForm({
 								<FormItem>
 									<FormLabel>{t("login.password")}</FormLabel>
 									<FormControl>
-										<Input
-											type="password"
-											placeholder="••••••••"
-											{...field}
-											className="transition-all focus-visible:ring-primary"
-										/>
+										<div className="relative">
+											<Input
+												type={showPassword ? "text" : "password"}
+												placeholder="••••••••"
+												{...field}
+												className="transition-all focus-visible:ring-primary pr-10"
+											/>
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+												onClick={() => setShowPassword(!showPassword)}
+											>
+												{showPassword ? (
+													<EyeOff className="h-4 w-4 text-gray-500" />
+												) : (
+													<Eye className="h-4 w-4 text-gray-500" />
+												)}
+											</Button>
+										</div>
 									</FormControl>
 									<FormMessage />
 								</FormItem>

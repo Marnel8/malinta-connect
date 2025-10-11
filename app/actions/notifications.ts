@@ -569,29 +569,3 @@ export async function sendBlotterUpdateNotificationAction(
 	});
 }
 
-// Debug function to check all stored FCM tokens
-export async function debugFCMTokensAction(): Promise<{
-	success: boolean;
-	tokensByRole?: Record<string, any>;
-	allTokens?: Record<string, any>;
-	error?: string;
-}> {
-	try {
-		// Get tokens by role
-		const fcmTokensByRoleRef = adminDatabase.ref("fcmTokensByRole");
-		const roleSnapshot = await fcmTokensByRoleRef.get();
-
-		// Get all tokens
-		const fcmTokensRef = adminDatabase.ref("fcmTokens");
-		const allSnapshot = await fcmTokensRef.get();
-
-		return {
-			success: true,
-			tokensByRole: roleSnapshot.exists() ? roleSnapshot.val() : {},
-			allTokens: allSnapshot.exists() ? allSnapshot.val() : {},
-		};
-	} catch (error) {
-		console.error("Error debugging FCM tokens:", error);
-		return { success: false, error: "Failed to debug FCM tokens" };
-	}
-}

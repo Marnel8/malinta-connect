@@ -82,7 +82,7 @@ const registrationSchema = z
 		street: z.string().min(2, "Street is required"),
 		purok: z.string().min(1, "Purok is required"),
 		barangay: z.string().default("Malinta"),
-		city: z.string().default("Los Baños City"),
+		city: z.string().default("Los Baños"),
 		province: z.string().default("Laguna"),
 		zipCode: z.string().default("4030"),
 
@@ -355,7 +355,7 @@ export default function RegisterPage() {
 			street: "",
 			purok: "",
 			barangay: "Malinta",
-			city: "Los Baños City",
+			city: "Los Baños",
 			province: "Laguna",
 			zipCode: "4030",
 
