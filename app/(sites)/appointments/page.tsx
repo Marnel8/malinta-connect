@@ -101,8 +101,12 @@ export default function AppointmentsPage() {
 		const registerFCMToken = async () => {
 			if (!user || !userProfile) return;
 
-			const vapidKey =
-				"BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
+			const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+			
+			if (!vapidKey) {
+				console.error("VAPID key not configured. Please add NEXT_PUBLIC_FIREBASE_VAPID_KEY to your environment variables.");
+				return;
+			}
 			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
 
 			if (token) {

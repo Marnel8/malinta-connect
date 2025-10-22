@@ -265,9 +265,12 @@ export default function AdminSettingsPage() {
                       <Input 
                         id="barangayName" 
                         value={barangayForm.barangayName}
-                        onChange={(e) => setBarangayForm(prev => ({ ...prev, barangayName: e.target.value }))}
-                        required
+                        readOnly
+                        className="bg-muted cursor-not-allowed"
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Barangay name cannot be changed after initial setup
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="municipality">Municipality</Label>
@@ -488,10 +491,15 @@ export default function AdminSettingsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label>System Notifications</Label>
+                      <Label>Push Notifications</Label>
                       <p className="text-sm text-muted-foreground">
-                        Receive in-app notifications for all activities
+                        Receive push notifications for important updates and activities
                       </p>
+                      {!notificationForm.systemNotifications && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          ⚠️ Push notifications are disabled. Users won't receive real-time updates.
+                        </p>
+                      )}
                     </div>
                     <Switch 
                       checked={notificationForm.systemNotifications}

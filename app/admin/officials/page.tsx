@@ -19,7 +19,6 @@ import {
 	Eye,
 	Mail,
 	Phone,
-	Clock,
 	Users,
 	Upload,
 	Loader2,
@@ -64,6 +63,9 @@ export default function OfficialsManagementPage() {
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
 	const [photoPreview, setPhotoPreview] = useState<string>("");
+	const [selectedPosition, setSelectedPosition] = useState<string>("councilor");
+
+	const isCaptain = (currentOfficial?.position === "captain" || selectedPosition === "captain");
 
 	// Load officials on component mount
 	useEffect(() => {
@@ -149,6 +151,12 @@ export default function OfficialsManagementPage() {
 			// Add committees
 			formData.set("committees", (committees || []).filter(c => c.trim() !== "").join(","));
 
+			// Only include biography if position is captain
+			const position = formData.get("position") as string;
+			if (position !== "captain") {
+				formData.delete("biography");
+			}
+
 			let result;
 			if (currentOfficial) {
 				result = await updateOfficialAction(currentOfficial.id, formData);
@@ -170,6 +178,7 @@ export default function OfficialsManagementPage() {
 				setCommittees([]);
 				setSelectedPhoto(null);
 				setPhotoPreview("");
+				setSelectedPosition("councilor");
 				await loadOfficials();
 			} else {
 				toast({
@@ -235,6 +244,7 @@ export default function OfficialsManagementPage() {
 		setCommittees(official.committees || []);
 		setSelectedPhoto(null);
 		setPhotoPreview(official.photo || "");
+		setSelectedPosition(official.position);
 		setIsAddOfficialOpen(true);
 	};
 
@@ -263,6 +273,7 @@ export default function OfficialsManagementPage() {
 		setCommittees([]);
 		setSelectedPhoto(null);
 		setPhotoPreview("");
+		setSelectedPosition("councilor");
 		setIsAddOfficialOpen(true);
 	};
 
@@ -411,10 +422,6 @@ export default function OfficialsManagementPage() {
 												<div className="flex items-center text-sm">
 													<Phone className="mr-2 h-4 w-4 text-primary" />
 													<span>{official.phone}</span>
-												</div>
-												<div className="flex items-center text-sm">
-													<Clock className="mr-2 h-4 w-4 text-primary" />
-													<span>{official.officeHours}</span>
 												</div>
 											</div>
 										</div>
@@ -583,6 +590,7 @@ export default function OfficialsManagementPage() {
 									<Select
 										name="position"
 										defaultValue={currentOfficial?.position || "councilor"}
+										onValueChange={setSelectedPosition}
 									>
 										<SelectTrigger id="position" className="mt-1">
 											<SelectValue
@@ -616,6 +624,19 @@ export default function OfficialsManagementPage() {
 										id="term"
 										name="term"
 										defaultValue={currentOfficial?.term || "2022-2025"}
+										required
+										className="mt-1"
+									/>
+								</div>
+								<div>
+									<Label htmlFor="birthday" className="text-sm font-medium">
+										Birthday
+									</Label>
+									<Input
+										id="birthday"
+										name="birthday"
+										type="date"
+										defaultValue={currentOfficial?.birthday || ""}
 										required
 										className="mt-1"
 									/>
@@ -675,139 +696,139 @@ export default function OfficialsManagementPage() {
 											className="mt-1"
 										/>
 									</div>
-									<div className="col-span-2">
-										<Label htmlFor="officeHours" className="text-sm font-medium">
-											Office Hours
-										</Label>
-										<Input
-											id="officeHours"
-											name="officeHours"
-											defaultValue={currentOfficial?.officeHours || ""}
-											required
-											className="mt-1"
-											placeholder="e.g., Monday-Friday, 9:00 AM - 5:00 PM"
-										/>
-									</div>
 								</div>
 							</div>
 
-							{/* Committees Section */}
-							<div className="space-y-4">
-								<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
-									Committees
-								</h3>
-								<div className="space-y-3">
-									{(committees || []).map((committee, index) => (
-										<div key={index} className="flex items-center gap-3">
-											<Input
-												value={committee}
-												onChange={(e) =>
-													handleCommitteeChange(index, e.target.value)
-												}
-												placeholder={`Committee ${index + 1}`}
-												className="flex-1"
-											/>
-											<Button
-												type="button"
-												variant="outline"
-												size="sm"
-												onClick={() => handleRemoveCommittee(index)}
-												className="shrink-0"
-											>
-												Remove
-											</Button>
-										</div>
-									))}
-									<Button
-										type="button"
-										variant="outline"
-										onClick={handleAddCommittee}
-										className="w-full"
-									>
-										<Plus className="h-4 w-4 mr-2" />
-										Add Committee
-									</Button>
-								</div>
-							</div>
-
-							{/* Biography & Message Section */}
-							<div className="space-y-4">
-								<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
-									Biography & Message
-								</h3>
+							{/* Committees Section - Only show for captain, councilor, and sk chairperson */}
+							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "skChairperson" || 
+							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "skChairperson") && (
 								<div className="space-y-4">
-									<div>
-										<Label htmlFor="biography" className="text-sm font-medium">
-											Biography
-										</Label>
-										<Textarea
-											id="biography"
-											name="biography"
-											rows={4}
-											defaultValue={currentOfficial?.biography || ""}
-											required
-											className="mt-1"
-											placeholder="Tell us about the official's background, experience, and qualifications..."
-										/>
-									</div>
-									<div>
-										<Label htmlFor="message" className="text-sm font-medium">
-											Personal Message
-										</Label>
-										<Textarea
-											id="message"
-											name="message"
-											rows={3}
-											defaultValue={currentOfficial?.message || ""}
-											className="mt-1"
-											placeholder="Any special message or vision from this official..."
-										/>
+									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
+										Committees
+									</h3>
+									<div className="space-y-3">
+										{(committees || []).map((committee, index) => (
+											<div key={index} className="flex items-center gap-3">
+												<Input
+													value={committee}
+													onChange={(e) =>
+														handleCommitteeChange(index, e.target.value)
+													}
+													placeholder={`Committee ${index + 1}`}
+													className="flex-1"
+												/>
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													onClick={() => handleRemoveCommittee(index)}
+													className="shrink-0"
+												>
+													Remove
+												</Button>
+											</div>
+										))}
+										<Button
+											type="button"
+											variant="outline"
+											onClick={handleAddCommittee}
+											className="w-full"
+										>
+											<Plus className="h-4 w-4 mr-2" />
+											Add Committee
+										</Button>
 									</div>
 								</div>
-							</div>
+							)}
+
+							{/* Biography & Message Section - Only show for captain, councilor, and sk chairperson */}
+							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "skChairperson" || 
+							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "skChairperson") && (
+								<div className="space-y-4">
+									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
+										{isCaptain ? "Biography & Message" : "Personal Message"}
+									</h3>
+									<div className="space-y-4">
+										{isCaptain && (
+											<div>
+												<Label htmlFor="biography" className="text-sm font-medium">
+													Biography
+												</Label>
+												<Textarea
+													id="biography"
+													name="biography"
+													rows={4}
+													defaultValue={currentOfficial?.biography || ""}
+													required
+													className="mt-1"
+													placeholder="Tell us about the official's background, experience, and qualifications..."
+												/>
+											</div>
+										)}
+										<div>
+											<Label htmlFor="message" className="text-sm font-medium">
+												Personal Message
+											</Label>
+											<Textarea
+												id="message"
+												name="message"
+												rows={3}
+												defaultValue={currentOfficial?.message || ""}
+												className="mt-1"
+												placeholder="Any special message or vision from this official..."
+											/>
+										</div>
+									</div>
+								</div>
+							)}
 
 							{/* Projects & Achievements Section */}
-							<div className="space-y-4">
-								<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
-									Projects & Achievements
-								</h3>
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<Label htmlFor="projects" className="text-sm font-medium">
-											Projects
-										</Label>
-										<Textarea
-											id="projects"
-											name="projects"
-											rows={3}
-											defaultValue={currentOfficial?.projects?.join(", ") || ""}
-											className="mt-1"
-											placeholder="Enter projects separated by commas..."
-										/>
-										<p className="text-xs text-muted-foreground mt-1">
-											Separate multiple projects with commas
-										</p>
-									</div>
-									<div>
-										<Label htmlFor="achievements" className="text-sm font-medium">
-											Achievements
-										</Label>
-										<Textarea
-											id="achievements"
-											name="achievements"
-											rows={3}
-											defaultValue={
-												currentOfficial?.achievements?.join(", ") || ""
-											}
-											className="mt-1"
-											placeholder="Enter achievements separated by commas..."
-										/>
-										<p className="text-xs text-muted-foreground mt-1">
-											Separate multiple achievements with commas
-										</p>
+							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "skChairperson" || 
+							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "skChairperson") && (
+								<div className="space-y-4">
+									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
+										{(selectedPosition === "captain" || currentOfficial?.position === "captain") ? "Projects & Achievements" : "Achievements"}
+									</h3>
+									<div className={`grid gap-4 ${(selectedPosition === "captain" || currentOfficial?.position === "captain") ? "grid-cols-2" : "grid-cols-1"}`}>
+										{(selectedPosition === "captain" || currentOfficial?.position === "captain") && (
+											<div>
+												<Label htmlFor="projects" className="text-sm font-medium">
+													Projects
+												</Label>
+												<Textarea
+													id="projects"
+													name="projects"
+													rows={3}
+													defaultValue={currentOfficial?.projects?.join(", ") || ""}
+													className="mt-1"
+													placeholder="Enter projects separated by commas..."
+												/>
+												<p className="text-xs text-muted-foreground mt-1">
+													Separate multiple projects with commas
+												</p>
+											</div>
+										)}
+										<div>
+											<Label htmlFor="achievements" className="text-sm font-medium">
+												Achievements
+											</Label>
+											<Textarea
+												id="achievements"
+												name="achievements"
+												rows={3}
+												defaultValue={
+													currentOfficial?.achievements?.join(", ") || ""
+												}
+												className="mt-1"
+												placeholder="Enter achievements separated by commas..."
+											/>
+											<p className="text-xs text-muted-foreground mt-1">
+												Separate multiple achievements with commas
+											</p>
+										</div>
 									</div>
 								</div>
-							</div>
+							)}
 						</div>
 						<DialogFooter className="pt-4 border-t">
 							<Button
@@ -914,33 +935,44 @@ export default function OfficialsManagementPage() {
 									<span className="font-medium">{t("officials.phone")}:</span>
 									<span className="ml-2">{currentOfficial.phone}</span>
 								</div>
-								<div className="flex items-center">
-									<Clock className="mr-2 h-4 w-4 text-primary" />
-									<span className="font-medium">{t("officials.office")}:</span>
-									<span className="ml-2">{currentOfficial.officeHours}</span>
+								{currentOfficial.birthday && (
+									<div className="flex items-center">
+										<svg className="mr-2 h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+										</svg>
+										<span className="font-medium">Birthday:</span>
+										<span className="ml-2">{new Date(currentOfficial.birthday).toLocaleDateString()}</span>
+									</div>
+								)}
+							</div>
+							{/* Only show committees for captain, councilor, and sk chairperson */}
+							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "skChairperson") && (
+								<div>
+									<h3 className="font-medium mb-2">
+										{t("officials.committees")}
+									</h3>
+									<div className="flex flex-wrap gap-2">
+										{(currentOfficial.committees || []).map(
+											(committee: string, index: number) => (
+												<Badge key={index} variant="outline">
+													{committee}
+												</Badge>
+											)
+										)}
+									</div>
 								</div>
-							</div>
-							<div>
-								<h3 className="font-medium mb-2">
-									{t("officials.committees")}
-								</h3>
-								<div className="flex flex-wrap gap-2">
-									{(currentOfficial.committees || []).map(
-										(committee: string, index: number) => (
-											<Badge key={index} variant="outline">
-												{committee}
-											</Badge>
-										)
-									)}
+							)}
+							{currentOfficial.position === "captain" && (
+								<div>
+									<h3 className="font-medium mb-2">{t("officials.biography")}</h3>
+									<p className="text-muted-foreground">
+										{currentOfficial.biography}
+									</p>
 								</div>
-							</div>
-							<div>
-								<h3 className="font-medium mb-2">{t("officials.biography")}</h3>
-								<p className="text-muted-foreground">
-									{currentOfficial.biography}
-								</p>
-							</div>
-							{currentOfficial.message && (
+							)}
+							{/* Only show personal message for captain, councilor, and sk chairperson */}
+							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "skChairperson") && 
+							 currentOfficial.message && (
 								<div>
 									<h3 className="font-medium mb-2">
 										{t("admin.officials.message")}
@@ -950,36 +982,41 @@ export default function OfficialsManagementPage() {
 									</p>
 								</div>
 							)}
-							{currentOfficial.projects &&
-								currentOfficial.projects.length > 0 && (
-									<div>
-										<h3 className="font-medium mb-2">
-											{t("admin.officials.projects")}
-										</h3>
-										<ul className="list-disc list-inside text-muted-foreground">
-											{(currentOfficial.projects || []).map(
-												(project: string, index: number) => (
-													<li key={index}>{project}</li>
-												)
-											)}
-										</ul>
-									</div>
-								)}
-							{currentOfficial.achievements &&
-								currentOfficial.achievements.length > 0 && (
-									<div>
-										<h3 className="font-medium mb-2">
-											{t("admin.officials.achievements")}
-										</h3>
-										<ul className="list-disc list-inside text-muted-foreground">
-											{(currentOfficial.achievements || []).map(
-												(achievement: string, index: number) => (
-													<li key={index}>{achievement}</li>
-												)
-											)}
-										</ul>
-									</div>
-								)}
+							{/* Show projects and achievements based on position */}
+							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "skChairperson") && (
+								<>
+									{currentOfficial.position === "captain" && currentOfficial.projects &&
+										currentOfficial.projects.length > 0 && (
+											<div>
+												<h3 className="font-medium mb-2">
+													{t("admin.officials.projects")}
+												</h3>
+												<ul className="list-disc list-inside text-muted-foreground">
+													{(currentOfficial.projects || []).map(
+														(project: string, index: number) => (
+															<li key={index}>{project}</li>
+														)
+													)}
+												</ul>
+											</div>
+										)}
+									{currentOfficial.achievements &&
+										currentOfficial.achievements.length > 0 && (
+											<div>
+												<h3 className="font-medium mb-2">
+													{t("admin.officials.achievements")}
+												</h3>
+												<ul className="list-disc list-inside text-muted-foreground">
+													{(currentOfficial.achievements || []).map(
+														(achievement: string, index: number) => (
+															<li key={index}>{achievement}</li>
+														)
+													)}
+												</ul>
+											</div>
+										)}
+								</>
+							)}
 						</div>
 					)}
 					<DialogFooter>

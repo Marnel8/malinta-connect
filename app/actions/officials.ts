@@ -8,6 +8,7 @@ export interface Official {
   name: string;
   position: "captain" | "councilor" | "secretary" | "treasurer" | "skChairperson";
   term: string;
+  birthday: string;
   email: string;
   phone: string;
   officeHours: string;
@@ -84,6 +85,7 @@ export async function createOfficialAction(
     const name = formData.get("name") as string;
     const position = formData.get("position") as Official["position"];
     const term = formData.get("term") as string;
+    const birthday = formData.get("birthday") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
     const officeHours = formData.get("officeHours") as string;
@@ -135,6 +137,7 @@ export async function createOfficialAction(
       name,
       position,
       term,
+      birthday,
       email,
       phone,
       officeHours,
@@ -171,6 +174,7 @@ export async function updateOfficialAction(
     const name = formData.get("name") as string;
     const position = formData.get("position") as Official["position"];
     const term = formData.get("term") as string;
+    const birthday = formData.get("birthday") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
     const officeHours = formData.get("officeHours") as string;
@@ -234,6 +238,7 @@ export async function updateOfficialAction(
       name,
       position,
       term,
+      birthday,
       email,
       phone,
       officeHours,

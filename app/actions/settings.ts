@@ -1,7 +1,6 @@
 "use server"
 
-import { database } from "@/app/firebase/firebase"
-import { ref, get, set, update } from "firebase/database"
+import { adminDatabase } from "@/app/firebase/admin"
 import { revalidatePath } from "next/cache"
 
 export interface BarangaySettings {
@@ -54,8 +53,8 @@ export interface AllSettings {
 // Get all settings
 export async function getSettings(): Promise<AllSettings | null> {
   try {
-    const settingsRef = ref(database, "settings")
-    const snapshot = await get(settingsRef)
+    const settingsRef = adminDatabase.ref("settings")
+    const snapshot = await settingsRef.get()
     
     if (snapshot.exists()) {
       return snapshot.val()
@@ -72,8 +71,8 @@ export async function getSettings(): Promise<AllSettings | null> {
 // Update barangay information
 export async function updateBarangayInfo(data: BarangaySettings) {
   try {
-    const settingsRef = ref(database, "settings/barangay")
-    await set(settingsRef, data)
+    const settingsRef = adminDatabase.ref("settings/barangay")
+    await settingsRef.set(data)
     revalidatePath("/admin/settings")
     return { success: true, message: "Barangay information updated successfully" }
   } catch (error) {
@@ -85,8 +84,8 @@ export async function updateBarangayInfo(data: BarangaySettings) {
 // Update office hours
 export async function updateOfficeHours(data: OfficeHours) {
   try {
-    const settingsRef = ref(database, "settings/officeHours")
-    await set(settingsRef, data)
+    const settingsRef = adminDatabase.ref("settings/officeHours")
+    await settingsRef.set(data)
     revalidatePath("/admin/settings")
     return { success: true, message: "Office hours updated successfully" }
   } catch (error) {
@@ -100,8 +99,8 @@ export async function updateNotificationSettings(data: NotificationSettings) {
   try {
     // Prevent SMS notifications from being updated since it's coming soon
     // This feature is in development and will be available in a future update
-    const currentSettingsRef = ref(database, "settings/notifications")
-    const snapshot = await get(currentSettingsRef)
+    const currentSettingsRef = adminDatabase.ref("settings/notifications")
+    const snapshot = await currentSettingsRef.get()
     
     if (snapshot.exists()) {
       const currentSettings = snapshot.val()
@@ -109,8 +108,8 @@ export async function updateNotificationSettings(data: NotificationSettings) {
       data.smsNotifications = currentSettings.smsNotifications || false
     }
     
-    const settingsRef = ref(database, "settings/notifications")
-    await set(settingsRef, data)
+    const settingsRef = adminDatabase.ref("settings/notifications")
+    await settingsRef.set(data)
     revalidatePath("/admin/settings")
     return { success: true, message: "Notification settings updated successfully" }
   } catch (error) {
@@ -122,8 +121,8 @@ export async function updateNotificationSettings(data: NotificationSettings) {
 // Update user role settings
 export async function updateUserRoleSettings(data: UserRoleSettings) {
   try {
-    const settingsRef = ref(database, "settings/userRoles")
-    await set(settingsRef, data)
+    const settingsRef = adminDatabase.ref("settings/userRoles")
+    await settingsRef.set(data)
     revalidatePath("/admin/settings")
     return { success: true, message: "User role settings updated successfully" }
   } catch (error) {
@@ -136,8 +135,8 @@ export async function updateUserRoleSettings(data: UserRoleSettings) {
 export async function updateAllSettings(data: AllSettings) {
   try {
     // Prevent SMS notifications from being updated since it's coming soon
-    const currentSettingsRef = ref(database, "settings/notifications")
-    const snapshot = await get(currentSettingsRef)
+    const currentSettingsRef = adminDatabase.ref("settings/notifications")
+    const snapshot = await currentSettingsRef.get()
     
     if (snapshot.exists()) {
       const currentSettings = snapshot.val()
@@ -145,8 +144,8 @@ export async function updateAllSettings(data: AllSettings) {
       data.notifications.smsNotifications = currentSettings.smsNotifications || false
     }
     
-    const settingsRef = ref(database, "settings")
-    await set(settingsRef, data)
+    const settingsRef = adminDatabase.ref("settings")
+    await settingsRef.set(data)
     revalidatePath("/admin/settings")
     return { success: true, message: "All settings updated successfully" }
   } catch (error) {
@@ -158,12 +157,12 @@ export async function updateAllSettings(data: AllSettings) {
 // Initialize default settings if none exist
 export async function initializeDefaultSettings() {
   try {
-    const settingsRef = ref(database, "settings")
-    const snapshot = await get(settingsRef)
+    const settingsRef = adminDatabase.ref("settings")
+    const snapshot = await settingsRef.get()
     
     if (!snapshot.exists()) {
       const defaultSettings = getDefaultSettings()
-      await set(settingsRef, defaultSettings)
+      await settingsRef.set(defaultSettings)
       return { success: true, message: "Default settings initialized" }
     }
     

@@ -134,6 +134,18 @@ export async function sendNotificationAction(
 	notificationRequest: NotificationRequest
 ): Promise<{ success: boolean; error?: string }> {
 	try {
+		// Check if system notifications are enabled
+		const settingsRef = adminDatabase.ref("settings/notifications");
+		const settingsSnapshot = await settingsRef.get();
+		
+		if (settingsSnapshot.exists()) {
+			const settings = settingsSnapshot.val();
+			if (!settings.systemNotifications) {
+				console.log("System notifications are disabled, skipping push notification");
+				return { success: true }; // Not an error, just disabled
+			}
+		}
+
 		const { getMessaging } = await import("firebase-admin/messaging");
 		const { adminApp } = await import("@/app/firebase/admin");
 

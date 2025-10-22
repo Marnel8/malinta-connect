@@ -45,6 +45,77 @@ export function getMessagingInstance(): Promise<Messaging | null> {
 }
 
 /**
+ * Simple FCM token request without service worker dependency
+ */
+export async function requestForTokenSimple(
+	vapidKey: string,
+	uid?: string,
+	role?: "admin" | "official" | "resident"
+): Promise<string | null> {
+	console.log("Starting simple FCM token request...");
+	
+	const messaging = await getMessagingInstance();
+	if (!messaging) {
+		console.error("Firebase messaging not supported in this environment");
+		return null;
+	}
+
+	try {
+		// Check if we're in a secure context
+		if (typeof window !== "undefined" && !window.isSecureContext) {
+			console.error("FCM requires a secure context (HTTPS)");
+			return null;
+		}
+
+		// Check notification permission
+		if (Notification.permission !== "granted") {
+			console.log("Requesting notification permission...");
+			const permission = await Notification.requestPermission();
+			if (permission !== "granted") {
+				console.log("Notification permission denied:", permission);
+				return null;
+			}
+		}
+
+		console.log("Getting FCM token directly...");
+		const token = await fbGetToken(messaging, { vapidKey });
+
+		if (token) {
+			console.log("FCM token retrieved successfully:", token.substring(0, 20) + "...");
+			
+			// Store token in localStorage
+			if (uid && role) {
+				storeFCMTokenInLocalStorage(token, uid, role);
+				console.log("FCM token stored in localStorage");
+			}
+
+			// Store token in database
+			if (uid && role) {
+				try {
+					const { storeFCMTokenAction } = await import("@/app/actions/notifications");
+					const result = await storeFCMTokenAction(uid, token, role, "web");
+					if (result.success) {
+						console.log("FCM token stored in database successfully");
+					} else {
+						console.error("Failed to store FCM token in database:", result.error);
+					}
+				} catch (error) {
+					console.error("Error storing FCM token in database:", error);
+				}
+			}
+
+			return token;
+		} else {
+			console.log("No FCM token available");
+			return null;
+		}
+	} catch (err) {
+		console.error("Error getting FCM token:", err);
+		return null;
+	}
+}
+
+/**
  * Request an FCM token and store it in the database (only works client-side).
  */
 export async function requestForToken(
@@ -52,14 +123,29 @@ export async function requestForToken(
 	uid?: string,
 	role?: "admin" | "official" | "resident"
 ): Promise<string | null> {
+	console.log("Starting FCM token request process...");
+	
 	const messaging = await getMessagingInstance();
-	if (!messaging) return null;
+	if (!messaging) {
+		console.error("Firebase messaging not supported in this environment");
+		return null;
+	}
 
 	try {
+		// Check if we're in a secure context (required for notifications and service workers)
+		if (typeof window !== "undefined" && !window.isSecureContext) {
+			console.error("FCM requires a secure context (HTTPS). Service workers and push notifications don't work on HTTP.");
+			return null;
+		}
+
 		// First, check if we have permission
+		console.log("Current notification permission:", Notification.permission);
+		
 		if (Notification.permission === "default") {
 			console.log("Requesting notification permission...");
 			const permission = await Notification.requestPermission();
+			console.log("Permission request result:", permission);
+			
 			if (permission !== "granted") {
 				console.log("Notification permission denied:", permission);
 				return null;
@@ -72,11 +158,36 @@ export async function requestForToken(
 			return null;
 		}
 
-		// Ensure service worker is registered before getting token
-		await ensureServiceWorkerRegistered();
+		// Skip service worker registration for now and try to get token directly
+		console.log("Attempting to get FCM token without service worker registration...");
+		
+		// Set up foreground message handling first
+		console.log("Setting up foreground message handling...");
+		try {
+			await setupForegroundMessageHandling();
+		} catch (fgError) {
+			console.warn("Foreground message handling setup failed:", fgError);
+		}
 
-		console.log("Getting FCM token...");
-		const token = await fbGetToken(messaging, { vapidKey });
+		console.log("Getting FCM token with VAPID key...");
+		let token: string | null = null;
+		
+		try {
+			token = await fbGetToken(messaging, { vapidKey });
+		} catch (tokenError) {
+			console.error("Direct token request failed:", tokenError);
+			
+			// Try with service worker registration as fallback
+			console.log("Trying with service worker registration...");
+			try {
+				await ensureServiceWorkerRegistered();
+				await new Promise(resolve => setTimeout(resolve, 2000));
+				token = await fbGetToken(messaging, { vapidKey });
+			} catch (swError) {
+				console.error("Service worker registration also failed:", swError);
+				throw new Error("Unable to get FCM token. Service worker registration failed and direct token request failed.");
+			}
+		}
 
 		if (token) {
 			console.log(
@@ -87,9 +198,10 @@ export async function requestForToken(
 			// Store token in localStorage for app-wide access
 			if (uid && role) {
 				storeFCMTokenInLocalStorage(token, uid, role);
+				console.log("FCM token stored in localStorage");
 			}
 
-			// Store token if we have user info
+			// Store token in database if we have user info
 			if (uid && role) {
 				try {
 					const { storeFCMTokenAction } = await import(
@@ -97,12 +209,12 @@ export async function requestForToken(
 					);
 					const result = await storeFCMTokenAction(uid, token, role, "web");
 					if (result.success) {
-						console.log("FCM token stored successfully");
+						console.log("FCM token stored in database successfully");
 					} else {
-						console.error("Failed to store FCM token:", result.error);
+						console.error("Failed to store FCM token in database:", result.error);
 					}
 				} catch (error) {
-					console.error("Error storing FCM token:", error);
+					console.error("Error storing FCM token in database:", error);
 				}
 			}
 
@@ -115,6 +227,11 @@ export async function requestForToken(
 		}
 	} catch (err) {
 		console.error("Error getting FCM token:", err);
+		console.error("Error details:", {
+			name: err instanceof Error ? err.name : "Unknown",
+			message: err instanceof Error ? err.message : String(err),
+			stack: err instanceof Error ? err.stack : undefined
+		});
 		return null;
 	}
 }
@@ -124,6 +241,7 @@ export function getNotificationPermissionStatus():
 	| "granted"
 	| "denied"
 	| "default" {
+	if (typeof window === "undefined") return "denied";
 	return Notification.permission;
 }
 
@@ -201,24 +319,123 @@ export async function ensureServiceWorkerRegistered(): Promise<void> {
 	if (typeof window === "undefined") return;
 
 	try {
-		// Check if service worker is already registered
-		if ("serviceWorker" in navigator) {
-			const registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+		// Check if service worker is supported and available
+		if (typeof navigator !== "undefined" && "serviceWorker" in navigator && navigator.serviceWorker) {
+			// First, try to get existing registration
+			let registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
 			
 			if (!registration) {
 				console.log("Registering Firebase messaging service worker...");
-				await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
-					scope: "/"
-				});
-				console.log("Service worker registered successfully");
+				
+				try {
+					// Wait for the service worker to be ready
+					registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+						scope: "/"
+					});
+					
+					// Wait for the service worker to be activated
+					await navigator.serviceWorker.ready;
+					console.log("Service worker registered and activated successfully");
+				} catch (swError) {
+					console.error("Service worker registration failed:", swError);
+					// Try alternative registration approach
+					try {
+						registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+						await navigator.serviceWorker.ready;
+						console.log("Service worker registered with alternative approach");
+					} catch (altError) {
+						console.error("Alternative service worker registration also failed:", altError);
+						throw altError;
+					}
+				}
 			} else {
 				console.log("Service worker already registered");
+				// Ensure it's activated
+				await navigator.serviceWorker.ready;
 			}
 		} else {
-			console.warn("Service workers are not supported in this browser");
+			console.warn("Service workers are not supported in this browser or environment");
+			throw new Error("Service workers not supported");
 		}
 	} catch (error) {
 		console.error("Error registering service worker:", error);
 		throw error;
+	}
+}
+
+// Helper function to set up foreground message handling
+export async function setupForegroundMessageHandling(): Promise<void> {
+	if (typeof window === "undefined") return;
+
+	try {
+		const messaging = await getMessagingInstance();
+		if (!messaging) {
+			console.warn("Firebase messaging not supported");
+			return;
+		}
+
+		// Handle foreground messages
+		const { onMessage } = await import("firebase/messaging");
+		
+		onMessage(messaging, (payload) => {
+			console.log("Received foreground message:", payload);
+			
+			// Show notification when app is in foreground
+			if (payload.notification) {
+				const notificationTitle = payload.notification.title || "New Message";
+				const notificationBody = payload.notification.body || "You have a new message";
+				
+				console.log("Creating foreground notification:", notificationTitle, notificationBody);
+				
+				// Create and show notification
+				if (Notification.permission === "granted") {
+					try {
+						const notification = new Notification(notificationTitle, {
+							body: notificationBody,
+							icon: payload.notification.icon || "/images/malinta_logo.jpg",
+							tag: payload.data?.type || "general",
+							requireInteraction: payload.data?.priority === "high",
+							data: {
+								url: payload.data?.clickAction || "/",
+								type: payload.data?.type || "general",
+								timestamp: payload.data?.timestamp || Date.now().toString(),
+							},
+						});
+
+						console.log("Foreground notification created successfully");
+
+						// Handle notification click
+						notification.onclick = (event) => {
+							console.log("Foreground notification clicked");
+							event.preventDefault();
+							window.focus();
+							
+							const urlToOpen = notification.data?.url || "/";
+							if (urlToOpen !== window.location.pathname) {
+								window.location.href = urlToOpen;
+							}
+							
+							notification.close();
+						};
+
+						// Auto-close after 5 seconds if not clicked
+						setTimeout(() => {
+							notification.close();
+						}, 5000);
+
+					} catch (notificationError) {
+						console.error("Error creating foreground notification:", notificationError);
+					}
+				} else {
+					console.warn("Notification permission not granted, cannot show foreground notification");
+				}
+			} else {
+				console.log("No notification payload in message");
+			}
+		});
+
+		console.log("Foreground message handling set up successfully");
+	} catch (error) {
+		console.error("Error setting up foreground message handling:", error);
 	}
 }

@@ -148,7 +148,6 @@ function CameraModal({
 			}
 		} catch (err) {
 			setError("Unable to access camera. Please check permissions.");
-			console.error("Camera error:", err);
 		}
 	}, []);
 
@@ -223,7 +222,6 @@ function CameraModal({
 						onCapture(compressedDataUrl || originalDataUrl);
 						onClose();
 					} catch (err) {
-						console.error("Image compression failed:", err);
 						// Fallback to original if compression fails
 						onCapture(originalDataUrl);
 						onClose();
@@ -414,7 +412,6 @@ export default function RegisterPage() {
 
 	const onSubmit = async (data: RegistrationData) => {
 		if (!idPhoto || !selfiePhoto) {
-			console.error("Registration failed: Missing photos");
 			toast({
 				title: "Missing Photos",
 				description: "Please provide both ID photo and selfie photo.",
@@ -439,10 +436,7 @@ export default function RegisterPage() {
 			});
 
 			if (!imageUploadResult.success) {
-				console.error(
-					"Registration failed: Image upload error -",
-					imageUploadResult.error
-				);
+		
 				toast({
 					title: "Image upload failed",
 					description:
@@ -467,10 +461,7 @@ export default function RegisterPage() {
 			});
 
 			if (!registrationResult.success) {
-				console.error(
-					"Registration failed: User registration error -",
-					registrationResult.error
-				);
+		
 				toast({
 					title: "Registration failed",
 					description:
@@ -513,12 +504,6 @@ export default function RegisterPage() {
 				}
 			}
 
-			console.error(
-				"Registration failed:",
-				error,
-				"Error message:",
-				errorMessage
-			);
 			toast({
 				title: "Registration Failed",
 				description: errorMessage,

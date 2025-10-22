@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useLanguage } from "@/contexts/language-context";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
+import { useNotificationSettingsListener } from "@/hooks/use-notification-settings-listener";
+import { useFCMToken } from "@/hooks/use-fcm-token";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +59,8 @@ export default function SettingsPage() {
 	const { toast } = useToast();
 	const { theme, setTheme } = useTheme();
 	const router = useRouter();
+	const { systemNotificationsEnabled, loading: settingsLoading } = useNotificationSettingsListener();
+	const { hasToken, clearToken } = useFCMToken();
 
 	const [activeTab, setActiveTab] = useState("security");
 	const [isLoading, setIsLoading] = useState(false);
@@ -111,6 +115,16 @@ export default function SettingsPage() {
 			}
 		}
 	}, [language]);
+
+	// Update push notifications preference based on system settings
+	useEffect(() => {
+		if (!settingsLoading) {
+			setPreferences((prev) => ({
+				...prev,
+				pushNotifications: prev.pushNotifications && systemNotificationsEnabled
+			}));
+		}
+	}, [systemNotificationsEnabled, settingsLoading]);
 
 	const handlePasswordChange = (field: string, value: string) => {
 		setPasswordData((prev) => ({
@@ -211,6 +225,16 @@ export default function SettingsPage() {
 				setLanguage(preferences.language as "en" | "tl");
 			}
 
+			// Handle push notification changes
+			if (!preferences.pushNotifications && hasToken) {
+				clearToken();
+				toast({
+					title: "Push Notifications Disabled",
+					description: "You will no longer receive push notifications",
+					variant: "default",
+				});
+			}
+
 			// Save preferences to localStorage for persistence
 			localStorage.setItem("userPreferences", JSON.stringify(preferences));
 
@@ -240,7 +264,7 @@ export default function SettingsPage() {
 	const handleResetPreferences = () => {
 		const defaultPreferences = {
 			emailNotifications: true,
-			pushNotifications: true,
+			pushNotifications: systemNotificationsEnabled, // Respect system settings
 			smsNotifications: false,
 			language: language,
 			timezone: "Asia/Manila",
@@ -249,6 +273,12 @@ export default function SettingsPage() {
 		};
 		setPreferences(defaultPreferences);
 		setHasUnsavedChanges(true);
+		
+		// Clear FCM token if push notifications are disabled
+		if (!systemNotificationsEnabled && hasToken) {
+			clearToken();
+		}
+		
 		toast({
 			title: t("settings.preferencesReset") || "Preferences Reset",
 			description:
@@ -518,12 +548,44 @@ export default function SettingsPage() {
 											{t("settings.pushNotificationsDesc") ||
 												"Receive push notifications in your browser"}
 										</p>
+										{!systemNotificationsEnabled && (
+											<p className="text-xs text-amber-600 mt-1">
+												⚠️ Push notifications are disabled system-wide by administrators
+											</p>
+										)}
+										{systemNotificationsEnabled && hasToken && (
+											<p className="text-xs text-green-600 mt-1">
+												✅ Push notifications are active
+											</p>
+										)}
+										{systemNotificationsEnabled && !hasToken && (
+											<p className="text-xs text-orange-600 mt-1">
+												⚠️ Push notifications are enabled but not initialized
+											</p>
+										)}
 									</div>
 									<Switch
-										checked={preferences.pushNotifications}
-										onCheckedChange={(checked) =>
-											handlePreferenceChange("pushNotifications", checked)
-										}
+										checked={preferences.pushNotifications && systemNotificationsEnabled}
+										onCheckedChange={(checked) => {
+											if (!systemNotificationsEnabled) {
+												toast({
+													title: "Push Notifications Disabled",
+													description: "Push notifications are disabled system-wide by administrators",
+													variant: "destructive"
+												});
+												return;
+											}
+											handlePreferenceChange("pushNotifications", checked);
+											if (!checked && hasToken) {
+												clearToken();
+												toast({
+													title: "Push Notifications Disabled",
+													description: "You will no longer receive push notifications",
+													variant: "default"
+												});
+											}
+										}}
+										disabled={!systemNotificationsEnabled}
 									/>
 								</div>
 

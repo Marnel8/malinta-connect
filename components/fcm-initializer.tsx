@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { ensureServiceWorkerRegistered } from '@/app/firebase/firebase';
+import { ensureServiceWorkerRegistered, setupForegroundMessageHandling } from '@/app/firebase/firebase';
+import { useNotificationSettingsListener } from '@/hooks/use-notification-settings-listener';
 
 interface FCMInitializerProps {
   children: React.ReactNode;
@@ -10,24 +11,41 @@ interface FCMInitializerProps {
 export function FCMInitializer({ children }: FCMInitializerProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { systemNotificationsEnabled, loading: settingsLoading } = useNotificationSettingsListener();
 
   useEffect(() => {
     const initializeFCM = async () => {
+      // Don't initialize if system notifications are disabled
+      if (!systemNotificationsEnabled) {
+        console.log("FCM initialization skipped: System notifications are disabled");
+        setIsInitialized(true);
+        return;
+      }
+
       try {
         console.log("Initializing FCM service worker...");
         await ensureServiceWorkerRegistered();
         console.log("FCM service worker initialized successfully");
+        
+        // Set up foreground message handling
+        console.log("Setting up foreground message handling...");
+        await setupForegroundMessageHandling();
+        
+        console.log("FCM initialization completed successfully");
         setIsInitialized(true);
       } catch (error) {
-        console.error("Failed to initialize FCM service worker:", error);
+        console.error("Failed to initialize FCM:", error);
         setError("Failed to initialize notifications. Some features may not work properly.");
         // Still set as initialized to not block the app
         setIsInitialized(true);
       }
     };
 
-    initializeFCM();
-  }, []);
+    // Wait for settings to load before initializing
+    if (!settingsLoading) {
+      initializeFCM();
+    }
+  }, [systemNotificationsEnabled, settingsLoading]);
 
   if (!isInitialized) {
     return (

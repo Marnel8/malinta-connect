@@ -22,12 +22,42 @@ import {
 	requestForToken,
 } from "../firebase/firebase";
 import { useFCMToken } from "@/hooks/use-fcm-token";
+import { getAllOfficialsAction, type Official } from "@/app/actions/officials";
 
 export default function Home() {
 	const { t } = useLanguage();
 	const { user, userProfile, loading } = useAuth();
 	const router = useRouter();
 	const { updateToken, hasToken } = useFCMToken();
+	const [officials, setOfficials] = useState<Official[]>([]);
+	const [officialsLoading, setOfficialsLoading] = useState(true);
+
+	// Fetch officials data
+	const fetchOfficials = async () => {
+		try {
+			setOfficialsLoading(true);
+			const result = await getAllOfficialsAction();
+			if (result.success && result.officials) {
+				// Filter only active officials and sort by position priority
+				const activeOfficials = result.officials
+					.filter(official => official.status === "active")
+					.sort((a, b) => {
+						const positionOrder = { captain: 1, secretary: 2, treasurer: 3, skChairperson: 4, councilor: 5 };
+						return (positionOrder[a.position] || 6) - (positionOrder[b.position] || 6);
+					});
+				setOfficials(activeOfficials);
+			}
+		} catch (error) {
+			console.error("Error fetching officials:", error);
+		} finally {
+			setOfficialsLoading(false);
+		}
+	};
+
+	// Load officials on component mount
+	useEffect(() => {
+		fetchOfficials();
+	}, []);
 
 	// Auto-redirect based on user role
 	useEffect(() => {
@@ -57,8 +87,12 @@ export default function Home() {
 			// Only request token if user is logged in
 			if (!user || !userProfile) return;
 
-			const vapidKey =
-				"BF8znRkgIl7BViEBpWTHJ-8thC1qiXgVpCVefXZV5z-Zc26v0xYhTS53WcPQRQ1v81VdhIT3fBf0d8e07L2ROSM";
+			const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+			
+			if (!vapidKey) {
+				console.error("VAPID key not configured. Please add NEXT_PUBLIC_FIREBASE_VAPID_KEY to your environment variables.");
+				return;
+			}
 
 			const token = await requestForToken(vapidKey, user.uid, userProfile.role);
 			if (token) {
@@ -232,151 +266,106 @@ export default function Home() {
 						</p>
 					</div>
 
-					<div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-10">
-						<Card className="col-span-full lg:col-span-1 overflow-hidden hover:shadow-md transition-all">
-							<div className="relative h-64 w-full">
-								<Image
-									src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=1287&auto=format&fit=crop"
-									alt="Barangay Captain"
-									fill
-									className="object-cover"
-									objectPosition="center top"
-								/>
-							</div>
-							<CardHeader>
-								<CardTitle>{t("officials.captain")}: Juan Dela Cruz</CardTitle>
-								<CardDescription>
-									{t("officials.currentTerm")}: 2022-2025
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<h3 className="font-medium mb-2">
-									{t("home.officials.message")}
-								</h3>
-								<p className="text-sm text-muted-foreground">
-									"Our administration is committed to creating a safe,
-									progressive, and inclusive community for all residents.
-									Together, we can build a better barangay for ourselves and for
-									future generations."
-								</p>
-							</CardContent>
-							<CardFooter>
-								<Button
-									variant="outline"
-									size="sm"
-									className="w-full group"
-									asChild
-								>
-									<Link href="/officials">
-										<span className="flex items-center">
-											<Users className="mr-2 h-4 w-4" />
-											{t("officials.viewProfile")}
-											<ChevronRight className="ml-auto h-4 w-4 transition-transform group-hover:translate-x-1" />
-										</span>
-									</Link>
-								</Button>
-							</CardFooter>
-						</Card>
-
-						<div className="col-span-full lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-							<Card className="overflow-hidden hover:shadow-md transition-all">
-								<CardHeader>
-									<CardTitle>Maria Santos</CardTitle>
-									<CardDescription>
-										Committee on Health and Sanitation
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="flex items-center gap-4">
-									<div className="relative h-16 w-16 rounded-full overflow-hidden flex-shrink-0">
-										<Image
-											src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=1287&auto=format&fit=crop"
-											alt="Councilor Maria Santos"
-											fill
-											className="object-cover"
-										/>
-									</div>
-									<div className="text-sm text-muted-foreground">
-										Leading initiatives for community health programs and
-										sanitation improvements throughout the barangay.
-									</div>
-								</CardContent>
-							</Card>
-
-							<Card className="overflow-hidden hover:shadow-md transition-all">
-								<CardHeader>
-									<CardTitle>Pedro Reyes</CardTitle>
-									<CardDescription>Committee on Education</CardDescription>
-								</CardHeader>
-								<CardContent className="flex items-center gap-4">
-									<div className="relative h-16 w-16 rounded-full overflow-hidden flex-shrink-0">
-										<Image
-											src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1170&auto=format&fit=crop"
-											alt="Councilor Pedro Reyes"
-											fill
-											className="object-cover"
-										/>
-									</div>
-									<div className="text-sm text-muted-foreground">
-										Spearheading educational programs and scholarship
-										opportunities for barangay youth.
-									</div>
-								</CardContent>
-							</Card>
-
-							<Card className="overflow-hidden hover:shadow-md transition-all">
-								<CardHeader>
-									<CardTitle>Ana Lim</CardTitle>
-									<CardDescription>
-										Committee on Women and Family
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="flex items-center gap-4">
-									<div className="relative h-16 w-16 rounded-full overflow-hidden flex-shrink-0">
-										<Image
-											src="https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=1361&auto=format&fit=crop"
-											alt="Councilor Ana Lim"
-											fill
-											className="object-cover"
-										/>
-									</div>
-									<div className="text-sm text-muted-foreground">
-										Advocating for women's rights and implementing family
-										welfare programs in the community.
-									</div>
-								</CardContent>
-							</Card>
-
-							<Card className="overflow-hidden hover:shadow-md transition-all">
-								<CardHeader>
-									<CardTitle>Roberto Garcia</CardTitle>
-									<CardDescription>Committee on Infrastructure</CardDescription>
-								</CardHeader>
-								<CardContent className="flex items-center gap-4">
-									<div className="relative h-16 w-16 rounded-full overflow-hidden flex-shrink-0">
-										<Image
-											src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1287&auto=format&fit=crop"
-											alt="Councilor Roberto Garcia"
-											fill
-											className="object-cover"
-										/>
-									</div>
-									<div className="text-sm text-muted-foreground">
-										Overseeing infrastructure projects to improve roads,
-										drainage systems, and public facilities.
-									</div>
-								</CardContent>
-							</Card>
+					{officialsLoading ? (
+						<div className="flex items-center justify-center py-12">
+							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
 						</div>
-					</div>
+					) : officials.length === 0 ? (
+						<div className="text-center py-12">
+							<Users className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+							<p className="text-muted-foreground">
+								No officials information available at the moment.
+							</p>
+						</div>
+					) : (
+						<div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-10">
+							{/* Captain Card - Featured */}
+							{officials.find(official => official.position === "captain") && (
+								<Card className="col-span-full lg:col-span-1 overflow-hidden hover:shadow-md transition-all">
+									<div className="relative h-64 w-full">
+										<Image
+											src={officials.find(official => official.position === "captain")?.photo || "/placeholder-user.jpg"}
+											alt="Barangay Captain"
+											fill
+											className="object-cover"
+											objectPosition="center top"
+										/>
+									</div>
+									<CardHeader>
+										<CardTitle>
+											{t("officials.captain")}: {officials.find(official => official.position === "captain")?.name}
+										</CardTitle>
+										<CardDescription>
+											{t("officials.currentTerm")}: {officials.find(official => official.position === "captain")?.term}
+										</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<h3 className="font-medium mb-2">
+											{t("home.officials.message")}
+										</h3>
+										<p className="text-sm text-muted-foreground">
+											{officials.find(official => official.position === "captain")?.message || 
+											 "Our administration is committed to creating a safe, progressive, and inclusive community for all residents. Together, we can build a better barangay for ourselves and for future generations."}
+										</p>
+									</CardContent>
+									<CardFooter>
+										<Button
+											variant="outline"
+											size="sm"
+											className="w-full group"
+											asChild
+										>
+											<Link href="/officials">
+												<span className="flex items-center">
+													<Users className="mr-2 h-4 w-4" />
+													{t("officials.viewProfile")}
+													<ChevronRight className="ml-auto h-4 w-4 transition-transform group-hover:translate-x-1" />
+												</span>
+											</Link>
+										</Button>
+									</CardFooter>
+								</Card>
+							)}
 
-					<div className="flex justify-center">
-						<Button asChild size="lg">
-							<Link href="/officials">
-								{t("home.officials.viewAll")}
-								<ChevronRight className="ml-2 h-4 w-4" />
-							</Link>
-						</Button>
-					</div>
+							{/* Other Officials */}
+							<div className="col-span-full lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+								{officials
+									.filter(official => official.position !== "captain")
+									.slice(0, 4) // Show only first 4 non-captain officials
+									.map((official) => (
+									<Card key={official.id} className="overflow-hidden hover:shadow-md transition-all">
+										<CardHeader>
+											<CardTitle>{official.name}</CardTitle>
+											<CardDescription>
+												{t(`officials.${official.position}`)}
+												{official.committees && official.committees.length > 0 && (
+													<span className="block text-xs mt-1">
+														{official.committees[0]}
+													</span>
+												)}
+											</CardDescription>
+										</CardHeader>
+										<CardContent className="flex items-center gap-4">
+											<div className="relative h-16 w-16 rounded-full overflow-hidden flex-shrink-0">
+												<Image
+													src={official.photo || "/placeholder-user.jpg"}
+													alt={official.name}
+													fill
+													className="object-cover"
+												/>
+											</div>
+											<div className="text-sm text-muted-foreground">
+												{official.biography ? 
+													official.biography.substring(0, 100) + (official.biography.length > 100 ? "..." : "") :
+													`Serving the community as ${t(`officials.${official.position}`).toLowerCase()}.`
+												}
+											</div>
+										</CardContent>
+									</Card>
+								))}
+							</div>
+						</div>
+					)}
 				</div>
 			</section>
 
