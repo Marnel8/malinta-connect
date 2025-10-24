@@ -126,6 +126,26 @@ export default function OfficialsManagementPage() {
 	const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
+			// Validate file type
+			if (!file.type.startsWith("image/")) {
+				toast({
+					title: "Invalid file type",
+					description: "Please select an image file (JPG, PNG, GIF, WebP)",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			// Validate file size (10MB limit)
+			if (file.size > 10 * 1024 * 1024) {
+				toast({
+					title: "File too large",
+					description: "Please select an image smaller than 10MB",
+					variant: "destructive",
+				});
+				return;
+			}
+
 			setSelectedPhoto(file);
 			const reader = new FileReader();
 			reader.onload = (e) => {
@@ -548,7 +568,7 @@ export default function OfficialsManagementPage() {
 												<span className="font-medium">Supported formats</span>
 											</div>
 											<p className="text-xs text-muted-foreground mb-2">
-												JPG, PNG, GIF up to 5MB
+												JPG, PNG, GIF, WebP up to 10MB
 											</p>
 											<div className="flex items-center gap-2 text-xs text-muted-foreground">
 												<span>•</span>

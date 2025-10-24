@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 import { useNotificationSettingsListener } from "@/hooks/use-notification-settings-listener";
 import { useFCMToken } from "@/hooks/use-fcm-token";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +62,7 @@ export default function SettingsPage() {
 	const router = useRouter();
 	const { systemNotificationsEnabled, loading: settingsLoading } = useNotificationSettingsListener();
 	const { hasToken, clearToken } = useFCMToken();
+	const isMobile = useIsMobile();
 
 	const [activeTab, setActiveTab] = useState("security");
 	const [isLoading, setIsLoading] = useState(false);
@@ -548,6 +550,15 @@ export default function SettingsPage() {
 											{t("settings.pushNotificationsDesc") ||
 												"Receive push notifications in your browser"}
 										</p>
+										{isMobile ? (
+											<p className="text-xs text-amber-600 mt-1">
+												📱 Push notifications have limited support on mobile browsers. Consider using a desktop browser for the best experience.
+											</p>
+										) : (
+											<p className="text-xs text-blue-600 mt-1">
+												💻 Push notifications work well on desktop browsers (Chrome, Firefox, Safari, Edge)
+											</p>
+										)}
 										{!systemNotificationsEnabled && (
 											<p className="text-xs text-amber-600 mt-1">
 												⚠️ Push notifications are disabled system-wide by administrators

@@ -495,6 +495,17 @@ export default function AdminSettingsPage() {
                       <p className="text-sm text-muted-foreground">
                         Receive push notifications for important updates and activities
                       </p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-blue-600">
+                          💻 Works best on desktop browsers (Chrome, Firefox, Safari, Edge)
+                        </p>
+                        <p className="text-xs text-amber-600">
+                          📱 Limited support on mobile browsers - users on mobile may not receive notifications
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          ℹ️ Consider alternative notification methods for mobile users (SMS, email)
+                        </p>
+                      </div>
                       {!notificationForm.systemNotifications && (
                         <p className="text-xs text-amber-600 mt-1">
                           ⚠️ Push notifications are disabled. Users won't receive real-time updates.

@@ -206,24 +206,69 @@ export default function AdminAnalyticsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         {analyticsData.overview.map((stat, index) => {
           const Icon = getIconComponent(stat.icon)
+          
+          // Define colors for each card type
+          const getCardColors = (title: string) => {
+            switch (title) {
+              case "Total Residents":
+                return {
+                  borderColor: "border-l-purple-500",
+                  iconColor: "text-purple-600",
+                  bgColor: "bg-purple-50"
+                }
+              case "Certificate Requests":
+                return {
+                  borderColor: "border-l-blue-500",
+                  iconColor: "text-blue-600",
+                  bgColor: "bg-blue-50"
+                }
+              case "Appointments":
+                return {
+                  borderColor: "border-l-green-500",
+                  iconColor: "text-green-600",
+                  bgColor: "bg-green-50"
+                }
+              case "Blotter Reports":
+                return {
+                  borderColor: "border-l-red-500",
+                  iconColor: "text-red-600",
+                  bgColor: "bg-red-50"
+                }
+              default:
+                return {
+                  borderColor: "border-l-gray-500",
+                  iconColor: "text-gray-600",
+                  bgColor: "bg-gray-50"
+                }
+            }
+          }
+          
+          const colors = getCardColors(stat.title)
+          
           return (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="flex items-center text-xs text-muted-foreground">
+            <Card key={index} className={`${colors.borderColor} border-l-4 shadow-sm hover:shadow-md transition-shadow duration-200`}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-700">{stat.title}</h3>
+                  <div className={`p-2 rounded-lg ${colors.bgColor}`}>
+                    <Icon className={`h-5 w-5 ${colors.iconColor}`} />
+                  </div>
+                </div>
+                
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  {stat.value}
+                </div>
+                
+                <div className="flex items-center text-sm">
                   {stat.trend === "up" ? (
                     <TrendingUp className="mr-1 h-4 w-4 text-green-500" />
                   ) : (
                     <TrendingDown className="mr-1 h-4 w-4 text-red-500" />
                   )}
-                  <span className={stat.trend === "up" ? "text-green-500" : "text-red-500"}>
+                  <span className={`font-medium ${stat.trend === "up" ? "text-green-600" : "text-red-600"}`}>
                     {stat.change}
                   </span>
-                  <span className="ml-1">{stat.description}</span>
+                  <span className="ml-1 text-gray-500">{stat.description}</span>
                 </div>
               </CardContent>
             </Card>

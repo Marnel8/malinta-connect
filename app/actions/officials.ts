@@ -114,6 +114,22 @@ export async function createOfficialAction(
     
     const photoFile = formData.get("photo") as File;
     if (photoFile && photoFile.size > 0) {
+      // Validate file size (10MB limit)
+      if (photoFile.size > 10 * 1024 * 1024) {
+        return {
+          success: false,
+          error: "Photo file is too large. Please select an image smaller than 10MB.",
+        };
+      }
+
+      // Validate file type
+      if (!photoFile.type.startsWith("image/")) {
+        return {
+          success: false,
+          error: "Invalid file type. Please select an image file (JPG, PNG, GIF, WebP).",
+        };
+      }
+
       try {
         const buffer = Buffer.from(await photoFile.arrayBuffer());
         const uploadResult = await uploadToCloudinary(buffer, {
@@ -207,6 +223,22 @@ export async function updateOfficialAction(
     // Handle new photo upload
     const photoFile = formData.get("photo") as File;
     if (photoFile && photoFile.size > 0) {
+      // Validate file size (10MB limit)
+      if (photoFile.size > 10 * 1024 * 1024) {
+        return {
+          success: false,
+          error: "Photo file is too large. Please select an image smaller than 10MB.",
+        };
+      }
+
+      // Validate file type
+      if (!photoFile.type.startsWith("image/")) {
+        return {
+          success: false,
+          error: "Invalid file type. Please select an image file (JPG, PNG, GIF, WebP).",
+        };
+      }
+
       try {
         // Delete old photo if exists
         if (currentOfficial.photoPublicId) {
