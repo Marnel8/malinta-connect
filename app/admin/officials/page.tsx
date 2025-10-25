@@ -345,6 +345,9 @@ export default function OfficialsManagementPage() {
 						<SelectItem value="treasurer">
 							{t("officials.treasurer")}
 						</SelectItem>
+						<SelectItem value="clerk">
+							{t("officials.clerk")}
+						</SelectItem>
 						<SelectItem value="skChairperson">
 							{t("officials.skChairperson")}
 						</SelectItem>
@@ -630,6 +633,9 @@ export default function OfficialsManagementPage() {
 												<SelectItem value="treasurer">
 													Treasurer
 												</SelectItem>
+												<SelectItem value="clerk">
+													Clerk
+												</SelectItem>
 												<SelectItem value="skChairperson">
 													SK Chairperson
 												</SelectItem>
@@ -719,9 +725,9 @@ export default function OfficialsManagementPage() {
 								</div>
 							</div>
 
-							{/* Committees Section - Only show for captain, councilor, and sk chairperson */}
-							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "skChairperson" || 
-							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "skChairperson") && (
+							{/* Committees Section - Only show for captain, councilor, clerk, and sk chairperson */}
+							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "clerk" || selectedPosition === "skChairperson" || 
+							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "clerk" || currentOfficial?.position === "skChairperson") && (
 								<div className="space-y-4">
 									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
 										Committees
@@ -761,9 +767,9 @@ export default function OfficialsManagementPage() {
 								</div>
 							)}
 
-							{/* Biography & Message Section - Only show for captain, councilor, and sk chairperson */}
-							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "skChairperson" || 
-							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "skChairperson") && (
+							{/* Biography & Message Section - Only show for captain, councilor, clerk, and sk chairperson */}
+							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "clerk" || selectedPosition === "skChairperson" || 
+							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "clerk" || currentOfficial?.position === "skChairperson") && (
 								<div className="space-y-4">
 									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
 										{isCaptain ? "Biography & Message" : "Personal Message"}
@@ -803,8 +809,8 @@ export default function OfficialsManagementPage() {
 							)}
 
 							{/* Projects & Achievements Section */}
-							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "skChairperson" || 
-							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "skChairperson") && (
+							{(selectedPosition === "captain" || selectedPosition === "councilor" || selectedPosition === "clerk" || selectedPosition === "skChairperson" || 
+							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "clerk" || currentOfficial?.position === "skChairperson") && (
 								<div className="space-y-4">
 									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
 										{(selectedPosition === "captain" || currentOfficial?.position === "captain") ? "Projects & Achievements" : "Achievements"}
@@ -965,8 +971,8 @@ export default function OfficialsManagementPage() {
 									</div>
 								)}
 							</div>
-							{/* Only show committees for captain, councilor, and sk chairperson */}
-							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "skChairperson") && (
+							{/* Only show committees for captain, councilor, clerk, and sk chairperson */}
+							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "clerk" || currentOfficial.position === "skChairperson") && (
 								<div>
 									<h3 className="font-medium mb-2">
 										{t("officials.committees")}
@@ -990,8 +996,8 @@ export default function OfficialsManagementPage() {
 									</p>
 								</div>
 							)}
-							{/* Only show personal message for captain, councilor, and sk chairperson */}
-							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "skChairperson") && 
+							{/* Only show personal message for captain, councilor, clerk, and sk chairperson */}
+							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "clerk" || currentOfficial.position === "skChairperson") && 
 							 currentOfficial.message && (
 								<div>
 									<h3 className="font-medium mb-2">
@@ -1003,7 +1009,7 @@ export default function OfficialsManagementPage() {
 								</div>
 							)}
 							{/* Show projects and achievements based on position */}
-							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "skChairperson") && (
+							{(currentOfficial.position === "captain" || currentOfficial.position === "councilor" || currentOfficial.position === "clerk" || currentOfficial.position === "skChairperson") && (
 								<>
 									{currentOfficial.position === "captain" && currentOfficial.projects &&
 										currentOfficial.projects.length > 0 && (

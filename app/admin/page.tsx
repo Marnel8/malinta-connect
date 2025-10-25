@@ -35,6 +35,7 @@ import {
 	getRecentBlotterCases,
 	getUserDisplayName,
 } from "@/app/actions/admin-dashboard";
+import { getAllAnalytics, type AnalyticsData } from "@/app/actions/analytics";
 import { useEffect, useState } from "react";
 import {
 	DashboardStats,
@@ -42,6 +43,19 @@ import {
 	AppointmentItem,
 	BlotterItem,
 } from "@/app/actions/admin-dashboard";
+import {
+	PieChart,
+	Pie,
+	Cell,
+	BarChart,
+	Bar,
+	XAxis,
+	YAxis,
+	CartesianGrid,
+	Tooltip,
+	Legend,
+	ResponsiveContainer,
+} from "recharts";
 
 export default function AdminDashboardPage() {
 	const { t } = useLanguage();
@@ -54,7 +68,9 @@ export default function AdminDashboardPage() {
 	>([]);
 	const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
 	const [blotterCases, setBlotterCases] = useState<BlotterItem[]>([]);
+	const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
 	// Check if user has any admin permissions
 	const hasAdminAccess =
@@ -97,6 +113,25 @@ export default function AdminDashboardPage() {
 
 		fetchDashboardData();
 	}, [hasAdminAccess]);
+
+	// Fetch analytics data
+	useEffect(() => {
+		const fetchAnalyticsData = async () => {
+			if (!hasAdminAccess || !userProfile?.permissions?.canViewAnalytics) return;
+
+			try {
+				setAnalyticsLoading(true);
+				const data = await getAllAnalytics();
+				setAnalyticsData(data);
+			} catch (error) {
+				console.error("Error fetching analytics data:", error);
+			} finally {
+				setAnalyticsLoading(false);
+			}
+		};
+
+		fetchAnalyticsData();
+	}, [hasAdminAccess, userProfile?.permissions?.canViewAnalytics]);
 
 	// If no admin access, show access denied
 	if (!hasAdminAccess) {
@@ -155,7 +190,7 @@ export default function AdminDashboardPage() {
 							<CardTitle className="text-sm font-medium">
 								Pending Certificates
 							</CardTitle>
-							<FileText className="h-4 w-4 text-blue-500" />
+							<FileText className="h-8 w-8 text-blue-500" />
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
@@ -186,7 +221,7 @@ export default function AdminDashboardPage() {
 							<CardTitle className="text-sm font-medium">
 								Upcoming Appointments
 							</CardTitle>
-							<Calendar className="h-4 w-4 text-green-500" />
+							<Calendar className="h-8 w-8 text-green-500" />
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
@@ -217,7 +252,7 @@ export default function AdminDashboardPage() {
 							<CardTitle className="text-sm font-medium">
 								Active Blotter Cases
 							</CardTitle>
-							<MessageSquare className="h-4 w-4 text-red-500" />
+							<MessageSquare className="h-8 w-8 text-red-500" />
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
@@ -248,7 +283,7 @@ export default function AdminDashboardPage() {
 							<CardTitle className="text-sm font-medium">
 								Registered Residents
 							</CardTitle>
-							<Users className="h-4 w-4 text-purple-500" />
+							<Users className="h-8 w-8 text-purple-500" />
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
@@ -700,44 +735,134 @@ export default function AdminDashboardPage() {
 					<h2 className="text-2xl font-bold tracking-tight mb-6">
 						Analytics Overview
 					</h2>
-					<div className="grid gap-6 md:grid-cols-2">
-						<Card>
-							<CardHeader>
-								<CardTitle>Service Requests by Type</CardTitle>
-								<CardDescription>
-									Distribution of service requests for the current month
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="relative h-80 w-full">
-									<Image
-										src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1170&auto=format&fit=crop"
-										alt="Analytics Chart"
-										fill
-										className="object-contain"
-									/>
-								</div>
-							</CardContent>
-						</Card>
-						<Card>
-							<CardHeader>
-								<CardTitle>Request Processing Time</CardTitle>
-								<CardDescription>
-									Average time to process different types of requests
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="relative h-80 w-full">
-									<Image
-										src="https://images.unsplash.com/photo-1543286386-713bdd548da4?q=80&w=1170&auto=format&fit=crop"
-										alt="Analytics Chart"
-										fill
-										className="object-contain"
-									/>
-								</div>
-							</CardContent>
-						</Card>
-					</div>
+					{analyticsLoading ? (
+						<div className="flex items-center justify-center py-8">
+							<div className="flex items-center space-x-2">
+								<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+								<span>Loading analytics data...</span>
+							</div>
+						</div>
+					) : analyticsData ? (
+						<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+							{/* Certificates Analytics */}
+							<Card>
+								<CardHeader>
+									<CardTitle>Certificate Requests</CardTitle>
+									<CardDescription>Distribution by type</CardDescription>
+								</CardHeader>
+								<CardContent>
+									{analyticsData.certificates.breakdown.length > 0 ? (
+										<div className="h-[300px]">
+											<ResponsiveContainer width="100%" height="100%">
+												<PieChart>
+													<Pie
+														data={analyticsData.certificates.breakdown}
+														cx="50%"
+														cy="50%"
+														labelLine={false}
+														label={({ type, percentage }) => `${type}: ${percentage}%`}
+														outerRadius={80}
+														fill="#8884d8"
+														dataKey="count"
+													>
+														{analyticsData.certificates.breakdown.map((entry, index) => (
+															<Cell key={`cell-${index}`} fill={['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'][index % 6]} />
+														))}
+													</Pie>
+													<Tooltip />
+													<Legend />
+												</PieChart>
+											</ResponsiveContainer>
+										</div>
+									) : (
+										<p className="text-sm text-muted-foreground text-center py-4">
+											No certificate data available
+										</p>
+									)}
+								</CardContent>
+							</Card>
+
+							{/* Appointments Analytics */}
+							<Card>
+								<CardHeader>
+									<CardTitle>Appointments</CardTitle>
+									<CardDescription>Distribution by status</CardDescription>
+								</CardHeader>
+								<CardContent>
+									{analyticsData.appointments.status.length > 0 ? (
+										<div className="h-[300px]">
+											<ResponsiveContainer width="100%" height="100%">
+												<PieChart>
+													<Pie
+														data={analyticsData.appointments.status}
+														cx="50%"
+														cy="50%"
+														labelLine={false}
+														label={({ status, count }) => `${status}: ${count}`}
+														outerRadius={80}
+														innerRadius={40}
+														fill="#8884d8"
+														dataKey="count"
+													>
+														{analyticsData.appointments.status.map((entry, index) => (
+															<Cell key={`cell-${index}`} fill={['#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6'][index % 5]} />
+														))}
+													</Pie>
+													<Tooltip />
+													<Legend />
+												</PieChart>
+											</ResponsiveContainer>
+										</div>
+									) : (
+										<p className="text-sm text-muted-foreground text-center py-4">
+											No appointment data available
+										</p>
+									)}
+								</CardContent>
+							</Card>
+
+							{/* Blotter Analytics */}
+							<Card>
+								<CardHeader>
+									<CardTitle>Blotter Reports</CardTitle>
+									<CardDescription>Distribution by type</CardDescription>
+								</CardHeader>
+								<CardContent>
+									{analyticsData.blotter.breakdown.length > 0 ? (
+										<div className="h-[300px]">
+											<ResponsiveContainer width="100%" height="100%">
+												<BarChart data={analyticsData.blotter.breakdown}>
+													<CartesianGrid strokeDasharray="3 3" />
+													<XAxis 
+														dataKey="type" 
+														angle={-45}
+														textAnchor="end"
+														height={80}
+														fontSize={12}
+													/>
+													<YAxis />
+													<Tooltip />
+													<Bar 
+														dataKey="count" 
+														fill="#EF4444"
+														radius={[4, 4, 0, 0]}
+													/>
+												</BarChart>
+											</ResponsiveContainer>
+										</div>
+									) : (
+										<p className="text-sm text-muted-foreground text-center py-4">
+											No blotter data available
+										</p>
+									)}
+								</CardContent>
+							</Card>
+						</div>
+					) : (
+						<div className="text-center py-8">
+							<p className="text-muted-foreground">No analytics data available</p>
+						</div>
+					)}
 				</div>
 			)}
 		</div>

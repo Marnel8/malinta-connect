@@ -45,6 +45,62 @@ export function getMessagingInstance(): Promise<Messaging | null> {
 }
 
 /**
+ * Robust FCM token request with multiple fallback strategies
+ */
+export async function requestForTokenRobust(
+	vapidKey: string,
+	uid?: string,
+	role?: "admin" | "official" | "resident"
+): Promise<string | null> {
+	console.log("Starting robust FCM token request...");
+	
+	// Check FCM support first
+	const supportStatus = getFCMSupportStatus();
+	if (!supportStatus.supported) {
+		console.log("Robust FCM: FCM not supported in this environment:", supportStatus.reasons.join(", "));
+		return null;
+	}
+	
+	// Strategy 1: Try simple token request first
+	try {
+		const token = await requestForTokenSimple(vapidKey, uid, role);
+		if (token) {
+			console.log("Robust FCM: Simple token request succeeded");
+			return token;
+		}
+	} catch (error) {
+		console.warn("Robust FCM: Simple token request failed:", error);
+	}
+
+	// Strategy 2: Try full token request
+	try {
+		const token = await requestForToken(vapidKey, uid, role);
+		if (token) {
+			console.log("Robust FCM: Full token request succeeded");
+			return token;
+		}
+	} catch (error) {
+		console.warn("Robust FCM: Full token request failed:", error);
+	}
+
+	// Strategy 3: Try with a delay and retry
+	try {
+		console.log("Robust FCM: Trying delayed retry...");
+		await new Promise(resolve => setTimeout(resolve, 3000));
+		const token = await requestForTokenSimple(vapidKey, uid, role);
+		if (token) {
+			console.log("Robust FCM: Delayed retry succeeded");
+			return token;
+		}
+	} catch (error) {
+		console.warn("Robust FCM: Delayed retry failed:", error);
+	}
+
+	console.log("Robust FCM: All strategies failed - notifications may not be available");
+	return null;
+}
+
+/**
  * Simple FCM token request without service worker dependency
  */
 export async function requestForTokenSimple(
@@ -56,14 +112,14 @@ export async function requestForTokenSimple(
 	
 	const messaging = await getMessagingInstance();
 	if (!messaging) {
-		console.error("Firebase messaging not supported in this environment");
+		console.warn("Firebase messaging not supported in this environment");
 		return null;
 	}
 
 	try {
 		// Check if we're in a secure context
 		if (typeof window !== "undefined" && !window.isSecureContext) {
-			console.error("FCM requires a secure context (HTTPS)");
+			console.warn("FCM requires a secure context (HTTPS)");
 			return null;
 		}
 
@@ -97,10 +153,10 @@ export async function requestForTokenSimple(
 					if (result.success) {
 						console.log("FCM token stored in database successfully");
 					} else {
-						console.error("Failed to store FCM token in database:", result.error);
+						console.warn("Failed to store FCM token in database:", result.error);
 					}
 				} catch (error) {
-					console.error("Error storing FCM token in database:", error);
+					console.warn("Error storing FCM token in database:", error);
 				}
 			}
 
@@ -110,7 +166,7 @@ export async function requestForTokenSimple(
 			return null;
 		}
 	} catch (err) {
-		console.error("Error getting FCM token:", err);
+		console.warn("Error getting FCM token:", err);
 		return null;
 	}
 }
@@ -127,14 +183,14 @@ export async function requestForToken(
 	
 	const messaging = await getMessagingInstance();
 	if (!messaging) {
-		console.error("Firebase messaging not supported in this environment");
+		console.warn("Firebase messaging not supported in this environment");
 		return null;
 	}
 
 	try {
 		// Check if we're in a secure context (required for notifications and service workers)
 		if (typeof window !== "undefined" && !window.isSecureContext) {
-			console.error("FCM requires a secure context (HTTPS). Service workers and push notifications don't work on HTTP.");
+			console.warn("FCM requires a secure context (HTTPS). Service workers and push notifications don't work on HTTP.");
 			return null;
 		}
 
@@ -175,7 +231,7 @@ export async function requestForToken(
 		try {
 			token = await fbGetToken(messaging, { vapidKey });
 		} catch (tokenError) {
-			console.error("Direct token request failed:", tokenError);
+			console.warn("Direct token request failed:", tokenError);
 			
 			// Try with service worker registration as fallback
 			console.log("Trying with service worker registration...");
@@ -184,8 +240,9 @@ export async function requestForToken(
 				await new Promise(resolve => setTimeout(resolve, 2000));
 				token = await fbGetToken(messaging, { vapidKey });
 			} catch (swError) {
-				console.error("Service worker registration also failed:", swError);
-				throw new Error("Unable to get FCM token. Service worker registration failed and direct token request failed.");
+				console.warn("Service worker registration also failed:", swError);
+				console.log("FCM token request failed - this may be due to browser permissions or security settings. Notifications may not be available.");
+				return null; // Return null instead of throwing error
 			}
 		}
 
@@ -211,10 +268,10 @@ export async function requestForToken(
 					if (result.success) {
 						console.log("FCM token stored in database successfully");
 					} else {
-						console.error("Failed to store FCM token in database:", result.error);
+						console.warn("Failed to store FCM token in database:", result.error);
 					}
 				} catch (error) {
-					console.error("Error storing FCM token in database:", error);
+					console.warn("Error storing FCM token in database:", error);
 				}
 			}
 
@@ -226,8 +283,8 @@ export async function requestForToken(
 			return null;
 		}
 	} catch (err) {
-		console.error("Error getting FCM token:", err);
-		console.error("Error details:", {
+		console.warn("Error getting FCM token:", err);
+		console.warn("Error details:", {
 			name: err instanceof Error ? err.name : "Unknown",
 			message: err instanceof Error ? err.message : String(err),
 			stack: err instanceof Error ? err.stack : undefined
@@ -314,6 +371,52 @@ export function isFCMTokenValid(): boolean {
 	return tokenAge < maxAge;
 }
 
+// Helper function to check if FCM is supported in the current environment
+export function isFCMSupported(): boolean {
+	if (typeof window === "undefined") return false;
+	
+	// Check for required APIs
+	const hasServiceWorker = "serviceWorker" in navigator;
+	const hasNotification = "Notification" in window;
+	const hasPushManager = "PushManager" in window;
+	const isSecureContext = window.isSecureContext;
+	
+	return hasServiceWorker && hasNotification && hasPushManager && isSecureContext;
+}
+
+// Helper function to get FCM support status with details
+export function getFCMSupportStatus(): {
+	supported: boolean;
+	reasons: string[];
+} {
+	if (typeof window === "undefined") {
+		return { supported: false, reasons: ["Not in browser environment"] };
+	}
+	
+	const reasons: string[] = [];
+	
+	if (!("serviceWorker" in navigator)) {
+		reasons.push("Service workers not supported");
+	}
+	
+	if (!("Notification" in window)) {
+		reasons.push("Notifications not supported");
+	}
+	
+	if (!("PushManager" in window)) {
+		reasons.push("Push messaging not supported");
+	}
+	
+	if (!window.isSecureContext) {
+		reasons.push("Not in secure context (HTTPS required)");
+	}
+	
+	return {
+		supported: reasons.length === 0,
+		reasons
+	};
+}
+
 // Helper function to ensure service worker is registered
 export async function ensureServiceWorkerRegistered(): Promise<void> {
 	if (typeof window === "undefined") return;
@@ -337,14 +440,14 @@ export async function ensureServiceWorkerRegistered(): Promise<void> {
 					await navigator.serviceWorker.ready;
 					console.log("Service worker registered and activated successfully");
 				} catch (swError) {
-					console.error("Service worker registration failed:", swError);
+					console.warn("Service worker registration failed:", swError);
 					// Try alternative registration approach
 					try {
 						registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
 						await navigator.serviceWorker.ready;
 						console.log("Service worker registered with alternative approach");
 					} catch (altError) {
-						console.error("Alternative service worker registration also failed:", altError);
+						console.warn("Alternative service worker registration also failed:", altError);
 						throw altError;
 					}
 				}
@@ -358,7 +461,7 @@ export async function ensureServiceWorkerRegistered(): Promise<void> {
 			throw new Error("Service workers not supported");
 		}
 	} catch (error) {
-		console.error("Error registering service worker:", error);
+		console.warn("Error registering service worker:", error);
 		throw error;
 	}
 }
@@ -424,7 +527,7 @@ export async function setupForegroundMessageHandling(): Promise<void> {
 						}, 5000);
 
 					} catch (notificationError) {
-						console.error("Error creating foreground notification:", notificationError);
+						console.warn("Error creating foreground notification:", notificationError);
 					}
 				} else {
 					console.warn("Notification permission not granted, cannot show foreground notification");
@@ -436,6 +539,6 @@ export async function setupForegroundMessageHandling(): Promise<void> {
 
 		console.log("Foreground message handling set up successfully");
 	} catch (error) {
-		console.error("Error setting up foreground message handling:", error);
+		console.warn("Error setting up foreground message handling:", error);
 	}
 }

@@ -951,10 +951,18 @@ export default function StaffManagementPage() {
 															</AlertDialogTitle>
 															<AlertDialogDescription>
 																Are you sure you want to delete{" "}
-																{member.firstName} {member.lastName}? This
+																<strong>{member.firstName} {member.lastName}</strong>? This
 																action cannot be undone and will permanently
 																remove their account.
 															</AlertDialogDescription>
+															<div className="mt-2 text-sm text-muted-foreground">
+																<ul className="list-disc list-inside space-y-1">
+																	<li>Staff account and authentication</li>
+																	<li>Personal information and contact details</li>
+																	<li>Assigned permissions and access rights</li>
+																	<li>Work history and records</li>
+																</ul>
+															</div>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
 															<AlertDialogCancel>Cancel</AlertDialogCancel>

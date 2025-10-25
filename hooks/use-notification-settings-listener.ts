@@ -33,8 +33,8 @@ export function useNotificationSettingsListener() {
         }
         setError(null);
       } catch (err) {
-        console.error('Error loading notification settings:', err);
-        setError('Failed to load notification settings');
+        console.warn('Error loading notification settings:', err);
+        console.log('Using default notification settings due to loading error');
         // Use default settings on error
         setSettings({
           emailNotifications: true,

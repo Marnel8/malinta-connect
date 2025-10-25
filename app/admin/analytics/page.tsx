@@ -33,7 +33,21 @@ import {
   Percent,
   RefreshCw,
   Loader2,
+  Shield,
 } from "lucide-react"
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts"
 
 export default function AdminAnalyticsPage() {
   const { t } = useLanguage()
@@ -44,6 +58,13 @@ export default function AdminAnalyticsPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState("30")
+
+  // Color schemes for charts
+  const COLORS = {
+    certificate: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'],
+    appointment: ['#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6'],
+    blotter: ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6']
+  }
 
   // Load analytics data on component mount
   useEffect(() => {
@@ -93,7 +114,8 @@ export default function AdminAnalyticsPage() {
       Users,
       FileText,
       Calendar,
-      MessageSquare
+      MessageSquare,
+      Shield
     }
     return iconMap[iconName] || Activity
   }
@@ -234,6 +256,12 @@ export default function AdminAnalyticsPage() {
                   iconColor: "text-red-600",
                   bgColor: "bg-red-50"
                 }
+              case "Total Officials":
+                return {
+                  borderColor: "border-l-orange-500",
+                  iconColor: "text-orange-600",
+                  bgColor: "bg-orange-50"
+                }
               default:
                 return {
                   borderColor: "border-l-gray-500",
@@ -281,31 +309,37 @@ export default function AdminAnalyticsPage() {
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Certificate Requests</CardTitle>
-            <CardDescription>Distribution by type and status</CardDescription>
+            <CardDescription>Distribution by type</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {analyticsData.certificates.breakdown.length > 0 ? (
-                analyticsData.certificates.breakdown.map((item, index) => (
-                  <div key={index}>
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span>{item.type}</span>
-                      <span className="font-medium">{item.count}</span>
-                    </div>
-                    <div className="h-2 bg-secondary rounded-full">
-                      <div
-                        className="h-2 bg-primary rounded-full"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No certificate data available
-                </p>
-              )}
-            </div>
+            {analyticsData.certificates.breakdown.length > 0 ? (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={analyticsData.certificates.breakdown}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ type, percentage }) => `${type}: ${percentage}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {analyticsData.certificates.breakdown.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS.certificate[index % COLORS.certificate.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No certificate data available
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -313,31 +347,38 @@ export default function AdminAnalyticsPage() {
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Appointments</CardTitle>
-            <CardDescription>Distribution by type and status</CardDescription>
+            <CardDescription>Distribution by status</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {analyticsData.appointments.breakdown.length > 0 ? (
-                analyticsData.appointments.breakdown.map((item, index) => (
-                  <div key={index}>
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span>{item.type}</span>
-                      <span className="font-medium">{item.count}</span>
-                    </div>
-                    <div className="h-2 bg-secondary rounded-full">
-                      <div
-                        className="h-2 bg-primary rounded-full"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No appointment data available
-                </p>
-              )}
-            </div>
+            {analyticsData.appointments.status.length > 0 ? (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={analyticsData.appointments.status}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ status, count }) => `${status}: ${count}`}
+                      outerRadius={80}
+                      innerRadius={40}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {analyticsData.appointments.status.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS.appointment[index % COLORS.appointment.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No appointment data available
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -345,31 +386,36 @@ export default function AdminAnalyticsPage() {
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Blotter Reports</CardTitle>
-            <CardDescription>Distribution by type and status</CardDescription>
+            <CardDescription>Distribution by type</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {analyticsData.blotter.breakdown.length > 0 ? (
-                analyticsData.blotter.breakdown.map((item, index) => (
-                  <div key={index}>
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span>{item.type}</span>
-                      <span className="font-medium">{item.count}</span>
-                    </div>
-                    <div className="h-2 bg-secondary rounded-full">
-                      <div
-                        className="h-2 bg-primary rounded-full"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No blotter data available
-                </p>
-              )}
-            </div>
+            {analyticsData.blotter.breakdown.length > 0 ? (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analyticsData.blotter.breakdown}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="type" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      fontSize={12}
+                    />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar 
+                      dataKey="count" 
+                      fill="#EF4444"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No blotter data available
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

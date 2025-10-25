@@ -34,8 +34,8 @@ export function useFCMToken() {
 			try {
 				await ensureServiceWorkerRegistered();
 			} catch (error) {
-				console.error("Failed to initialize service worker:", error);
-				setError("Failed to initialize notifications");
+				console.warn("Failed to initialize service worker:", error);
+				console.log("Service worker initialization failed - notifications may not be available");
 			}
 		};
 

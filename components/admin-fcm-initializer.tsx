@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useFCMToken } from '@/hooks/use-fcm-token';
 import { useAdminNotificationSettingsListener } from '@/hooks/use-admin-notification-settings-listener';
-import { requestForToken, requestForTokenSimple } from '@/app/firebase/firebase';
+import { requestForTokenRobust } from '@/app/firebase/firebase';
 
 export function AdminFCMInitializer({ children }: { children: React.ReactNode }) {
 	const { user, userProfile, loading } = useAuth();
@@ -27,28 +27,29 @@ export function AdminFCMInitializer({ children }: { children: React.ReactNode })
 			const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 			
 			if (!vapidKey) {
-				console.error("VAPID key not configured. Please add NEXT_PUBLIC_FIREBASE_VAPID_KEY to your environment variables.");
+				console.warn("VAPID key not configured. FCM notifications will not be available.");
 				return;
 			}
 
 			console.log("Admin FCM: Requesting token for user:", user.uid, "role:", userProfile.role);
 
-			// Try simple token request first
-			let token = await requestForTokenSimple(vapidKey, user.uid, userProfile.role);
-			
-			// If simple request fails, try the full request
-			if (!token) {
-				console.log("Simple token request failed, trying full request...");
-				token = await requestForToken(vapidKey, user.uid, userProfile.role);
-			}
-			if (token) {
-				console.log("Admin FCM: Token received and stored successfully");
-				// Update the token in the hook
-				if (user?.uid && userProfile?.role) {
-					updateToken(token, user.uid, userProfile.role);
+			try {
+				// Use robust token request with multiple fallback strategies
+				const token = await requestForTokenRobust(vapidKey, user.uid, userProfile.role);
+				
+				if (token) {
+					console.log("Admin FCM: Token received and stored successfully");
+					// Update the token in the hook
+					if (user?.uid && userProfile?.role) {
+						updateToken(token, user.uid, userProfile.role);
+					}
+				} else {
+					console.log("Admin FCM: Token request failed - notifications may not be available due to browser permissions or security settings");
 				}
-			} else {
-				console.log("Admin FCM: Token request failed or permission denied");
+			} catch (error) {
+				// Handle any unexpected errors gracefully
+				console.warn("Admin FCM: Unexpected error during token request:", error);
+				console.log("Admin FCM: Notifications may not be available due to browser restrictions");
 			}
 		};
 

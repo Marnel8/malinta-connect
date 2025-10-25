@@ -6,7 +6,7 @@ import { uploadToCloudinary, deleteFromCloudinary } from "../../cloudinary/cloud
 export interface Official {
   id: string;
   name: string;
-  position: "captain" | "councilor" | "secretary" | "treasurer" | "skChairperson";
+  position: "captain" | "councilor" | "secretary" | "treasurer" | "clerk" | "skChairperson";
   term: string;
   birthday: string;
   email: string;

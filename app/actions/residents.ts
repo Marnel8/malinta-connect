@@ -1,6 +1,6 @@
 "use server";
 
-import { adminDatabase } from "@/app/firebase/admin";
+import { adminDatabase, adminAuth } from "@/app/firebase/admin";
 
 export interface ResidentData {
 	uid: string;
@@ -56,6 +56,9 @@ export interface ResidentListItem {
 	verificationStatus: "pending" | "verified" | "rejected";
 	registeredOn: string;
 	profileImageUrl?: string;
+	age?: number;
+	purok?: string;
+	gender?: string;
 }
 
 export async function getResidentsAction(): Promise<{
@@ -76,21 +79,45 @@ export async function getResidentsAction(): Promise<{
 
 		for (const uid in residentsData) {
 			const resident: ResidentData = residentsData[uid];
+			
+			// Calculate age from date of birth
+			const calculateAge = (dateOfBirth: string): number => {
+				const today = new Date();
+				const birthDate = new Date(dateOfBirth);
+				let age = today.getFullYear() - birthDate.getFullYear();
+				const monthDiff = today.getMonth() - birthDate.getMonth();
+				if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+					age--;
+				}
+				return age;
+			};
+
+			const fullName = `${resident.personalInfo.firstName} ${
+				resident.personalInfo.middleName
+					? resident.personalInfo.middleName + " "
+					: ""
+			}${resident.personalInfo.lastName}${
+				resident.personalInfo.suffix ? " " + resident.personalInfo.suffix : ""
+			}`;
+
+			// Clean the name by removing "N/A" parts
+			const cleanName = fullName
+				.replace(/\bn\/a\b/gi, '') // Remove standalone "N/A" (case-insensitive)
+				.replace(/\s+/g, ' ') // Replace multiple spaces with single space
+				.trim(); // Remove leading/trailing spaces
+
 			residents.push({
 				uid,
-				name: `${resident.personalInfo.firstName} ${
-					resident.personalInfo.middleName
-						? resident.personalInfo.middleName + " "
-						: ""
-				}${resident.personalInfo.lastName}${
-					resident.personalInfo.suffix ? " " + resident.personalInfo.suffix : ""
-				}`,
+				name: cleanName,
 				email: resident.contactInfo.email,
 				phone: resident.contactInfo.phoneNumber,
 				address: resident.addressInfo.fullAddress,
 				verificationStatus: resident.verification.status,
 				registeredOn: new Date(resident.registrationDate).toLocaleDateString(),
 				profileImageUrl: resident.verification.selfiePhotoUrl,
+				age: calculateAge(resident.personalInfo.dateOfBirth),
+				purok: resident.addressInfo.purok,
+				gender: resident.personalInfo.gender,
 			});
 		}
 
@@ -203,14 +230,19 @@ export async function deleteResidentAction(uid: string): Promise<{
 	error?: string;
 }> {
 	try {
+		// Delete from Firebase Auth first
+		try {
+			await adminAuth.deleteUser(uid);
+		} catch (authError) {
+			console.warn("User not found in Firebase Auth:", authError);
+			// Continue with database cleanup even if user doesn't exist in auth
+		}
+
 		// Delete from residents
 		await adminDatabase.ref(`residents/${uid}`).remove();
 
 		// Delete from users
 		await adminDatabase.ref(`users/${uid}`).remove();
-
-		// Note: In a real app, you might also want to delete from Firebase Auth
-		// This would require the Firebase Admin SDK auth module
 
 		return { success: true };
 	} catch (error) {
@@ -249,10 +281,16 @@ export async function searchResidentsAction(
 				resident.personalInfo.suffix ? " " + resident.personalInfo.suffix : ""
 			}`;
 
+			// Clean the name by removing "N/A" parts
+			const cleanName = fullName
+				.replace(/\bn\/a\b/gi, '') // Remove standalone "N/A" (case-insensitive)
+				.replace(/\s+/g, ' ') // Replace multiple spaces with single space
+				.trim(); // Remove leading/trailing spaces
+
 			// Apply search filter
 			if (query && query.trim() !== "") {
 				const searchTerm = query.toLowerCase();
-				const matchesName = fullName.toLowerCase().includes(searchTerm);
+				const matchesName = cleanName.toLowerCase().includes(searchTerm);
 				const matchesEmail = resident.contactInfo.email
 					.toLowerCase()
 					.includes(searchTerm);
@@ -277,15 +315,30 @@ export async function searchResidentsAction(
 				continue;
 			}
 
+			// Calculate age from date of birth
+			const calculateAge = (dateOfBirth: string): number => {
+				const today = new Date();
+				const birthDate = new Date(dateOfBirth);
+				let age = today.getFullYear() - birthDate.getFullYear();
+				const monthDiff = today.getMonth() - birthDate.getMonth();
+				if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+					age--;
+				}
+				return age;
+			};
+
 			residents.push({
 				uid,
-				name: fullName,
+				name: cleanName,
 				email: resident.contactInfo.email,
 				phone: resident.contactInfo.phoneNumber,
 				address: resident.addressInfo.fullAddress,
 				verificationStatus: resident.verification.status,
 				registeredOn: new Date(resident.registrationDate).toLocaleDateString(),
 				profileImageUrl: resident.verification.selfiePhotoUrl,
+				age: calculateAge(resident.personalInfo.dateOfBirth),
+				purok: resident.addressInfo.purok,
+				gender: resident.personalInfo.gender,
 			});
 		}
 

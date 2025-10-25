@@ -61,18 +61,20 @@ export interface AnalyticsData {
 // Get overview statistics
 export async function getOverviewStats(): Promise<OverviewStats[]> {
   try {
-    const [residentsCount, certificatesCount, appointmentsCount, blotterCount] = await Promise.all([
+    const [residentsCount, certificatesCount, appointmentsCount, blotterCount, officialsCount] = await Promise.all([
       getResidentsCount(),
       getCertificatesCount(),
       getAppointmentsCount(),
-      getBlotterCount()
+      getBlotterCount(),
+      getOfficialsCount()
     ])
 
-    const [residentsChange, certificatesChange, appointmentsChange, blotterChange] = await Promise.all([
+    const [residentsChange, certificatesChange, appointmentsChange, blotterChange, officialsChange] = await Promise.all([
       getResidentsChange(),
       getCertificatesChange(),
       getAppointmentsChange(),
-      getBlotterChange()
+      getBlotterChange(),
+      getOfficialsChange()
     ])
 
     return [
@@ -107,6 +109,14 @@ export async function getOverviewStats(): Promise<OverviewStats[]> {
         trend: blotterChange >= 0 ? "up" : "down",
         description: "vs. last month",
         icon: "MessageSquare"
+      },
+      {
+        title: "Total Officials",
+        value: officialsCount.toString(),
+        change: `${officialsChange >= 0 ? '+' : ''}${officialsChange}%`,
+        trend: officialsChange >= 0 ? "up" : "down",
+        description: "vs. last month",
+        icon: "Shield"
       }
     ]
   } catch (error) {
@@ -320,6 +330,16 @@ async function getBlotterCount(): Promise<number> {
   }
 }
 
+async function getOfficialsCount(): Promise<number> {
+  try {
+    const officialsRef = adminDatabase.ref("officials")
+    const snapshot = await officialsRef.once("value")
+    return snapshot.exists() ? Object.keys(snapshot.val()).length : 0
+  } catch (error) {
+    return 0
+  }
+}
+
 // Calculate month-over-month changes (simplified - returns random change for demo)
 async function getResidentsChange(): Promise<number> {
   // In a real implementation, you would compare current month vs previous month
@@ -335,5 +355,9 @@ async function getAppointmentsChange(): Promise<number> {
 }
 
 async function getBlotterChange(): Promise<number> {
+  return Math.floor(Math.random() * 20) - 10
+}
+
+async function getOfficialsChange(): Promise<number> {
   return Math.floor(Math.random() * 20) - 10
 }

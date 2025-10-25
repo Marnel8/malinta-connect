@@ -18,8 +18,8 @@ export function useNotificationSettings() {
           setSettings(allSettings.notifications);
         }
       } catch (err) {
-        console.error('Error loading notification settings:', err);
-        setError('Failed to load notification settings');
+        console.warn('Error loading notification settings:', err);
+        console.log('Notification settings loading failed - using defaults');
       } finally {
         setLoading(false);
       }
@@ -36,8 +36,8 @@ export function useNotificationSettings() {
         setSettings(allSettings.notifications);
       }
     } catch (err) {
-      console.error('Error refreshing notification settings:', err);
-      setError('Failed to refresh notification settings');
+      console.warn('Error refreshing notification settings:', err);
+      console.log('Notification settings refresh failed');
     } finally {
       setLoading(false);
     }

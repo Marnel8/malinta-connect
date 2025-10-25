@@ -19,7 +19,24 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Users, UserPlus, Mail, Phone, MapPin, CheckCircle, AlertCircle, Eye, Loader2 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Search, Users, UserPlus, Mail, Phone, MapPin, CheckCircle, AlertCircle, Eye, Loader2, MoreHorizontal, Trash2, UserCheck, UserX } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
@@ -28,6 +45,8 @@ import {
   getResidentsAction, 
   getResidentDetailsAction, 
   searchResidentsAction,
+  deleteResidentAction,
+  updateResidentStatusAction,
   ResidentListItem,
   ResidentData
 } from "@/app/actions/residents"
@@ -48,6 +67,13 @@ export default function AdminResidentsPage() {
     resident: ResidentData | null
   }>({ isOpen: false, resident: null })
   const [isLoadingResident, setIsLoadingResident] = useState(false)
+  
+  // Delete confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean
+    resident: ResidentListItem | null
+  }>({ isOpen: false, resident: null })
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const loadResidents = async () => {
     setIsLoading(true)
@@ -133,6 +159,68 @@ export default function AdminResidentsPage() {
 
   const handleVerificationUpdate = () => {
     loadResidents() // Reload the residents list
+  }
+
+  const handleDeleteResident = async (resident: ResidentListItem) => {
+    setDeleteDialog({ isOpen: true, resident })
+  }
+
+  const confirmDeleteResident = async () => {
+    if (!deleteDialog.resident) return
+
+    setIsDeleting(true)
+    try {
+      const result = await deleteResidentAction(deleteDialog.resident.uid)
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Resident deleted successfully",
+        })
+        loadResidents() // Reload the residents list
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete resident",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting resident:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting resident",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+      setDeleteDialog({ isOpen: false, resident: null })
+    }
+  }
+
+  const handleStatusUpdate = async (uid: string, status: "active" | "inactive") => {
+    try {
+      const result = await updateResidentStatusAction(uid, status)
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Resident status updated to ${status}`,
+        })
+        loadResidents() // Reload the residents list
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to update resident status",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error updating resident status:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while updating status",
+        variant: "destructive",
+      })
+    }
   }
 
   // Load residents on component mount
@@ -273,7 +361,10 @@ export default function AdminResidentsPage() {
                       </Avatar>
                       <div>
                         <div className="font-medium">{resident.name}</div>
-                        <div className="text-sm text-muted-foreground">{resident.uid}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {resident.age !== undefined && resident.age > 0 ? `${resident.age} years old` : 'N/A'}
+                          {resident.gender && ` • ${resident.gender.charAt(0).toUpperCase() + resident.gender.slice(1)}`}
+                        </div>
                       </div>
                     </div>
                   </TableCell>
@@ -298,37 +389,52 @@ export default function AdminResidentsPage() {
                   <TableCell>{getStatusBadge(resident.verificationStatus)}</TableCell>
                   <TableCell>{resident.registeredOn}</TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => openVerificationModal(resident.uid)}
-                        disabled={isLoadingResident}
-                      >
-                        {isLoadingResident ? (
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        ) : (
-                          <Eye className="mr-1 h-3 w-3" />
-                        )}
-                        View Details
-                      </Button>
-                      {resident.verificationStatus === "pending" && (
-                        <Button 
-                          size="sm"
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
                           onClick={() => openVerificationModal(resident.uid)}
                           disabled={isLoadingResident}
                         >
-                          {isLoadingResident ? (
-                            <>
-                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                              Loading...
-                            </>
-                          ) : (
-                            "Review"
-                          )}
-                        </Button>
-                      )}
-                    </div>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        {resident.verificationStatus === "pending" && (
+                          <DropdownMenuItem
+                            onClick={() => openVerificationModal(resident.uid)}
+                            disabled={isLoadingResident}
+                          >
+                            <UserCheck className="mr-2 h-4 w-4" />
+                            Review Verification
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleStatusUpdate(resident.uid, "active")}
+                        >
+                          <UserCheck className="mr-2 h-4 w-4" />
+                          Activate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleStatusUpdate(resident.uid, "inactive")}
+                        >
+                          <UserX className="mr-2 h-4 w-4" />
+                          Deactivate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteResident(resident)}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Resident
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
@@ -344,6 +450,44 @@ export default function AdminResidentsPage() {
         resident={verificationModal.resident}
         onVerificationUpdate={handleVerificationUpdate}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && setDeleteDialog({ isOpen: false, resident: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Resident</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteDialog.resident?.name}</strong>? 
+              This action cannot be undone and will permanently remove all resident data including:
+            </AlertDialogDescription>
+            <div className="mt-2 text-sm text-muted-foreground">
+              <ul className="list-disc list-inside space-y-1">
+                <li>Personal information</li>
+                <li>Contact details</li>
+                <li>Verification documents</li>
+                <li>Registration history</li>
+              </ul>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteResident}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Resident"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 } 

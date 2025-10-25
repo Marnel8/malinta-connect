@@ -38,15 +38,15 @@ export function useAdminNotificationSettingsListener() {
           }
           setError(null);
         } catch (err) {
-          console.error('Error parsing notification settings:', err);
-          setError('Failed to load notification settings');
+          console.warn('Error parsing notification settings:', err);
+          console.log('Using default notification settings due to parsing error');
         } finally {
           setLoading(false);
         }
       },
       (error) => {
-        console.error('Error listening to notification settings:', error);
-        setError('Failed to listen to notification settings');
+        console.warn('Error listening to notification settings:', error);
+        console.log('Notification settings listener failed - using default settings');
         setLoading(false);
       }
     );

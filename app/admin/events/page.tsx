@@ -45,6 +45,21 @@ import {
 	type CreateEventData,
 } from "@/app/actions/events";
 
+// Utility function to format date as "Oct 15, 2025"
+const formatEventDate = (dateString: string): string => {
+	try {
+		const date = new Date(dateString);
+		return date.toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	} catch (error) {
+		// If date parsing fails, return the original string
+		return dateString;
+	}
+};
+
 export default function EventsManagementPage() {
 	const { t } = useLanguage();
 	const { toast } = useToast();
@@ -426,7 +441,7 @@ export default function EventsManagementPage() {
 											<div className="space-y-1 mt-4">
 												<div className="flex items-center text-sm">
 													<Calendar className="mr-2 h-4 w-4 text-primary" />
-													<span>{event.date}</span>
+													<span>{formatEventDate(event.date)}</span>
 												</div>
 												<div className="flex items-center text-sm">
 													<Clock className="mr-2 h-4 w-4 text-primary" />
@@ -751,7 +766,7 @@ export default function EventsManagementPage() {
 								<div className="flex items-center">
 									<Calendar className="mr-2 h-4 w-4 text-primary" />
 									<span className="font-medium">{t("events.date")}:</span>
-									<span className="ml-2">{currentEvent.date}</span>
+									<span className="ml-2">{formatEventDate(currentEvent.date)}</span>
 								</div>
 								<div className="flex items-center">
 									<Clock className="mr-2 h-4 w-4 text-primary" />

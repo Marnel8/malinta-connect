@@ -10,7 +10,6 @@ interface FCMInitializerProps {
 
 export function FCMInitializer({ children }: FCMInitializerProps) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { systemNotificationsEnabled, loading: settingsLoading } = useNotificationSettingsListener();
 
   useEffect(() => {
@@ -34,9 +33,9 @@ export function FCMInitializer({ children }: FCMInitializerProps) {
         console.log("FCM initialization completed successfully");
         setIsInitialized(true);
       } catch (error) {
-        console.error("Failed to initialize FCM:", error);
-        setError("Failed to initialize notifications. Some features may not work properly.");
-        // Still set as initialized to not block the app
+        console.warn("Failed to initialize FCM:", error);
+        console.log("FCM initialization failed - notifications may not be available due to browser permissions or security settings");
+        // Don't show error to user, just log it and continue
         setIsInitialized(true);
       }
     };
@@ -58,18 +57,5 @@ export function FCMInitializer({ children }: FCMInitializerProps) {
     );
   }
 
-  return (
-    <>
-      {children}
-      {error && (
-        <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded shadow-lg max-w-sm">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  return <>{children}</>;
 }
