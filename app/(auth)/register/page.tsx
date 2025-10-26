@@ -57,9 +57,9 @@ const registrationSchema = z
 	.object({
 		// Personal Information
 		firstName: z.string().min(2, "First name must be at least 2 characters"),
-		middleName: z.string().optional(),
+		middleName: z.string(),
 		lastName: z.string().min(2, "Last name must be at least 2 characters"),
-		suffix: z.string().optional(),
+		suffix: z.string(),
 		dateOfBirth: z.string().min(1, "Date of birth is required"),
 		placeOfBirth: z.string().min(2, "Place of birth is required"),
 		gender: z.enum(["male", "female", "other"], {
@@ -75,7 +75,7 @@ const registrationSchema = z
 		// Contact Information
 		email: z.string().email("Please enter a valid email address"),
 		phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
-		alternateNumber: z.string().optional(),
+		alternateNumber: z.string(),
 
 		// Address Information
 		houseNumber: z.string().min(1, "House number is required"),
@@ -328,10 +328,7 @@ export default function RegisterPage() {
 	const { toast } = useToast();
 
 	const form = useForm<RegistrationData>({
-		// Explicitly type resolver to align generics
-		resolver: zodResolver(
-			registrationSchema
-		) as unknown as import("react-hook-form").Resolver<RegistrationData>,
+		resolver: zodResolver(registrationSchema) as any,
 		defaultValues: {
 			// Personal Information
 			firstName: "",
@@ -340,8 +337,8 @@ export default function RegisterPage() {
 			suffix: "",
 			dateOfBirth: "",
 			placeOfBirth: "",
-			gender: undefined as unknown as RegistrationData["gender"],
-			civilStatus: undefined as unknown as RegistrationData["civilStatus"],
+			gender: undefined as any,
+			civilStatus: undefined as any,
 
 			// Contact Information
 			email: "",
@@ -368,20 +365,91 @@ export default function RegisterPage() {
 
 			// Terms and Conditions
 			agreeToTerms: false,
-		} as RegistrationData,
+		},
+		mode: "onChange",
 	});
 
 	const totalSteps = 5;
 	const progress = (currentStep / totalSteps) * 100;
 
-	const nextStep = () => {
+	const nextStep = async () => {
 		if (currentStep < totalSteps) {
+			// Debug logging
+			console.log("=== NEXT STEP ===");
+			console.log("Current Step:", currentStep);
+			console.log("Form Values:", form.getValues());
+			console.log("firstName value:", form.getValues("firstName"));
+			console.log("email value:", form.getValues("email"));
+			
+			// Special validation for photo step
+			if (currentStep === 4) {
+				if (!idPhoto || !selfiePhoto) {
+					toast({
+						title: "Photo Verification Required",
+						description: "Please provide both ID photo and selfie photo before proceeding to account setup.",
+						variant: "destructive",
+					});
+					return;
+				}
+			}
+			
+			// Validate current step before proceeding
+			const fieldsToValidate = getFieldsForStep(currentStep);
+			const isValid = await form.trigger(fieldsToValidate);
+			
+			if (!isValid) {
+				const errors = form.formState.errors;
+				const stepErrors: string[] = [];
+				
+				for (const field of fieldsToValidate) {
+					const error = errors[field];
+					if (error && error.message) {
+						stepErrors.push(error.message);
+					}
+				}
+				
+				const errorMessage = stepErrors.length > 0 
+					? stepErrors[0] 
+					: "Please complete all required fields before proceeding.";
+				
+				toast({
+					title: "Incomplete Information",
+					description: errorMessage,
+					variant: "destructive",
+				});
+				return;
+			}
+			
 			setCurrentStep(currentStep + 1);
+		}
+	};
+
+	const getFieldsForStep = (step: number): (keyof RegistrationData)[] => {
+		switch (step) {
+			case 1:
+				return ['firstName', 'lastName', 'dateOfBirth', 'placeOfBirth', 'gender', 'civilStatus'];
+			case 2:
+				return ['email', 'phoneNumber'];
+			case 3:
+				return ['houseNumber', 'street', 'purok', 'emergencyContactName', 'emergencyContactNumber', 'emergencyContactRelation'];
+			case 4:
+				return []; // Photo step - handled separately
+			case 5:
+				return ['password', 'confirmPassword', 'agreeToTerms'];
+			default:
+				return [];
 		}
 	};
 
 	const prevStep = () => {
 		if (currentStep > 1) {
+			// Debug logging
+			console.log("=== PREV STEP ===");
+			console.log("Current Step:", currentStep);
+			console.log("Form Values:", form.getValues());
+			console.log("firstName value:", form.getValues("firstName"));
+			console.log("email value:", form.getValues("email"));
+			
 			setCurrentStep(currentStep - 1);
 		}
 	};
@@ -411,10 +479,29 @@ export default function RegisterPage() {
 	};
 
 	const onSubmit = async (data: RegistrationData) => {
-		if (!idPhoto || !selfiePhoto) {
+		// Check for validation errors first
+		const isValid = await form.trigger();
+		if (!isValid) {
+			const errors = form.formState.errors;
+			const firstError = Object.values(errors)[0];
+			const errorMessage = firstError?.message || "Please check all required fields and try again.";
+			
 			toast({
-				title: "Missing Photos",
-				description: "Please provide both ID photo and selfie photo.",
+				title: "Form Validation Failed",
+				description: errorMessage,
+				variant: "destructive",
+			});
+			return;
+		}
+
+		if (!idPhoto || !selfiePhoto) {
+			const missingPhotos = [];
+			if (!idPhoto) missingPhotos.push("ID photo");
+			if (!selfiePhoto) missingPhotos.push("selfie photo");
+			
+			toast({
+				title: "Photo Verification Required",
+				description: `Please provide ${missingPhotos.join(" and ")} to complete your registration.`,
 				variant: "destructive",
 			});
 			return;
@@ -477,8 +564,8 @@ export default function RegisterPage() {
 
 			console.log("Registration successful");
 			toast({
-				title: "Registration Successful!",
-				description: "Your account has been created. You can now sign in.",
+				title: "Account Created Successfully!",
+				description: `Welcome ${data.firstName}! Your account has been created and is pending verification. You can now sign in.`,
 			});
 
 			router.push("/login?registered=true");
@@ -515,10 +602,13 @@ export default function RegisterPage() {
 	};
 
 	const renderStepContent = () => {
+		// Force complete unmounting of form fields between steps
+		const stepKey = `step-${currentStep}`;
+		
 		switch (currentStep) {
 			case 1:
 				return (
-					<div className="space-y-4">
+					<div key={stepKey} className="space-y-4">
 						<div className="text-center mb-6">
 							<h3 className="text-lg font-semibold">Personal Information</h3>
 							<p className="text-sm text-muted-foreground">
@@ -528,21 +618,28 @@ export default function RegisterPage() {
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="firstName"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>First Name *</FormLabel>
-										<FormControl>
-											<Input placeholder="Juan" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
+								render={({ field }) => {
+									console.log("firstName field:", field);
+									return (
+										<FormItem>
+											<FormLabel>First Name *</FormLabel>
+											<FormControl>
+												<Input 
+													placeholder="Juan" 
+													{...field} 
+													autoComplete="off"
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									);
+								}}
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="middleName"
 								render={({ field }) => (
 									<FormItem>
@@ -556,7 +653,7 @@ export default function RegisterPage() {
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="lastName"
 								render={({ field }) => (
 									<FormItem>
@@ -570,7 +667,7 @@ export default function RegisterPage() {
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="suffix"
 								render={({ field }) => (
 									<FormItem>
@@ -584,7 +681,7 @@ export default function RegisterPage() {
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="dateOfBirth"
 								render={({ field }) => (
 									<FormItem>
@@ -598,7 +695,7 @@ export default function RegisterPage() {
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="placeOfBirth"
 								render={({ field }) => (
 									<FormItem>
@@ -612,7 +709,7 @@ export default function RegisterPage() {
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="gender"
 								render={({ field }) => (
 									<FormItem>
@@ -638,7 +735,7 @@ export default function RegisterPage() {
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="civilStatus"
 								render={({ field }) => (
 									<FormItem>
@@ -670,7 +767,7 @@ export default function RegisterPage() {
 
 			case 2:
 				return (
-					<div className="space-y-4">
+					<div key={stepKey} className="space-y-4">
 						<div className="text-center mb-6">
 							<h3 className="text-lg font-semibold">Contact Information</h3>
 							<p className="text-sm text-muted-foreground">
@@ -680,32 +777,39 @@ export default function RegisterPage() {
 
 						<div className="space-y-4">
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="email"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Email Address *</FormLabel>
-										<FormControl>
-											<Input
-												type="email"
-												placeholder="juan.delacruz@example.com"
-												{...field}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
+								render={({ field }) => {
+									console.log("email field:", field);
+									return (
+										<FormItem>
+											<FormLabel>Email Address *</FormLabel>
+											<FormControl>
+												<Input
+													type="email"
+													placeholder="juan.delacruz@example.com"
+													{...field}
+													autoComplete="off"
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									);
+								}}
 							/>
 
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="phoneNumber"
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Phone Number *</FormLabel>
 											<FormControl>
-												<Input placeholder="+63 912 345 6789" {...field} />
+												<Input 
+												placeholder="+63 912 345 6789" 
+												{...field}
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -713,13 +817,16 @@ export default function RegisterPage() {
 								/>
 
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="alternateNumber"
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Alternate Number</FormLabel>
 											<FormControl>
-												<Input placeholder="+63 987 654 3210" {...field} />
+												<Input 
+												placeholder="+63 987 654 3210" 
+												{...field}
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -732,7 +839,7 @@ export default function RegisterPage() {
 
 			case 3:
 				return (
-					<div className="space-y-4">
+					<div key={stepKey} className="space-y-4">
 						<div className="text-center mb-6">
 							<h3 className="text-lg font-semibold">Address Information</h3>
 							<p className="text-sm text-muted-foreground">
@@ -743,13 +850,16 @@ export default function RegisterPage() {
 						<div className="space-y-4">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="houseNumber"
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>House Number *</FormLabel>
 											<FormControl>
-												<Input placeholder="123" {...field} />
+												<Input 
+												placeholder="123" 
+												{...field}
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -757,13 +867,16 @@ export default function RegisterPage() {
 								/>
 
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="street"
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Street *</FormLabel>
 											<FormControl>
-												<Input placeholder="Main Street" {...field} />
+												<Input 
+												placeholder="Main Street" 
+												{...field}
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -772,13 +885,16 @@ export default function RegisterPage() {
 							</div>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="purok"
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Purok *</FormLabel>
 										<FormControl>
-											<Input placeholder="Purok 1" {...field} />
+											<Input 
+												placeholder="Purok 1" 
+												{...field}
+											/>
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -787,7 +903,7 @@ export default function RegisterPage() {
 
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="barangay"
 									render={({ field }) => (
 										<FormItem>
@@ -801,7 +917,7 @@ export default function RegisterPage() {
 								/>
 
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="city"
 									render={({ field }) => (
 										<FormItem>
@@ -817,7 +933,7 @@ export default function RegisterPage() {
 
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="province"
 									render={({ field }) => (
 										<FormItem>
@@ -831,7 +947,7 @@ export default function RegisterPage() {
 								/>
 
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="zipCode"
 									render={({ field }) => (
 										<FormItem>
@@ -849,13 +965,16 @@ export default function RegisterPage() {
 								<h4 className="font-medium">Emergency Contact</h4>
 
 								<FormField
-									control={form.control}
+									control={form.control as any}
 									name="emergencyContactName"
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Emergency Contact Name *</FormLabel>
 											<FormControl>
-												<Input placeholder="Maria Dela Cruz" {...field} />
+												<Input 
+													placeholder="Maria Dela Cruz" 
+													{...field}
+												/>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -864,13 +983,16 @@ export default function RegisterPage() {
 
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 									<FormField
-										control={form.control}
+										control={form.control as any}
 										name="emergencyContactNumber"
 										render={({ field }) => (
 											<FormItem>
 												<FormLabel>Emergency Contact Number *</FormLabel>
 												<FormControl>
-													<Input placeholder="+63 912 345 6789" {...field} />
+													<Input 
+												placeholder="+63 912 345 6789" 
+												{...field}
+													/>
 												</FormControl>
 												<FormMessage />
 											</FormItem>
@@ -878,7 +1000,7 @@ export default function RegisterPage() {
 									/>
 
 									<FormField
-										control={form.control}
+										control={form.control as any}
 										name="emergencyContactRelation"
 										render={({ field }) => (
 											<FormItem>
@@ -901,7 +1023,7 @@ export default function RegisterPage() {
 
 			case 4:
 				return (
-					<div className="space-y-6">
+					<div key={stepKey} className="space-y-6">
 						<div className="text-center mb-6">
 							<h3 className="text-lg font-semibold">Photo Verification</h3>
 							<p className="text-sm text-muted-foreground">
@@ -1021,7 +1143,7 @@ export default function RegisterPage() {
 
 			case 5:
 				return (
-					<div className="space-y-4">
+					<div key={stepKey} className="space-y-4">
 						<div className="text-center mb-6">
 							<h3 className="text-lg font-semibold">Account Setup</h3>
 							<p className="text-sm text-muted-foreground">
@@ -1031,7 +1153,7 @@ export default function RegisterPage() {
 
 						<div className="space-y-4">
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="password"
 								render={({ field }) => (
 									<FormItem>
@@ -1064,7 +1186,7 @@ export default function RegisterPage() {
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="confirmPassword"
 								render={({ field }) => (
 									<FormItem>
@@ -1099,7 +1221,7 @@ export default function RegisterPage() {
 							/>
 
 							<FormField
-								control={form.control}
+								control={form.control as any}
 								name="agreeToTerms"
 								render={({ field }) => (
 									<FormItem className="flex flex-row items-start space-x-3 space-y-0">
@@ -1185,7 +1307,7 @@ export default function RegisterPage() {
 					<CardContent>
 						<Form {...form}>
 							<form
-								onSubmit={form.handleSubmit(onSubmit)}
+								onSubmit={form.handleSubmit(onSubmit as any)}
 								className="space-y-6"
 							>
 								{renderStepContent()}
