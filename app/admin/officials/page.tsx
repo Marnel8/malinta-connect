@@ -494,13 +494,13 @@ export default function OfficialsManagementPage() {
 					<DialogHeader>
 						<DialogTitle>
 							{currentOfficial
-								? "Edit Official"
-								: "Add New Official"}
+								? t("admin.officials.editOfficial")
+								: t("admin.officials.addNewOfficial")}
 						</DialogTitle>
 						<DialogDescription>
 							{currentOfficial
-								? "Update the official's information below."
-								: "Fill in the official's information below."}
+								? t("admin.officials.updateOfficialInfo")
+								: t("admin.officials.fillOfficialInfo")}
 						</DialogDescription>
 					</DialogHeader>
 					<form onSubmit={handleSubmit}>
@@ -508,7 +508,7 @@ export default function OfficialsManagementPage() {
 							{/* Photo Upload Section */}
 							<div className="space-y-3">
 								<Label htmlFor="photo" className="text-sm font-medium">
-									Image (Optional)
+									{t("admin.officials.imageOptional")}
 								</Label>
 								<div className="flex items-center gap-4">
 									<label htmlFor="photo" className="relative h-28 w-28 rounded-xl overflow-hidden border-2 border-dashed border-muted-foreground/30 bg-gradient-to-br from-muted/30 to-muted/10 hover:border-primary/50 hover:bg-gradient-to-br hover:from-primary/5 hover:to-primary/10 transition-all duration-200 group cursor-pointer">
@@ -524,7 +524,7 @@ export default function OfficialsManagementPage() {
 												<div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-center">
 													<Upload className="h-6 w-6 text-white drop-shadow-lg mb-1" />
 													<p className="text-xs text-white font-medium drop-shadow-lg">
-														Change Photo
+														{t("admin.officials.changePhoto")}
 													</p>
 												</div>
 												{/* Remove Photo Button */}
@@ -537,7 +537,7 @@ export default function OfficialsManagementPage() {
 														setPhotoPreview("");
 													}}
 													className="absolute top-1 right-1 h-6 w-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 shadow-lg"
-													title="Remove photo"
+													title={t("admin.officials.removePhoto")}
 												>
 													<svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -551,7 +551,7 @@ export default function OfficialsManagementPage() {
 													<div className="absolute -top-1 -right-1 h-3 w-3 bg-primary/20 rounded-full animate-pulse" />
 												</div>
 												<p className="text-xs text-muted-foreground/60 mt-1 font-medium">
-													Click to upload
+													{t("admin.officials.clickToUpload")}
 												</p>
 											</div>
 										)}
@@ -568,19 +568,19 @@ export default function OfficialsManagementPage() {
 										<div className="p-3 bg-muted/20 rounded-lg border border-muted/30">
 											<div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
 												<div className="w-2 h-2 bg-green-500 rounded-full" />
-												<span className="font-medium">Supported formats</span>
+												<span className="font-medium">{t("admin.officials.supportedFormats")}</span>
 											</div>
 											<p className="text-xs text-muted-foreground mb-2">
-												JPG, PNG, GIF, WebP up to 10MB
+												{t("admin.officials.fileFormats")}
 											</p>
 											<div className="flex items-center gap-2 text-xs text-muted-foreground">
 												<span>•</span>
-												<span>Click the preview area to upload</span>
+												<span>{t("admin.officials.clickPreviewArea")}</span>
 											</div>
 											{(photoPreview || currentOfficial?.photo) && (
 												<div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 pt-2 border-t border-muted/30">
 													<span>•</span>
-													<span>Hover over the image to see options</span>
+													<span>{t("admin.officials.hoverImageOptions")}</span>
 												</div>
 											)}
 										</div>
@@ -591,12 +591,12 @@ export default function OfficialsManagementPage() {
 							{/* Basic Information Section */}
 							<div className="space-y-4">
 								<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
-									{"Basic Information"}
+									{t("admin.officials.basicInformation")}
 								</h3>
 								<div className="grid grid-cols-2 gap-4">
 																	<div className="col-span-2">
 									<Label htmlFor="name" className="text-sm font-medium">
-										Full Name
+										{t("admin.officials.fullName")}
 									</Label>
 									<Input
 										id="name"
@@ -608,7 +608,7 @@ export default function OfficialsManagementPage() {
 								</div>
 								<div>
 									<Label htmlFor="position" className="text-sm font-medium">
-										Position
+										{t("admin.officials.position")}
 									</Label>
 									<Select
 										name="position"
@@ -617,34 +617,34 @@ export default function OfficialsManagementPage() {
 									>
 										<SelectTrigger id="position" className="mt-1">
 											<SelectValue
-												placeholder="Select position"
+												placeholder={t("admin.officials.selectPosition")}
 											/>
 										</SelectTrigger>
 											<SelectContent>
 												<SelectItem value="captain">
-													Captain
+													{t("admin.officials.captain")}
 												</SelectItem>
 												<SelectItem value="councilor">
-													Councilor
+													{t("admin.officials.councilor")}
 												</SelectItem>
 												<SelectItem value="secretary">
-													Secretary
+													{t("admin.officials.secretary")}
 												</SelectItem>
 												<SelectItem value="treasurer">
-													Treasurer
+													{t("admin.officials.treasurer")}
 												</SelectItem>
 												<SelectItem value="clerk">
-													Clerk
+													{t("admin.officials.clerk")}
 												</SelectItem>
 												<SelectItem value="skChairperson">
-													SK Chairperson
+													{t("admin.officials.skChairperson")}
 												</SelectItem>
 											</SelectContent>
 										</Select>
 									</div>
 																	<div>
 									<Label htmlFor="term" className="text-sm font-medium">
-										Current Term
+										{t("admin.officials.currentTerm")}
 									</Label>
 									<Input
 										id="term"
@@ -656,7 +656,7 @@ export default function OfficialsManagementPage() {
 								</div>
 								<div>
 									<Label htmlFor="birthday" className="text-sm font-medium">
-										Birthday
+										{t("admin.officials.birthday")}
 									</Label>
 									<Input
 										id="birthday"
@@ -669,21 +669,21 @@ export default function OfficialsManagementPage() {
 								</div>
 								<div>
 									<Label htmlFor="status" className="text-sm font-medium">
-										Status
+										{t("admin.officials.status")}
 									</Label>
 									<Select
 										name="status"
 										defaultValue={currentOfficial?.status || "active"}
 									>
 										<SelectTrigger id="status" className="mt-1">
-											<SelectValue placeholder="Select status" />
+											<SelectValue placeholder={t("admin.officials.selectStatus")} />
 										</SelectTrigger>
 										<SelectContent>
 											<SelectItem value="active">
-												Active
+												{t("admin.officials.active")}
 											</SelectItem>
 											<SelectItem value="inactive">
-												Inactive
+												{t("admin.officials.inactive")}
 											</SelectItem>
 										</SelectContent>
 									</Select>
@@ -694,12 +694,12 @@ export default function OfficialsManagementPage() {
 							{/* Contact Information Section */}
 							<div className="space-y-4">
 								<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
-									{"Contact Information"}
+									{t("admin.officials.contactInformation")}
 								</h3>
 								<div className="grid grid-cols-2 gap-4">
 									<div>
 										<Label htmlFor="email" className="text-sm font-medium">
-											Email Address
+											{t("admin.officials.emailAddress")}
 										</Label>
 										<Input
 											id="email"
@@ -712,7 +712,7 @@ export default function OfficialsManagementPage() {
 									</div>
 									<div>
 										<Label htmlFor="phone" className="text-sm font-medium">
-											Phone Number
+											{t("admin.officials.phoneNumber")}
 										</Label>
 										<Input
 											id="phone"
@@ -730,7 +730,7 @@ export default function OfficialsManagementPage() {
 							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "clerk" || currentOfficial?.position === "skChairperson") && (
 								<div className="space-y-4">
 									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
-										Committees
+										{t("admin.officials.committees")}
 									</h3>
 									<div className="space-y-3">
 										{(committees || []).map((committee, index) => (
@@ -740,7 +740,7 @@ export default function OfficialsManagementPage() {
 													onChange={(e) =>
 														handleCommitteeChange(index, e.target.value)
 													}
-													placeholder={`Committee ${index + 1}`}
+													placeholder={`${t("admin.officials.committee")} ${index + 1}`}
 													className="flex-1"
 												/>
 												<Button
@@ -750,7 +750,7 @@ export default function OfficialsManagementPage() {
 													onClick={() => handleRemoveCommittee(index)}
 													className="shrink-0"
 												>
-													Remove
+													{t("admin.officials.remove")}
 												</Button>
 											</div>
 										))}
@@ -761,7 +761,7 @@ export default function OfficialsManagementPage() {
 											className="w-full"
 										>
 											<Plus className="h-4 w-4 mr-2" />
-											Add Committee
+											{t("admin.officials.addCommittee")}
 										</Button>
 									</div>
 								</div>
@@ -772,13 +772,13 @@ export default function OfficialsManagementPage() {
 							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "clerk" || currentOfficial?.position === "skChairperson") && (
 								<div className="space-y-4">
 									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
-										{isCaptain ? "Biography & Message" : "Personal Message"}
+										{isCaptain ? t("admin.officials.biographyMessage") : t("admin.officials.personalMessage")}
 									</h3>
 									<div className="space-y-4">
 										{isCaptain && (
 											<div>
 												<Label htmlFor="biography" className="text-sm font-medium">
-													Biography
+													{t("admin.officials.biography")}
 												</Label>
 												<Textarea
 													id="biography"
@@ -787,13 +787,13 @@ export default function OfficialsManagementPage() {
 													defaultValue={currentOfficial?.biography || ""}
 													required
 													className="mt-1"
-													placeholder="Tell us about the official's background, experience, and qualifications..."
+													placeholder={t("admin.officials.biographyPlaceholder")}
 												/>
 											</div>
 										)}
 										<div>
 											<Label htmlFor="message" className="text-sm font-medium">
-												Personal Message
+												{t("admin.officials.personalMessage")}
 											</Label>
 											<Textarea
 												id="message"
@@ -801,7 +801,7 @@ export default function OfficialsManagementPage() {
 												rows={3}
 												defaultValue={currentOfficial?.message || ""}
 												className="mt-1"
-												placeholder="Any special message or vision from this official..."
+												placeholder={t("admin.officials.messagePlaceholder")}
 											/>
 										</div>
 									</div>
@@ -813,13 +813,13 @@ export default function OfficialsManagementPage() {
 							  currentOfficial?.position === "captain" || currentOfficial?.position === "councilor" || currentOfficial?.position === "clerk" || currentOfficial?.position === "skChairperson") && (
 								<div className="space-y-4">
 									<h3 className="text-lg font-semibold text-foreground/80 border-b pb-2">
-										{(selectedPosition === "captain" || currentOfficial?.position === "captain") ? "Projects & Achievements" : "Achievements"}
+										{(selectedPosition === "captain" || currentOfficial?.position === "captain") ? t("admin.officials.projectsAchievements") : t("admin.officials.achievements")}
 									</h3>
 									<div className={`grid gap-4 ${(selectedPosition === "captain" || currentOfficial?.position === "captain") ? "grid-cols-2" : "grid-cols-1"}`}>
 										{(selectedPosition === "captain" || currentOfficial?.position === "captain") && (
 											<div>
 												<Label htmlFor="projects" className="text-sm font-medium">
-													Projects
+													{t("admin.officials.projects")}
 												</Label>
 												<Textarea
 													id="projects"
@@ -827,16 +827,16 @@ export default function OfficialsManagementPage() {
 													rows={3}
 													defaultValue={currentOfficial?.projects?.join(", ") || ""}
 													className="mt-1"
-													placeholder="Enter projects separated by commas..."
+													placeholder={t("admin.officials.projectsPlaceholder")}
 												/>
 												<p className="text-xs text-muted-foreground mt-1">
-													Separate multiple projects with commas
+													{t("admin.officials.separateCommas")}
 												</p>
 											</div>
 										)}
 										<div>
 											<Label htmlFor="achievements" className="text-sm font-medium">
-												Achievements
+												{t("admin.officials.achievements")}
 											</Label>
 											<Textarea
 												id="achievements"
@@ -846,10 +846,10 @@ export default function OfficialsManagementPage() {
 													currentOfficial?.achievements?.join(", ") || ""
 												}
 												className="mt-1"
-												placeholder="Enter achievements separated by commas..."
+												placeholder={t("admin.officials.achievementsPlaceholder")}
 											/>
 											<p className="text-xs text-muted-foreground mt-1">
-												Separate multiple achievements with commas
+												{t("admin.officials.separateAchievementsCommas")}
 											</p>
 										</div>
 									</div>
@@ -863,17 +863,17 @@ export default function OfficialsManagementPage() {
 								onClick={() => setIsAddOfficialOpen(false)}
 								disabled={isSubmitting}
 							>
-								Cancel
+								{t("admin.officials.cancel")}
 							</Button>
 							<Button type="submit" disabled={isSubmitting}>
 								{isSubmitting ? (
 									<>
 										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-										{currentOfficial ? "Updating..." : "Adding..."}
+										{currentOfficial ? t("admin.officials.updating") : t("admin.officials.adding")}
 									</>
 								) : (
 									<>
-										{currentOfficial ? "Save Changes" : "Add Official"}
+										{currentOfficial ? t("admin.officials.saveChanges") : t("admin.officials.addOfficial")}
 									</>
 								)}
 							</Button>
@@ -907,7 +907,7 @@ export default function OfficialsManagementPage() {
 							{isDeleting ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									{t("admin.deleting")}
+									{t("admin.officials.deleting")}
 								</>
 							) : (
 								t("admin.delete")
@@ -919,19 +919,19 @@ export default function OfficialsManagementPage() {
 
 			{/* View Official Dialog */}
 			<Dialog open={isViewOfficialOpen} onOpenChange={setIsViewOfficialOpen}>
-				<DialogContent className="sm:max-w-[600px]">
+				<DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>{t("admin.officials.view")}</DialogTitle>
 					</DialogHeader>
 					{currentOfficial && (
 						<div className="space-y-4">
-							<div className="relative h-48 w-full rounded-md overflow-hidden">
+							<div className="relative h-[350px] w-[350px] rounded-md overflow-hidden">
 								<Image
 									src={currentOfficial.photo || "/placeholder-user.jpg"}
 									alt={currentOfficial.name}
 									fill
 									className="object-cover"
-									objectPosition="center top"
+									objectPosition="center center"
 								/>
 							</div>
 							<h2 className="text-2xl font-bold">{currentOfficial.name}</h2>
@@ -1047,7 +1047,7 @@ export default function OfficialsManagementPage() {
 					)}
 					<DialogFooter>
 						<Button onClick={() => setIsViewOfficialOpen(false)}>
-							{t("admin.close")}
+							{t("admin.officials.close")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
