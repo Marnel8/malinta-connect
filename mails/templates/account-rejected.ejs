@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Verification - Action Required</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #dc2626;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .status-badge {
+            display: inline-block;
+            background-color: #fecaca;
+            color: #991b1b;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 20px 0;
+        }
+        .details {
+            background-color: #fef2f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #fecaca;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: 600;
+            color: #7f1d1d;
+        }
+        .value {
+            color: #1e293b;
+        }
+        .rejection-reason {
+            background-color: #fef2f2;
+            border-left: 4px solid #dc2626;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #dc2626;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        .note {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="<%= process.env.NEXT_PUBLIC_APP_URL %>/images/malinta_logo.jpg" alt="Malinta Connect Logo" class="logo">
+            <h1 style="color: #1e293b; margin: 0;">Account Verification Update</h1>
+            <div class="status-badge">NOT APPROVED</div>
+        </div>
+
+        <p>Dear <strong><%= residentName %></strong>,</p>
+
+        <p>Thank you for registering with Malinta Connect. Unfortunately, we were unable to verify your account at this time. Please review the information below.</p>
+
+        <% if (notes && notes.trim() !== '') { %>
+        <div class="rejection-reason">
+            <strong>Reason:</strong><br>
+            <%= notes %>
+        </div>
+        <% } else { %>
+        <div class="rejection-reason">
+            <strong>Reason:</strong><br>
+            Your verification documents could not be approved. Please ensure all information and documents submitted are accurate and meet our requirements.
+        </div>
+        <% } %>
+
+        <div class="details">
+            <h3 style="margin-top: 0; color: #1e293b;">Account Details</h3>
+            
+            <div class="detail-row">
+                <span class="label">Name:</span>
+                <span class="value"><%= residentName %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Email:</span>
+                <span class="value"><%= email %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Review Date:</span>
+                <span class="value"><%= verificationDate %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Status:</span>
+                <span class="value"><strong style="color: #dc2626;">Not Approved</strong></span>
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>📋 What you can do next:</strong><br>
+            • Review the reason provided above<br>
+            • Ensure your ID photo is clear and valid<br>
+            • Make sure your selfie photo matches your ID<br>
+            • Verify that all personal information is accurate<br>
+            • Contact our office if you need clarification
+        </div>
+
+        <p><strong>Common Verification Issues:</strong></p>
+        <ul style="color: #475569;">
+            <li>ID photo is blurry or unreadable</li>
+            <li>Selfie photo does not match ID photo</li>
+            <li>Expired or invalid identification document</li>
+            <li>Incomplete or incorrect personal information</li>
+            <li>Documents do not prove residency in Barangay Malinta</li>
+        </ul>
+
+        <p>You may need to register again with corrected information and valid documents. If you believe this decision was made in error or need assistance, please contact our office.</p>
+
+        <div style="text-align: center;">
+            <a href="<%= process.env.NEXT_PUBLIC_APP_URL %>/register" class="cta-button">Register Again</a>
+        </div>
+
+        <p><strong>Contact Information:</strong></p>
+
+        <ul style="color: #475569;">
+            <li><strong>Phone:</strong> <%= contactPhone || 'N/A' %></li>
+            <li><strong>Email:</strong> <%= contactEmail || 'N/A' %></li>
+            <li><strong>Office Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</li>
+        </ul>
+
+        <div class="footer">
+            <p>We appreciate your understanding. If you have any questions, please don't hesitate to contact us.</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
+

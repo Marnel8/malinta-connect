@@ -186,7 +186,7 @@ export async function updateResidentVerificationAction(
 
 		await adminDatabase.ref().update(updates);
 
-		// Send notification to the resident about their verification status
+		// Send push notification to the resident about their verification status
 		try {
 			const { sendResidentVerificationNotificationAction } = await import("@/app/actions/notifications");
 			await sendResidentVerificationNotificationAction(
@@ -198,6 +198,32 @@ export async function updateResidentVerificationAction(
 		} catch (notificationError) {
 			console.error("Error sending verification notification:", notificationError);
 			// Don't fail the entire operation if notification fails
+		}
+
+		// Send email notification to the resident about their verification status
+		try {
+			const { sendVerificationStatusEmail } = await import("@/mails");
+			const verificationEmailData = {
+				residentName,
+				email: residentData.contactInfo.email,
+				verificationDate: new Date().toLocaleDateString("en-US", {
+					year: "numeric",
+					month: "long",
+					day: "numeric",
+				}),
+				notes: notes || "",
+				contactPhone: process.env.CONTACT_PHONE || "",
+				contactEmail: process.env.CONTACT_EMAIL || process.env.SMTP_USER || "",
+			};
+
+			await sendVerificationStatusEmail(
+				residentData.contactInfo.email,
+				status,
+				verificationEmailData
+			);
+		} catch (emailError) {
+			console.error("Error sending verification email:", emailError);
+			// Don't fail the entire operation if email fails
 		}
 
 		return { success: true };

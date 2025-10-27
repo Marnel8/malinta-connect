@@ -553,3 +553,66 @@ export const sendBlotterStatusEmail = async (
 		return false;
 	}
 };
+
+// Verification email data interface
+export interface VerificationEmailData {
+	residentName: string;
+	email: string;
+	verificationDate: string;
+	notes?: string;
+	contactPhone?: string;
+	contactEmail?: string;
+}
+
+// Send account verified email
+export const sendAccountVerifiedEmail = async (
+	to: string,
+	data: VerificationEmailData
+): Promise<boolean> => {
+	try {
+		const template = readTemplate("account-verified");
+		const subject = "Account Verified - Welcome to Malinta Connect";
+		const html = renderTemplate(template, data);
+		return await sendEmail({ to, subject, html });
+	} catch (error) {
+		console.error("Error sending account verified email:", error);
+		return false;
+	}
+};
+
+// Send account rejected email
+export const sendAccountRejectedEmail = async (
+	to: string,
+	data: VerificationEmailData
+): Promise<boolean> => {
+	try {
+		const template = readTemplate("account-rejected");
+		const subject = "Account Verification Update - Action Required";
+		const html = renderTemplate(template, data);
+		return await sendEmail({ to, subject, html });
+	} catch (error) {
+		console.error("Error sending account rejected email:", error);
+		return false;
+	}
+};
+
+// Send verification status email (generic function)
+export const sendVerificationStatusEmail = async (
+	to: string,
+	status: "verified" | "rejected",
+	data: VerificationEmailData
+): Promise<boolean> => {
+	try {
+		switch (status) {
+			case "verified":
+				return await sendAccountVerifiedEmail(to, data);
+			case "rejected":
+				return await sendAccountRejectedEmail(to, data);
+			default:
+				throw new Error(`Invalid status: ${status}`);
+		}
+	} catch (error) {
+		console.error(`Error sending verification ${status} email:`, error);
+		return false;
+	}
+};
