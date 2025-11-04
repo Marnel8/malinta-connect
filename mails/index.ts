@@ -111,30 +111,63 @@ const renderTemplate = (
 ): string => {
 	let html = template;
 
-	// Replace EJS variables
-	Object.entries(variables).forEach(([key, value]) => {
-		const regex = new RegExp(`<%= ${key} %>`, "g");
-		if (typeof value === "string") {
-			html = html.replace(regex, value);
-		} else if (Array.isArray(value)) {
-			html = html.replace(regex, value.join(", "));
-		} else if (value !== null && value !== undefined) {
-			html = html.replace(regex, String(value));
-		}
-	});
+    // Replace EJS variables like <%= key %> (allowing whitespace around key)
+    Object.entries(variables).forEach(([key, value]) => {
+        const regex = new RegExp(`<%=\\s*${key}\\s*%>`, "g");
+        if (typeof value === "string") {
+            html = html.replace(regex, value);
+        } else if (Array.isArray(value)) {
+            html = html.replace(regex, value.join(", "));
+        } else if (value !== null && value !== undefined) {
+            html = html.replace(regex, String(value));
+        }
+    });
 
-	// Handle conditional EJS blocks
-	html = html.replace(
-		/<% if \(([^)]+)\) { %>([\s\S]*?)<% } %>/g,
-		(match, condition, content) => {
-			const key = condition.trim();
-			const value = variables[key];
-			if (value && (Array.isArray(value) ? value.length > 0 : value)) {
-				return content;
-			}
-			return "";
-		}
-	);
+    // Replace environment variable usages commonly used in templates
+    const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "";
+    html = html.replace(
+        /<%=\s*process\.env\.NEXT_PUBLIC_APP_URL\s*%>/g,
+        appUrl
+    );
+
+    // First handle if-else blocks
+    html = html.replace(
+        /<%\s*if\s*\((.*?)\)\s*{\s*%>([\s\S]*?)<%\s*}\s*else\s*{\s*%>([\s\S]*?)<%\s*}\s*%>/g,
+        (_match, condition, truthyContent, falsyContent) => {
+            try {
+                const argNames = Object.keys(variables);
+                const argValues = Object.values(variables);
+                const evaluator = new Function(
+                    ...argNames,
+                    `return (${condition});`
+                );
+                const result = evaluator(...argValues);
+                return result ? truthyContent : falsyContent;
+            } catch {
+                return "";
+            }
+        }
+    );
+
+    // Then handle simple if blocks without else
+    html = html.replace(
+        /<%\s*if\s*\((.*?)\)\s*{\s*%>([\s\S]*?)<%\s*}\s*%>/g,
+        (_match, condition, content) => {
+            try {
+                const argNames = Object.keys(variables);
+                const argValues = Object.values(variables);
+                const evaluator = new Function(
+                    ...argNames,
+                    `return (${condition});`
+                );
+                const result = evaluator(...argValues);
+                return result ? content : "";
+            } catch {
+                return "";
+            }
+        }
+    );
 
 	return html;
 };
