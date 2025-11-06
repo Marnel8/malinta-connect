@@ -302,12 +302,12 @@ export default function Home() {
 										</div>
 										<div className="max-w-md mx-auto">
 											<Card className="overflow-hidden hover:shadow-lg transition-all">
-												<div className="relative h-80 w-full">
+												<div className="relative h-80 md:h-96 w-full">
 													<Image
 														src={captain.photo || "/placeholder-user.jpg"}
 														alt="Barangay Captain"
 														fill
-														className="object-cover"
+														className="object-cover object-top"
 													/>
 												</div>
 												<CardHeader className="text-center">

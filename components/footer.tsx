@@ -102,7 +102,7 @@ function FooterContent() {
               </li>
               <li className="flex items-center gap-2 text-muted-foreground">
                 <Mail className="h-4 w-4 text-primary" />
-                <span>malinta@losbanos.gov.ph</span>
+                <span>barangaymalintalosbanos@gmail.com</span>
               </li>
             </ul>
             <div className="mt-4">
