@@ -52,7 +52,7 @@ import {
 
 export default function BlotterPage() {
 	const { t } = useLanguage();
-	const { userProfile } = useAuth();
+	const { user, userProfile } = useAuth();
 	const { toast } = useToast();
 	const [isPending, startTransition] = useTransition();
 
@@ -200,6 +200,17 @@ export default function BlotterPage() {
 	// Handle new report submission
 	const handleNewReportSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+
+		// Check if user is authenticated
+		if (!userProfile) {
+			console.error("Blotter report failed: User not authenticated");
+			toast({
+				title: "Authentication Required",
+				description: "Please log in to file a blotter report",
+				variant: "destructive",
+			});
+			return;
+		}
 
 		startTransition(async () => {
 			try {
@@ -558,7 +569,11 @@ export default function BlotterPage() {
 								</div>
 							</CardContent>
 							<CardFooter>
-								<Button type="submit" className="w-full" disabled={isPending}>
+								<Button 
+									type="submit" 
+									className="w-full" 
+									disabled={isPending || !user || !userProfile}
+								>
 									{isPending ? (
 										<>
 											<Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -508,6 +508,17 @@ export default function CertificatesPage() {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
+		// Check if user is authenticated
+		if (!user || !userProfile) {
+			console.error("Certificate request failed: User not authenticated");
+			toast({
+				title: "Authentication Required",
+				description: "Please log in to request a certificate",
+				variant: "destructive",
+			});
+			return;
+		}
+
 		if (
 			!formData.type ||
 			!formData.requestedBy ||
@@ -754,6 +765,14 @@ export default function CertificatesPage() {
 									<CardFooter>
 										<Button
 											onClick={() => {
+												if (!user || !userProfile) {
+													toast({
+														title: "Authentication Required",
+														description: "Please log in to request a certificate",
+														variant: "destructive",
+													});
+													return;
+												}
 												setFormData((prev) => ({
 													...prev,
 													type: card.type,
@@ -770,6 +789,7 @@ export default function CertificatesPage() {
 												setFormOpen(true);
 											}}
 											className="w-full"
+											disabled={!user || !userProfile}
 										>
 											{t("certificates.requestNow")}
 										</Button>
@@ -1254,7 +1274,7 @@ export default function CertificatesPage() {
 									</Button>
 									<Button
 										type="submit"
-										disabled={formLoading}
+										disabled={formLoading || !user || !userProfile}
 										className="w-full sm:w-auto"
 									>
 										{formLoading ? (

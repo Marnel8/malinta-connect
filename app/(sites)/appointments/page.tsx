@@ -165,6 +165,17 @@ export default function AppointmentsPage() {
 	}, []);
 
 	const handleScheduleAppointment = async () => {
+		// Check if user is authenticated
+		if (!user || !userProfile) {
+			console.error("Appointment scheduling failed: User not authenticated");
+			toast({
+				title: "Authentication Required",
+				description: "Please log in to schedule an appointment",
+				variant: "destructive",
+			});
+			return;
+		}
+
 		if (
 			!date ||
 			!time ||
@@ -508,6 +519,8 @@ export default function AppointmentsPage() {
 								onClick={handleScheduleAppointment}
 								disabled={
 									loading ||
+									!user ||
+									!userProfile ||
 									!date ||
 									!time ||
 									!serviceType ||
