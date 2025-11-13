@@ -1,6 +1,7 @@
 "use server";
 
 import { adminDatabase } from "@/app/firebase/admin";
+import { archiveRecord } from "@/lib/archive-manager";
 import { getUserProfileAction } from "./auth";
 import {
 	sendCertificatePendingEmail,
@@ -12,6 +13,7 @@ import {
 import { v2 as cloudinary } from "cloudinary";
 
 export interface Certificate {
+	userId: string;
 	id: string;
 	type: string;
 	requestedBy: string;
@@ -58,6 +60,7 @@ export interface Certificate {
 }
 
 export interface CreateCertificateData {
+	userId?: string;
 	type: string;
 	requestedBy: string;
 	emailToNotify: string; // Add email field for notifications
@@ -116,15 +119,16 @@ export async function getAllCertificatesAction(): Promise<{
 
 		const certificatesList: Certificate[] = [];
 
-		Object.entries(certificates).forEach(([id, certificate]: [string, any]) => {
-			certificatesList.push({
-				id,
-				...certificate,
-				status: certificate.status || "pending",
-				createdAt: certificate.createdAt || 0,
-				updatedAt: certificate.updatedAt || 0,
-			});
+	Object.entries(certificates).forEach(([id, certificate]: [string, any]) => {
+		certificatesList.push({
+			id,
+			...certificate,
+			userId: certificate.userId || "",
+			status: certificate.status || "pending",
+			createdAt: certificate.createdAt || 0,
+			updatedAt: certificate.updatedAt || 0,
 		});
+	});
 
 		// Sort by creation date (newest first)
 		certificatesList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -132,6 +136,55 @@ export async function getAllCertificatesAction(): Promise<{
 		return { success: true, certificates: certificatesList };
 	} catch (error) {
 		console.error("Error fetching certificates:", error);
+		return {
+			success: false,
+			error:
+				"Failed to fetch certificates. Please check your connection and try again.",
+		};
+	}
+}
+
+// Get certificates for a specific user
+export async function getCertificatesForUserAction(
+	userId: string
+): Promise<{ success: boolean; certificates?: Certificate[]; error?: string }> {
+	try {
+		if (!userId) {
+			return {
+				success: false,
+				error: "User ID is required.",
+			};
+		}
+
+		const certificatesRef = adminDatabase.ref("certificates");
+		const snapshot = await certificatesRef
+			.orderByChild("userId")
+			.equalTo(userId)
+			.get();
+
+		if (!snapshot.exists()) {
+			return { success: true, certificates: [] };
+		}
+
+		const certificates = snapshot.val();
+		const certificatesList: Certificate[] = [];
+
+		Object.entries(certificates).forEach(([id, certificate]: [string, any]) => {
+			certificatesList.push({
+				id,
+				...certificate,
+				userId: certificate.userId || userId,
+				status: certificate.status || "pending",
+				createdAt: certificate.createdAt || 0,
+				updatedAt: certificate.updatedAt || 0,
+			});
+		});
+
+		certificatesList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+		return { success: true, certificates: certificatesList };
+	} catch (error) {
+		console.error("Error fetching certificates for user:", error);
 		return {
 			success: false,
 			error:
@@ -168,6 +221,7 @@ export async function getCertificateAction(
 			certificate: {
 				id,
 				...certificate,
+				userId: certificate.userId || "",
 				status: certificate.status || "pending",
 				createdAt: certificate.createdAt || 0,
 				updatedAt: certificate.updatedAt || 0,
@@ -225,6 +279,7 @@ export async function createCertificateAction(
 
 		const certificate: Certificate = {
 			...certificateData,
+			userId: certificateData.userId || "",
 			id: referenceNumber, // Set the meaningful reference number
 			requestedOn: new Date().toLocaleDateString("en-US", {
 				year: "numeric",
@@ -351,8 +406,21 @@ export async function deleteCertificateAction(
 			};
 		}
 
-		// Delete the certificate
-		await certificateRef.remove();
+		const certificate = snapshot.val();
+
+		await archiveRecord({
+			entity: "certificates",
+			id,
+			paths: {
+				[`certificates/${id}`]: certificate,
+			},
+			preview: {
+				type: certificate.type,
+				status: certificate.status,
+				requestedBy: certificate.requesterName || certificate.requestedBy,
+				referenceNumber: certificate.referenceNumber,
+			},
+		});
 
 		return { success: true };
 	} catch (error) {
@@ -622,6 +690,7 @@ export async function getCertificatesByStatusAction(
 			certificatesList.push({
 				id,
 				...certificate,
+			userId: certificate.userId || "",
 				status: certificate.status || "pending",
 				createdAt: certificate.createdAt || 0,
 				updatedAt: certificate.updatedAt || 0,
@@ -672,6 +741,7 @@ export async function searchCertificatesAction(
 				certificatesList.push({
 					id,
 					...certificate,
+				userId: certificate.userId || "",
 					status: certificate.status || "pending",
 					createdAt: certificate.createdAt || 0,
 					updatedAt: certificate.updatedAt || 0,

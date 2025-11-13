@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -42,9 +42,7 @@ import { useLanguage } from "@/contexts/language-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
-	getAllBlotterAction,
-	searchBlotterEntriesAction,
-	getBlotterEntriesByStatusAction,
+	getBlotterEntriesForUserAction,
 	createBlotterEntryAction,
 	type BlotterEntry,
 	type CreateBlotterData,
@@ -80,6 +78,31 @@ export default function BlotterPage() {
 		notes: "",
 	});
 
+	const filteredEntries = useMemo(() => {
+		let entries = [...blotterEntries];
+
+		if (statusFilter !== "all") {
+			entries = entries.filter(
+				(entry) => entry.status === statusFilter
+			);
+		}
+
+		const trimmedQuery = searchQuery.trim().toLowerCase();
+		if (trimmedQuery) {
+			entries = entries.filter((entry) => {
+				return (
+					entry.type?.toLowerCase().includes(trimmedQuery) ||
+					entry.description?.toLowerCase().includes(trimmedQuery) ||
+					entry.reportedBy?.toLowerCase().includes(trimmedQuery) ||
+					entry.location?.toLowerCase().includes(trimmedQuery) ||
+					entry.referenceNumber?.toLowerCase().includes(trimmedQuery)
+				);
+			});
+		}
+
+		return entries;
+	}, [blotterEntries, statusFilter, searchQuery]);
+
 	// Update form when userProfile changes
 	useEffect(() => {
 		if (userProfile) {
@@ -98,15 +121,20 @@ export default function BlotterPage() {
 		}
 	}, [userProfile]);
 
-	// Load blotter entries on component mount
+	// Load blotter entries when user changes
 	useEffect(() => {
-		loadBlotterEntries();
-	}, []);
+		if (!user?.uid) {
+			setBlotterEntries([]);
+			setLoading(false);
+			return;
+		}
+		loadBlotterEntries(user.uid);
+	}, [user?.uid]);
 
-	const loadBlotterEntries = async () => {
+	const loadBlotterEntries = async (uid: string) => {
 		setLoading(true);
 		try {
-			const result = await getAllBlotterAction();
+			const result = await getBlotterEntriesForUserAction(uid);
 			if (result.success && result.entries) {
 				setBlotterEntries(result.entries);
 			} else {
@@ -130,71 +158,13 @@ export default function BlotterPage() {
 	};
 
 	// Handle search
-	const handleSearch = async (query: string) => {
+	const handleSearch = (query: string) => {
 		setSearchQuery(query);
-		if (!query.trim()) {
-			loadBlotterEntries();
-			return;
-		}
-
-		setLoading(true);
-		try {
-			const result = await searchBlotterEntriesAction(query);
-			if (result.success && result.entries) {
-				setBlotterEntries(result.entries);
-			} else {
-				console.error("Failed to search blotter entries:", result.error);
-				toast({
-					title: "Error",
-					description: result.error || "Failed to search blotter entries",
-					variant: "destructive",
-				});
-			}
-		} catch (error) {
-			console.error("Error searching blotter entries:", error);
-			toast({
-				title: "Error",
-				description: "Failed to search blotter entries",
-				variant: "destructive",
-			});
-		} finally {
-			setLoading(false);
-		}
 	};
 
 	// Handle status filter
-	const handleStatusFilter = async (status: string) => {
+	const handleStatusFilter = (status: string) => {
 		setStatusFilter(status);
-		if (status === "all") {
-			loadBlotterEntries();
-			return;
-		}
-
-		setLoading(true);
-		try {
-			const result = await getBlotterEntriesByStatusAction(
-				status as BlotterEntry["status"]
-			);
-			if (result.success && result.entries) {
-				setBlotterEntries(result.entries);
-			} else {
-				console.error("Failed to filter blotter entries:", result.error);
-				toast({
-					title: "Error",
-					description: result.error || "Failed to filter blotter entries",
-					variant: "destructive",
-				});
-			}
-		} catch (error) {
-			console.error("Error filtering blotter entries:", error);
-			toast({
-				title: "Error",
-				description: "Failed to filter blotter entries",
-				variant: "destructive",
-			});
-		} finally {
-			setLoading(false);
-		}
 	};
 
 	// Handle new report submission
@@ -202,7 +172,7 @@ export default function BlotterPage() {
 		e.preventDefault();
 
 		// Check if user is authenticated
-		if (!userProfile) {
+		if (!user || !userProfile) {
 			console.error("Blotter report failed: User not authenticated");
 			toast({
 				title: "Authentication Required",
@@ -214,7 +184,10 @@ export default function BlotterPage() {
 
 		startTransition(async () => {
 			try {
-				const result = await createBlotterEntryAction(newReportForm);
+				const result = await createBlotterEntryAction({
+					userId: user.uid,
+					...newReportForm,
+				});
 				if (result.success) {
 					console.log(
 						"Blotter report created successfully with ID:",
@@ -242,7 +215,7 @@ export default function BlotterPage() {
 						incidentDate: "",
 						notes: "",
 					});
-					loadBlotterEntries();
+					await loadBlotterEntries(user.uid);
 				} else {
 					console.error("Failed to create blotter report:", result.error);
 					toast({
@@ -589,106 +562,126 @@ export default function BlotterPage() {
 				</TabsContent>
 
 				<TabsContent value="track">
-					<Card>
-						<CardHeader>
-							<CardTitle>{t("blotter.yourReports")}</CardTitle>
-							<CardDescription>{t("blotter.trackStatus")}</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="flex items-center space-x-2 mb-6">
-								<div className="relative flex-1">
-									<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-									<Input
-										type="search"
-										placeholder="Search reports..."
-										className="pl-8"
-										value={searchQuery}
-										onChange={(e) => handleSearch(e.target.value)}
-									/>
+					{!user?.uid ? (
+						<Card>
+							<CardHeader>
+								<CardTitle>{t("blotter.yourReports")}</CardTitle>
+								<CardDescription>
+									Please sign in to view your blotter reports.
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<p className="text-sm text-muted-foreground">
+									You need an authenticated account to track existing cases.
+								</p>
+							</CardContent>
+						</Card>
+					) : (
+						<Card>
+							<CardHeader>
+								<CardTitle>{t("blotter.yourReports")}</CardTitle>
+								<CardDescription>{t("blotter.trackStatus")}</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<div className="flex items-center space-x-2 mb-6">
+									<div className="relative flex-1">
+										<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+										<Input
+											type="search"
+											placeholder="Search reports..."
+											className="pl-8"
+											value={searchQuery}
+											onChange={(e) => handleSearch(e.target.value)}
+										/>
+									</div>
+									<Select
+										value={statusFilter}
+										onValueChange={handleStatusFilter}
+									>
+										<SelectTrigger className="w-[180px]">
+											<SelectValue placeholder="Filter by status" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="all">All Reports</SelectItem>
+											<SelectItem value="pending">Pending</SelectItem>
+											<SelectItem value="investigating">
+												Under Investigation
+											</SelectItem>
+											<SelectItem value="resolved">Resolved</SelectItem>
+											<SelectItem value="additionalInfo">Needs Info</SelectItem>
+											<SelectItem value="closed">Closed</SelectItem>
+										</SelectContent>
+									</Select>
 								</div>
-								<Select value={statusFilter} onValueChange={handleStatusFilter}>
-									<SelectTrigger className="w-[180px]">
-										<SelectValue placeholder="Filter by status" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="all">All Reports</SelectItem>
-										<SelectItem value="pending">Pending</SelectItem>
-										<SelectItem value="investigating">
-											Under Investigation
-										</SelectItem>
-										<SelectItem value="resolved">Resolved</SelectItem>
-										<SelectItem value="additionalInfo">Needs Info</SelectItem>
-										<SelectItem value="closed">Closed</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
 
-							{loading ? (
-								<div className="flex items-center justify-center py-8">
-									<Loader2 className="h-6 w-6 animate-spin mr-2" />
-									<p>Loading your reports...</p>
-								</div>
-							) : blotterEntries.length === 0 ? (
-								<div className="text-center py-8">
-									<MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-									<p className="text-muted-foreground">No reports found</p>
-									<p className="text-sm text-muted-foreground mt-1">
-										{searchQuery
-											? "Try adjusting your search terms"
-											: "File your first blotter report to get started"}
-									</p>
-								</div>
-							) : (
-								<div className="space-y-4">
-									{blotterEntries.map((entry) => (
-										<div key={entry.id} className="rounded-lg border p-4">
-											<div className="flex items-start justify-between">
-												<div>
-													<div className="flex items-center">
-														<MessageSquare className="mr-2 h-5 w-5 text-primary" />
-														<h3 className="font-medium">{entry.type}</h3>
+								{loading ? (
+									<div className="flex items-center justify-center py-8">
+										<Loader2 className="h-6 w-6 animate-spin mr-2" />
+										<p>Loading your reports...</p>
+									</div>
+								) : filteredEntries.length === 0 ? (
+									<div className="text-center py-8">
+										<MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+										<p className="text-muted-foreground">No reports found</p>
+										<p className="text-sm text-muted-foreground mt-1">
+											{searchQuery
+												? "Try adjusting your search terms"
+												: "File your first blotter report to get started"}
+										</p>
+									</div>
+								) : (
+									<div className="space-y-4">
+										{filteredEntries.map((entry) => (
+											<div key={entry.id} className="rounded-lg border p-4">
+												<div className="flex items-start justify-between">
+													<div>
+														<div className="flex items-center">
+															<MessageSquare className="mr-2 h-5 w-5 text-primary" />
+															<h3 className="font-medium">{entry.type}</h3>
+														</div>
+														<p className="text-sm text-muted-foreground mt-1">
+															Filed on: {entry.date}
+														</p>
 													</div>
-													<p className="text-sm text-muted-foreground mt-1">
-														Filed on: {entry.date}
-													</p>
+													<div className="flex items-center">
+														{getStatusBadge(entry.status)}
+													</div>
 												</div>
-												<div className="flex items-center">
-													{getStatusBadge(entry.status)}
+												<div className="mt-4">
+													<p className="text-sm">
+														{t("certificates.reference")}:{" "}
+														{entry.referenceNumber}
+													</p>
+													{entry.location && (
+														<p className="text-sm text-muted-foreground mt-1">
+															{t("blotter.incidentLocation")}: {entry.location}
+														</p>
+													)}
+													{entry.status === "additionalInfo" && entry.notes && (
+														<p className="text-sm text-red-600 mt-2">
+															{entry.notes}
+														</p>
+													)}
+													<Button
+														variant="outline"
+														size="sm"
+														className="mt-4"
+														onClick={() => {
+															setSelectedEntry(entry);
+															setIsViewDialogOpen(true);
+														}}
+													>
+														<Eye className="mr-1 h-3 w-3" />
+														{t("blotter.viewDetails")}
+													</Button>
 												</div>
 											</div>
-											<div className="mt-4">
-												<p className="text-sm">
-													{t("certificates.reference")}: {entry.referenceNumber}
-												</p>
-												{entry.location && (
-													<p className="text-sm text-muted-foreground mt-1">
-														{t("blotter.incidentLocation")}: {entry.location}
-													</p>
-												)}
-												{entry.status === "additionalInfo" && entry.notes && (
-													<p className="text-sm text-red-600 mt-2">
-														{entry.notes}
-													</p>
-												)}
-												<Button
-													variant="outline"
-													size="sm"
-													className="mt-4"
-													onClick={() => {
-														setSelectedEntry(entry);
-														setIsViewDialogOpen(true);
-													}}
-												>
-													<Eye className="mr-1 h-3 w-3" />
-													{t("blotter.viewDetails")}
-												</Button>
-											</div>
-										</div>
-									))}
-								</div>
-							)}
-						</CardContent>
-					</Card>
+										))}
+									</div>
+								)}
+							</CardContent>
+						</Card>
+					)}
 				</TabsContent>
 			</Tabs>
 

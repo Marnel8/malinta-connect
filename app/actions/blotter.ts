@@ -1,9 +1,11 @@
 "use server";
 
 import { adminDatabase } from "@/app/firebase/admin";
+import { archiveRecord } from "@/lib/archive-manager";
 import { sendBlotterStatusEmail, type BlotterEmailData } from "@/mails";
 
 export interface BlotterEntry {
+	userId: string;
 	id: string;
 	referenceNumber: string;
 	type: string;
@@ -27,6 +29,7 @@ export interface BlotterEntry {
 }
 
 export interface CreateBlotterData {
+	userId?: string;
 	type: string;
 	description: string;
 	reportedBy: string;
@@ -86,6 +89,7 @@ export async function createBlotterEntryAction(
 
 		const blotterEntry: Omit<BlotterEntry, "id"> = {
 			...blotterData,
+			userId: blotterData.userId || "",
 			referenceNumber,
 			date: new Date().toLocaleDateString("en-US", {
 				year: "numeric",
@@ -160,6 +164,7 @@ export async function getAllBlotterAction(): Promise<{
 
 		Object.entries(entries).forEach(([id, entry]: [string, any]) => {
 			entriesList.push({
+			userId: entry.userId || "",
 				id,
 				referenceNumber: entry.referenceNumber || id,
 				type: entry.type || entry.title || "General Report",
@@ -190,6 +195,65 @@ export async function getAllBlotterAction(): Promise<{
 		return { success: true, entries: entriesList };
 	} catch (error) {
 		console.error("Error fetching blotter entries:", error);
+		return {
+			success: false,
+			error:
+				"Failed to fetch blotter entries. Please check your connection and try again.",
+		};
+	}
+}
+
+// Get blotter entries for a specific user
+export async function getBlotterEntriesForUserAction(
+	userId: string
+): Promise<{ success: boolean; entries?: BlotterEntry[]; error?: string }> {
+	try {
+		if (!userId) {
+			return { success: false, error: "User ID is required." };
+		}
+
+		const blotterRef = adminDatabase.ref("blotter");
+		const snapshot = await blotterRef.orderByChild("userId").equalTo(userId).get();
+
+		if (!snapshot.exists()) {
+			return { success: true, entries: [] };
+		}
+
+		const entries = snapshot.val();
+		const entriesList: BlotterEntry[] = [];
+
+		Object.entries(entries).forEach(([id, entry]: [string, any]) => {
+			entriesList.push({
+				userId: entry.userId || userId,
+				id,
+				referenceNumber: entry.referenceNumber || id,
+				type: entry.type || entry.title || "General Report",
+				description: entry.description,
+				reportedBy: entry.reportedBy,
+				contactNumber: entry.contactNumber,
+				email: entry.email,
+				status: entry.status || "pending",
+				priority: entry.priority || "medium",
+				location: entry.location,
+				incidentDate: entry.incidentDate,
+				date:
+					entry.date ||
+					new Date(entry.createdAt || Date.now()).toLocaleDateString("en-US", {
+						year: "numeric",
+						month: "long",
+						day: "numeric",
+					}),
+				notes: entry.notes,
+				createdAt: entry.createdAt || 0,
+				updatedAt: entry.updatedAt || 0,
+			});
+		});
+
+		entriesList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+		return { success: true, entries: entriesList };
+	} catch (error) {
+		console.error("Error fetching blotter entries for user:", error);
 		return {
 			success: false,
 			error:
@@ -432,8 +496,21 @@ export async function deleteBlotterEntryAction(
 			};
 		}
 
-		// Delete the blotter entry
-		await blotterRef.remove();
+		const blotterEntry = snapshot.val() as BlotterEntry;
+
+		await archiveRecord({
+			entity: "blotter",
+			id,
+			paths: {
+				[`blotter/${id}`]: blotterEntry,
+			},
+			preview: {
+				referenceNumber: blotterEntry.referenceNumber,
+				type: blotterEntry.type,
+				reportedBy: blotterEntry.reportedBy,
+				status: blotterEntry.status,
+			},
+		});
 
 		return { success: true };
 	} catch (error) {
@@ -466,6 +543,7 @@ export async function getBlotterEntriesByStatusAction(
 
 		Object.entries(entries).forEach(([id, entry]: [string, any]) => {
 			entriesList.push({
+			userId: entry.userId || "",
 				id,
 				referenceNumber: entry.referenceNumber || id,
 				type: entry.type || entry.title || "General Report",
@@ -534,6 +612,7 @@ export async function searchBlotterEntriesAction(
 
 			if (matchesSearch) {
 				entriesList.push({
+				userId: entry.userId || "",
 					id,
 					referenceNumber: entry.referenceNumber || id,
 					type: entry.type || entry.title || "General Report",

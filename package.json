@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
-        "dev:https": "next dev --experimental-https",
+		"dev:https": "next dev --experimental-https",
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
@@ -78,6 +78,7 @@
 		"tailwind-merge": "^2.5.5",
 		"tailwindcss-animate": "^1.0.7",
 		"vaul": "^0.9.6",
+		"xlsx": "^0.18.5",
 		"zod": "latest"
 	},
 	"devDependencies": {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -41,22 +41,14 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { requestForToken } from "@/app/firebase/firebase";
 import { useFCMToken } from "@/hooks/use-fcm-token";
-import { createAppointmentAction } from "@/app/actions/appointments";
+import {
+	createAppointmentAction,
+	getAppointmentsForUserAction,
+	type Appointment,
+} from "@/app/actions/appointments";
 import { format } from "date-fns";
 
-type UserAppointment = {
-	id: string;
-	title: string;
-	description: string;
-	date: string;
-	time: string;
-	requestedBy: string;
-	contactNumber: string;
-	email: string;
-	status: "pending" | "confirmed" | "cancelled" | "completed";
-	createdAt: number;
-	updatedAt: number;
-};
+type UserAppointment = Appointment;
 
 export default function AppointmentsPage() {
 	const { t } = useLanguage();
@@ -82,6 +74,47 @@ export default function AppointmentsPage() {
 	const [userAppointments, setUserAppointments] = useState<UserAppointment[]>(
 		[]
 	);
+const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+
+	const loadAppointments = useCallback(
+		async (uid: string) => {
+			setAppointmentsLoading(true);
+			try {
+				const result = await getAppointmentsForUserAction(uid);
+				if (result.success && result.appointments) {
+					setUserAppointments(result.appointments);
+				} else {
+					console.error("Failed to load appointments:", result.error);
+					toast({
+						title: "Error",
+						description: result.error || "Failed to load appointments",
+						variant: "destructive",
+					});
+					setUserAppointments([]);
+				}
+			} catch (error) {
+				console.error("Error loading appointments:", error);
+				toast({
+					title: "Error",
+					description: "Failed to load appointments",
+					variant: "destructive",
+				});
+				setUserAppointments([]);
+			} finally {
+				setAppointmentsLoading(false);
+			}
+		},
+		[toast]
+	);
+
+	useEffect(() => {
+		if (!user?.uid) {
+			setUserAppointments([]);
+			setAppointmentsLoading(false);
+			return;
+		}
+		loadAppointments(user.uid);
+	}, [user?.uid, loadAppointments]);
 
 	// Update form when userProfile changes
 	useEffect(() => {
@@ -118,52 +151,6 @@ export default function AppointmentsPage() {
 		registerFCMToken();
 	}, [user, userProfile, updateToken]);
 
-	// Mock user appointments - in a real app, you'd fetch these based on user authentication
-	useEffect(() => {
-		// This would be replaced with actual user-specific appointment fetching
-		setUserAppointments([
-			{
-				id: "APT-2025-0426-001",
-				title: "Barangay Captain Consultation",
-				description: "Discuss community project proposal",
-				date: "2025-04-26",
-				time: "10:00",
-				requestedBy: "Juan Dela Cruz",
-				contactNumber: "09123456789",
-				email: "juan@example.com",
-				status: "confirmed",
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-			},
-			{
-				id: "APT-2025-0503-002",
-				title: "Dispute Resolution",
-				description: "Property boundary dispute with neighbor",
-				date: "2025-05-03",
-				time: "14:00",
-				requestedBy: "Juan Dela Cruz",
-				contactNumber: "09123456789",
-				email: "juan@example.com",
-				status: "pending",
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-			},
-			{
-				id: "APT-2025-0415-003",
-				title: "Social Welfare Assistance",
-				description: "Inquire about educational assistance program",
-				date: "2025-04-15",
-				time: "09:00",
-				requestedBy: "Juan Dela Cruz",
-				contactNumber: "09123456789",
-				email: "juan@example.com",
-				status: "cancelled",
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-			},
-		]);
-	}, []);
-
 	const handleScheduleAppointment = async () => {
 		// Check if user is authenticated
 		if (!user || !userProfile) {
@@ -197,6 +184,7 @@ export default function AppointmentsPage() {
 		setLoading(true);
 		try {
 			const appointmentData = {
+				userId: user.uid,
 				title: serviceType,
 				description: purpose,
 				date: format(date, "yyyy-MM-dd"),
@@ -236,18 +224,7 @@ export default function AppointmentsPage() {
 				setContactNumber(userProfile?.phoneNumber || "");
 				setEmail(userProfile?.email || "");
 				// Add to user appointments list
-				if (result.appointmentId) {
-					setUserAppointments((prev) => [
-						{
-							id: result.appointmentId!,
-							...appointmentData,
-							status: "pending",
-							createdAt: Date.now(),
-							updatedAt: Date.now(),
-						},
-						...prev,
-					]);
-				}
+				await loadAppointments(user.uid);
 			} else {
 				console.error("Appointment scheduling failed:", result.error);
 				toast({
@@ -544,70 +521,93 @@ export default function AppointmentsPage() {
 				</TabsContent>
 
 				<TabsContent value="manage">
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								{t("appointments.yourAppointments") || "Your Appointments"}
-							</CardTitle>
-							<CardDescription>
-								{t("appointments.viewManage") ||
-									"View and manage your scheduled appointments"}
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-4">
-								{userAppointments.length === 0 ? (
-									<div className="text-center py-8 text-muted-foreground">
-										No appointments found
-									</div>
-								) : (
-									userAppointments.map((appointment) => (
-										<div
-											key={appointment.id}
-											className={`rounded-lg border p-4 ${
-												appointment.status === "cancelled" ? "opacity-75" : ""
-											}`}
-										>
-											<div className="flex items-start justify-between">
-												<div>
-													<div className="flex items-center">
-														<Users className="mr-2 h-5 w-5 text-primary" />
-														<h3 className="font-medium">{appointment.title}</h3>
-													</div>
-													<p className="text-sm text-muted-foreground mt-1">
-														{formatDate(appointment.date)} at {appointment.time}
-													</p>
-												</div>
-												<div className="flex items-center">
-													{getStatusBadge(appointment.status)}
-												</div>
-											</div>
-											<div className="mt-4">
-												<p className="text-sm">
-													{t("certificates.reference") || "Reference"}:{" "}
-													{appointment.id}
-												</p>
-												<p className="text-sm text-muted-foreground mt-1">
-													{t("appointments.purpose") || "Purpose"}:{" "}
-													{appointment.description}
-												</p>
-												{appointment.status !== "cancelled" && (
-													<div className="flex gap-2 mt-4">
-														<Button variant="outline" size="sm">
-															{t("appointments.reschedule") || "Reschedule"}
-														</Button>
-														<Button variant="destructive" size="sm">
-															{t("appointments.cancel") || "Cancel"}
-														</Button>
-													</div>
-												)}
-											</div>
+					{!user?.uid ? (
+						<Card>
+							<CardHeader>
+								<CardTitle>
+									{t("appointments.yourAppointments") || "Your Appointments"}
+								</CardTitle>
+								<CardDescription>
+									Please sign in to view your upcoming appointments.
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<p className="text-sm text-muted-foreground">
+									Log in to see, reschedule, or cancel your appointments.
+								</p>
+							</CardContent>
+						</Card>
+					) : (
+						<Card>
+							<CardHeader>
+								<CardTitle>
+									{t("appointments.yourAppointments") || "Your Appointments"}
+								</CardTitle>
+								<CardDescription>
+									{t("appointments.viewManage") ||
+										"View and manage your scheduled appointments"}
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<div className="space-y-4">
+									{appointmentsLoading ? (
+										<div className="flex items-center justify-center py-8 text-muted-foreground">
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											Loading appointments...
 										</div>
-									))
-								)}
-							</div>
-						</CardContent>
-					</Card>
+									) : userAppointments.length === 0 ? (
+										<div className="text-center py-8 text-muted-foreground">
+											No appointments found
+										</div>
+									) : (
+										userAppointments.map((appointment) => (
+											<div
+												key={appointment.id}
+												className={`rounded-lg border p-4 ${
+													appointment.status === "cancelled" ? "opacity-75" : ""
+												}`}
+											>
+												<div className="flex items-start justify-between">
+													<div>
+														<div className="flex items-center">
+															<Users className="mr-2 h-5 w-5 text-primary" />
+															<h3 className="font-medium">{appointment.title}</h3>
+														</div>
+														<p className="text-sm text-muted-foreground mt-1">
+															{formatDate(appointment.date)} at {appointment.time}
+														</p>
+													</div>
+													<div className="flex items-center">
+														{getStatusBadge(appointment.status)}
+													</div>
+												</div>
+												<div className="mt-4">
+													<p className="text-sm">
+														{t("certificates.reference") || "Reference"}:{" "}
+														{appointment.id}
+													</p>
+													<p className="text-sm text-muted-foreground mt-1">
+														{t("appointments.purpose") || "Purpose"}:{" "}
+														{appointment.description}
+													</p>
+													{appointment.status !== "cancelled" && (
+														<div className="flex gap-2 mt-4">
+															<Button variant="outline" size="sm">
+																{t("appointments.reschedule") || "Reschedule"}
+															</Button>
+															<Button variant="destructive" size="sm">
+																{t("appointments.cancel") || "Cancel"}
+															</Button>
+														</div>
+													)}
+												</div>
+											</div>
+										))
+									)}
+								</div>
+							</CardContent>
+						</Card>
+					)}
 				</TabsContent>
 			</Tabs>
 		</div>

@@ -1,6 +1,7 @@
 "use server"
 
 import { adminDatabase } from "@/app/firebase/admin"
+import { archiveRecord } from "@/lib/archive-manager"
 import { revalidatePath } from "next/cache"
 
 // Get all users with pagination
@@ -116,7 +117,39 @@ export async function getSystemStatsAction() {
 // Delete user
 export async function deleteUserAction(userId: string) {
   try {
-    await adminDatabase.ref(`users/${userId}`).remove()
+    const userRef = adminDatabase.ref(`users/${userId}`)
+    const snapshot = await userRef.get()
+
+    if (!snapshot.exists()) {
+      return { success: false, error: "User not found." }
+    }
+
+    const userRecord = snapshot.val()
+
+    try {
+      const { getAuth } = await import("firebase-admin/auth")
+      const auth = getAuth()
+      await auth.updateUser(userId, { disabled: true })
+    } catch (authError: any) {
+      if (authError.code !== "auth/user-not-found") {
+        console.error("Failed to disable user auth account:", authError)
+      }
+    }
+
+    await archiveRecord({
+      entity: "users",
+      id: userId,
+      paths: {
+        [`users/${userId}`]: userRecord,
+      },
+      preview: {
+        email: userRecord.email,
+        role: userRecord.role,
+        status: userRecord.status,
+        name: `${userRecord.firstName ?? ""} ${userRecord.lastName ?? ""}`.trim(),
+      },
+    })
+
     revalidatePath("/admin/staff")
     revalidatePath("/admin/residents")
     return { success: true }

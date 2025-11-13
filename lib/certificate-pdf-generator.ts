@@ -2,17 +2,15 @@
 
 import { PDFDocument, rgb, StandardFonts, PDFFont } from "pdf-lib";
 
-export interface CertificateData {
-	id: string;
-	type: string;
-	requestedBy: string;
-	purpose: string;
-	age?: string;
-	address?: string;
-	generatedOn: string;
-	signatureUrl?: string;
-	hasSignature?: boolean;
-}
+import {
+	CERTIFICATE_LAYOUT,
+	CertificateContentData,
+	getCertificateTemplateConfig,
+	TitleLine,
+	PdfFontKey,
+} from "./certificate-templates";
+
+export type CertificateData = CertificateContentData;
 
 export interface OfficialInfo {
 	name: string;
@@ -36,65 +34,180 @@ function getOrdinalSuffix(day: number): string {
 	}
 }
 
+function getIssuanceParagraph(date: Date): string {
+	const day = date.getDate();
+	const month = date.toLocaleDateString("en-US", { month: "long" });
+	const year = date.getFullYear();
+
+	return `Given this ${day}${getOrdinalSuffix(day)} day of ${month}, ${year}.`;
+}
+
+function resolveIssuanceDate(generatedOn?: string): Date {
+	if (!generatedOn) {
+		return new Date();
+	}
+
+	const parsedDate = new Date(generatedOn);
+	if (Number.isNaN(parsedDate.getTime())) {
+		return new Date();
+	}
+
+	return parsedDate;
+}
+
+function buildCertificateSections(data: CertificateData) {
+	const templateConfig = getCertificateTemplateConfig(data.type || "");
+	return {
+		titleLines: templateConfig.titleLines,
+		bodyParagraphs: templateConfig.buildBody(data),
+		previewDescription: templateConfig.previewDescription,
+	};
+}
+
+type RgbTuple = [number, number, number];
+
+function hexToRgbTuple(hexColor: string): RgbTuple {
+	const sanitized = hexColor.replace("#", "");
+	const bigint = parseInt(sanitized, 16);
+	const r = ((bigint >> 16) & 255) / 255;
+	const g = ((bigint >> 8) & 255) / 255;
+	const b = (bigint & 255) / 255;
+	return [r, g, b];
+}
+
+function interpolateColor(
+	start: RgbTuple,
+	end: RgbTuple,
+	ratio: number
+): RgbTuple {
+	return [
+		start[0] + (end[0] - start[0]) * ratio,
+		start[1] + (end[1] - start[1]) * ratio,
+		start[2] + (end[2] - start[2]) * ratio,
+	];
+}
+
+function splitParagraphIntoLines(
+	text: string,
+	font: PDFFont,
+	fontSize: number,
+	maxWidth: number
+): string[] {
+	const words = text.split(" ");
+	const lines: string[] = [];
+	let currentLine = "";
+
+	words.forEach((word) => {
+		const candidate = currentLine
+			? `${currentLine} ${word}`
+			: word;
+		const candidateWidth = font.widthOfTextAtSize(candidate, fontSize);
+
+		if (candidateWidth <= maxWidth) {
+			currentLine = candidate;
+		} else {
+			if (currentLine) {
+				lines.push(currentLine);
+			}
+			currentLine = word;
+		}
+	});
+
+	if (currentLine) {
+		lines.push(currentLine);
+	}
+
+	return lines;
+}
 // Generate PDF from certificate data using pdf-lib
 export async function generateCertificatePDF(
 	certificateData: CertificateData,
 	officialInfo: OfficialInfo
 ): Promise<{ success: boolean; pdfBlob?: Blob; error?: string }> {
 	try {
-		// Create a new PDF document
+		const layout = CERTIFICATE_LAYOUT;
+		const sections = buildCertificateSections(certificateData);
+		const issuanceDate = resolveIssuanceDate(certificateData.generatedOn);
+		const bodyParagraphs = [
+			...sections.bodyParagraphs,
+			getIssuanceParagraph(issuanceDate),
+		];
+
 		const pdfDoc = await PDFDocument.create();
+		const page = pdfDoc.addPage([layout.page.width, layout.page.height]);
 
-		// Add a page (Letter size: 8.5 x 11 inches)
-		const page = pdfDoc.addPage([612, 792]); // 8.5" x 11" in points (72 DPI)
-
-		// Embed fonts
 		const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
 		const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 		const timesFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
 		const timesBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
 
-		// Page dimensions
-		const { width, height } = page.getSize();
-		const margin = 36; // 0.5 inches
-		const sidebarWidth = 130; // 1.8 inches
+		const fontMap: Record<PdfFontKey, PDFFont> = {
+			helvetica: helveticaFont,
+			helveticaBold,
+			times: timesFont,
+			timesBold,
+		};
 
-		// Colors
+		const { width, height } = page.getSize();
+		const margin = layout.margin;
 		const black = rgb(0, 0, 0);
-		const blue = rgb(0.39, 0.4, 0.95); // #6366f1
 		const white = rgb(1, 1, 1);
 
-		// ========================================
-		// PART 1: HEADER SECTION
-		// ========================================
-
-		// Draw main border (thick black border)
+		// Border
 		page.drawRectangle({
 			x: margin,
 			y: margin,
 			width: width - 2 * margin,
 			height: height - 2 * margin,
 			borderColor: black,
-			borderWidth: 3,
+			borderWidth: layout.borderWidth,
 			color: white,
 		});
 
-		// Barangay seal placeholder (left side)
-		page.drawRectangle({
-			x: margin + 20,
-			y: height - margin - 100,
-			width: 80,
-			height: 80,
-			borderColor: black,
-			borderWidth: 2,
+	// Seal/Logo - Load and embed the actual barangay logo
+	const sealSize = layout.seal.size;
+	const sealX = margin + layout.seal.leftOffset;
+	const sealY = height - margin - layout.seal.topOffset - sealSize;
+	
+	try {
+		// Fetch the logo image with absolute path
+		const logoUrl = window.location.origin + '/images/malinta_logo.jpg';
+		const logoResponse = await fetch(logoUrl);
+		
+		if (!logoResponse.ok) {
+			throw new Error(`Failed to fetch logo: ${logoResponse.status}`);
+		}
+		
+		const logoImageBytes = await logoResponse.arrayBuffer();
+		const logoImage = await pdfDoc.embedJpg(logoImageBytes);
+		
+		// Draw border around the logo
+		if (layout.seal.borderWidth > 0) {
+			page.drawRectangle({
+				x: sealX,
+				y: sealY,
+				width: sealSize,
+				height: sealSize,
+				borderColor: black,
+				borderWidth: layout.seal.borderWidth,
+			});
+		}
+		
+		// Draw the logo image
+		page.drawImage(logoImage, {
+			x: sealX,
+			y: sealY,
+			width: sealSize,
+			height: sealSize,
 		});
-
-		// Draw circular seal outline
-		const sealCenterX = margin + 60;
-		const sealCenterY = height - margin - 60;
-		const sealRadius = 35;
-
-		// Draw seal circle (simulated with small rectangles)
+		
+		console.log('Logo loaded successfully');
+	} catch (error) {
+		console.error('Failed to load logo:', error);
+		// Fallback: draw a simple circle as placeholder
+		const sealCenterX = sealX + sealSize / 2;
+		const sealCenterY = sealY + sealSize / 2;
+		const sealRadius = sealSize / 2 - 5;
 		for (let angle = 0; angle < 360; angle += 10) {
 			const x = sealCenterX + sealRadius * Math.cos((angle * Math.PI) / 180);
 			const y = sealCenterY + sealRadius * Math.sin((angle * Math.PI) / 180);
@@ -106,326 +219,259 @@ export async function generateCertificatePDF(
 				color: black,
 			});
 		}
+	}
 
-		// Header text (centered, exact positioning)
-		const headerTexts = [
-			"REPUBLIC OF THE PHILIPPINES",
-			"PROVINCE OF LAGUNA",
-			"MUNICIPALITY OF LOS BAÑOS",
-			"BARANGAY MALINTA",
-		];
-
-		headerTexts.forEach((text, index) => {
-			const textWidth = helveticaBold.widthOfTextAtSize(text, 11);
-			page.drawText(text, {
-				x: (width - textWidth) / 2,
-				y: height - margin - 25 - index * 14,
-				size: 11,
-				font: helveticaBold,
+		// Header text (positioned to the right of seal)
+		const headerBaseY = height - margin - layout.header.topOffset;
+		const headerLeftX = margin + (layout.header.leftOffset || 0);
+		layout.header.lines.forEach((line, index) => {
+			const headerFont = fontMap[line.font];
+			page.drawText(line.text, {
+				x: headerLeftX,
+				y: headerBaseY - index * layout.header.lineSpacing,
+				size: line.fontSize,
+				font: headerFont,
 				color: black,
 			});
 		});
 
-		// Horizontal line under header
+		// Header divider
 		page.drawRectangle({
-			x: margin + 80,
-			y: height - margin - 105,
-			width: width - 2 * margin - 160,
-			height: 2,
+			x: margin + layout.header.divider.leftOffset,
+			y: height - margin - layout.header.divider.yOffset,
+			width: width - 2 * margin - layout.header.divider.rightOffset,
+			height: layout.header.divider.height,
 			color: black,
 		});
 
-		// Office title box (blue background, white text)
-		const officeTitle = "OFFICE OF THE SANGGUNIANG BARANGAY";
-		const titleWidth = helveticaBold.widthOfTextAtSize(officeTitle, 14);
-		const titleBoxWidth = width - 2 * margin;
-		const titleBoxHeight = 30;
+		// Office ribbon
+		const officeRibbon = layout.header.officeRibbon;
+		const ribbonColor = hexToRgbTuple(officeRibbon.backgroundColor);
+		const ribbonTextColor = hexToRgbTuple(officeRibbon.textColor);
+		const ribbonY = height - margin - officeRibbon.topOffset;
 
 		page.drawRectangle({
 			x: margin,
-			y: height - margin - 140,
-			width: titleBoxWidth,
-			height: titleBoxHeight,
+			y: ribbonY,
+			width: width - 2 * margin,
+			height: officeRibbon.height,
 			borderColor: black,
-			borderWidth: 2,
-			color: rgb(0.2, 0.3, 0.8), // Blue background
+			borderWidth: officeRibbon.borderWidth,
+			color: rgb(ribbonColor[0], ribbonColor[1], ribbonColor[2]),
 		});
 
-		page.drawText(officeTitle, {
-			x: (width - titleWidth) / 2,
-			y: height - margin - 130,
-			size: 14,
-			font: helveticaBold,
-			color: white, // White text on blue
+		const ribbonFont = fontMap[officeRibbon.font];
+		const ribbonTextWidth = ribbonFont.widthOfTextAtSize(
+			officeRibbon.text,
+			officeRibbon.fontSize
+		);
+		page.drawText(officeRibbon.text, {
+			x: (width - ribbonTextWidth) / 2,
+			y:
+				ribbonY +
+				(officeRibbon.height - officeRibbon.fontSize) / 2 +
+				officeRibbon.fontSize * 0.1,
+			size: officeRibbon.fontSize,
+			font: ribbonFont,
+			color: rgb(
+				ribbonTextColor[0],
+				ribbonTextColor[1],
+				ribbonTextColor[2]
+			),
 		});
 
-		// ========================================
-		// PART 2: BLUE SIDEBAR
-		// ========================================
+		// Sidebar gradient background
+		const sidebarStartY = margin + layout.sidebar.bottomOffset;
+		const sidebarHeight = height - margin - layout.sidebar.topOffset;
+		const topColor = hexToRgbTuple(layout.sidebar.backgroundTopColor);
+		const bottomColor = hexToRgbTuple(layout.sidebar.backgroundBottomColor);
+		const steps: number = 40;
+		const stepHeight = sidebarHeight / steps;
 
-		// Draw blue sidebar (exact color and positioning)
-		const sidebarX = margin;
-		const sidebarY = margin;
-		const sidebarHeight = height - margin - 145; // From bottom of title box to footer
+		for (let step = 0; step < steps; step++) {
+			const ratio = steps === 1 ? 0 : step / (steps - 1);
+			const [r, g, b] = interpolateColor(topColor, bottomColor, ratio);
+			page.drawRectangle({
+				x: margin,
+				y: sidebarStartY + step * stepHeight,
+				width: layout.sidebar.width,
+				height: stepHeight + 0.5,
+				color: rgb(r, g, b),
+			});
+		}
 
-		page.drawRectangle({
-			x: sidebarX,
-			y: sidebarY + 45, // Start after footer space
-			width: sidebarWidth,
-			height: sidebarHeight,
-			color: rgb(0.25, 0.35, 0.85), // Exact blue from image
-		});
+		// Sidebar text
+		const sidebarTextColor = hexToRgbTuple(layout.sidebar.textColor);
+		let sidebarTextY =
+			height - margin - layout.sidebar.contentTopOffset;
 
-		// ========================================
-		// PART 3: SIDEBAR CONTENT
-		// ========================================
+		const renderSidebarEntry = (entry: (typeof layout.sidebar.title)[number]) => {
+			const entryFont = fontMap[entry.font];
+			const textWidth = entryFont.widthOfTextAtSize(entry.text, entry.fontSize);
+			const x = entry.center
+				? margin + (layout.sidebar.width - textWidth) / 2
+				: margin + layout.sidebar.textHorizontalPadding;
 
-		// Sidebar content
-		const sidebarContent = [
-			{ text: "SANGGUNIANG BARANGAY", bold: true, center: true, size: 10 },
-			{ text: "OF MALINTA", bold: true, center: true, size: 10 },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "PUNONG BARANGAY", bold: true, size: 9 },
-			{ text: "HON. JESUS H. DE UNA JR.", size: 9 },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "BARANGAY KAGAWAD", bold: true, size: 9 },
-			{ text: "HON. ROLANDO L. ERROBA", size: 9 },
-			{ text: "HEALTH & EDUCATION", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "HON. RANIE F. ANDAL", size: 9 },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "HON. ERNESTO G.", size: 9 },
-			{ text: "ALCANTARA", size: 9 },
-			{ text: "ENVIRONMENTAL PROTECTION", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "HON. ALLAN B. BIENES", size: 9 },
-			{ text: "INFRASTRUCTURE", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "HON. BENY S. MORALDE", size: 9 },
-			{ text: "PEACE AND ORDER", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "HON. SHERYL S. BAGNES", size: 9 },
-			{ text: "WOMEN AND FAMILY", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "HON. GAUDENCIO D.", size: 9 },
-			{ text: "MARIANO", size: 9 },
-			{ text: "LIVELIHOOD &", size: 8, italic: true },
-			{ text: "COOPERATIVE DEVT /", size: 8, italic: true },
-			{ text: "APPROPRIATIONS, WAYS &", size: 8, italic: true },
-			{ text: "MEANS", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "HON. EDMUND LLOYD E.", size: 9 },
-			{ text: "VELASCO", size: 9 },
-			{ text: "SPORTS & YOUTH", size: 8, italic: true },
-			{ text: "DEVELOPMENT", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "MS. RICHET E. TAKAHASHI", size: 9 },
-			{ text: "SECRETARY", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "MS. JANE CAMILLE", size: 9 },
-			{ text: "RETIRADO", size: 9 },
-			{ text: "TREASURER", size: 8, italic: true },
-			{ text: "", size: 8 }, // Spacing
-			{ text: "MR. JEFFREY BONITA", size: 9 },
-			{ text: "ADMIN", size: 8, italic: true },
-		];
-
-		// Sidebar text positioning (exact from image)
-		let currentY = height - margin - 160; // Start below title box
-
-		sidebarContent.forEach((item) => {
-			if (item.text === "") {
-				currentY -= 6; // Spacing
-				return;
-			}
-
-			const font = item.bold ? helveticaBold : helveticaFont;
-			const textWidth = font.widthOfTextAtSize(item.text, item.size);
-			const x = item.center
-				? margin + (sidebarWidth - textWidth) / 2
-				: margin + 8; // Exact left margin
-
-			page.drawText(item.text, {
+			page.drawText(entry.text, {
 				x,
-				y: currentY,
-				size: item.size,
-				font: font,
-				color: white,
+				y: sidebarTextY,
+				size: entry.fontSize,
+				font: entryFont,
+				color: rgb(
+					sidebarTextColor[0],
+					sidebarTextColor[1],
+					sidebarTextColor[2]
+				),
 			});
 
-			currentY -= item.size + 3; // Exact line spacing
-		});
+			sidebarTextY -= entry.fontSize + (entry.marginBottom ?? 3);
+		};
 
-		// ========================================
-		// PART 4: MAIN CONTENT AREA
-		// ========================================
+		layout.sidebar.title.forEach(renderSidebarEntry);
+		layout.sidebar.entries.forEach(renderSidebarEntry);
 
-		// Main content area (exact positioning from image)
-		const contentX = margin + sidebarWidth + 15; // Closer to sidebar
-		const contentWidth = width - contentX - margin - 15;
+		// Sidebar border
+		if (layout.sidebar.borderWidth && layout.sidebar.borderWidth > 0) {
+			page.drawRectangle({
+				x: margin,
+				y: sidebarStartY,
+				width: layout.sidebar.width,
+				height: sidebarHeight,
+				borderColor: black,
+				borderWidth: layout.sidebar.borderWidth,
+			});
+		}
 
-		// Draw content area border (thin black line)
+		// Content box
+		const contentBox = layout.contentBox;
+		const contentX = margin + layout.sidebar.width + contentBox.leftGap;
+		const contentWidth = width - contentX - margin - contentBox.rightGap;
+		const contentBorderX = contentX - contentBox.horizontalPadding;
+		const contentBorderY = margin + contentBox.bottomOffset;
+		const contentBorderTop = height - margin - contentBox.topOffset;
+		const contentBorderHeight = contentBorderTop - contentBorderY;
+
 		page.drawRectangle({
-			x: contentX - 5,
-			y: margin + 45,
-			width: contentWidth + 10,
-			height: height - margin - 190,
+			x: contentBorderX,
+			y: contentBorderY,
+			width: contentWidth + contentBox.horizontalPadding * 2,
+			height: contentBorderHeight,
 			borderColor: black,
-			borderWidth: 2,
+			borderWidth: contentBox.borderWidth,
 			color: white,
 		});
 
-		// ========================================
-		// PART 5: CERTIFICATE TITLE
-		// ========================================
-
-		// Certificate title (exact from image)
-		const titleLines = ["C E R T I F I C A T E", "O F", "I N D I G E N C Y"];
-		let titleY = height - margin - 180; // Start position
-
-		titleLines.forEach((line, index) => {
-			const fontSize = line === "O F" ? 20 : 22; // Smaller "OF"
-			const textWidth = timesBold.widthOfTextAtSize(line, fontSize);
-
-			page.drawText(line, {
+		// Title lines
+		let titleY = height - margin - contentBox.titleOffset;
+		sections.titleLines.forEach((line) => {
+			const textWidth = timesBold.widthOfTextAtSize(line.text, line.fontSize);
+			page.drawText(line.text, {
 				x: contentX + (contentWidth - textWidth) / 2,
 				y: titleY,
-				size: fontSize,
+				size: line.fontSize,
 				font: timesBold,
 				color: black,
 			});
-
-			titleY -= line === "O F" ? 25 : 30; // Different spacing
+			titleY -= line.marginBottom;
 		});
 
-		// ========================================
-		// PART 6: CERTIFICATE BODY TEXT
-		// ========================================
+		// Body paragraphs
+		const bodyConfig = layout.body;
+		const bodyFont = fontMap[bodyConfig.font];
+		let bodyY = titleY - bodyConfig.topSpacing;
+		const bodyMaxWidth = contentWidth - bodyConfig.contentMarginX * 2;
 
-		// Certificate body text
-		const bodyTexts = [
-			`This is to certify that ${certificateData.requestedBy.toUpperCase()} of legal age is a resident of Brgy. Malinta, Los Baños, Laguna. This certifies further that the name belongs to indigent families of this barangay.`,
-			`This certification is being issued upon the request of above mentioned name as a requirement for whatever legal purpose it may serve to her.`,
-			`Given this ${new Date().getDate()}${getOrdinalSuffix(
-				new Date().getDate()
-			)} day of ${new Date().toLocaleDateString("en-US", {
-				month: "long",
-			})}, ${new Date().getFullYear()}.`,
-		];
+		bodyParagraphs.forEach((paragraph) => {
+			const lines = splitParagraphIntoLines(
+				paragraph,
+				bodyFont,
+				bodyConfig.fontSize,
+				bodyMaxWidth
+			);
 
-		// Certificate body text (exact alignment from image)
-		let bodyY = titleY - 50; // Start below title
-
-		bodyTexts.forEach((text, index) => {
-			// Split long text into lines with exact width
-			const words = text.split(" ");
-			const lines: string[] = [];
-			let currentLine = "";
-			const maxWidth = contentWidth - 30; // Text margins
-
-			words.forEach((word) => {
-				const testLine = currentLine + (currentLine ? " " : "") + word;
-				const testWidth = timesFont.widthOfTextAtSize(testLine, 11);
-
-				if (testWidth <= maxWidth) {
-					currentLine = testLine;
-				} else {
-					if (currentLine) lines.push(currentLine);
-					currentLine = word;
-				}
-			});
-			if (currentLine) lines.push(currentLine);
-
-			// Draw each line with exact spacing
 			lines.forEach((line, lineIndex) => {
 				page.drawText(line, {
-					x: contentX + 15, // Left margin
-					y: bodyY - lineIndex * 16, // Line height
-					size: 11, // Exact font size from image
-					font: timesFont,
+					x: contentX + bodyConfig.contentMarginX,
+					y: bodyY - lineIndex * bodyConfig.lineHeight,
+					size: bodyConfig.fontSize,
+					font: bodyFont,
 					color: black,
 				});
 			});
 
-			bodyY -= lines.length * 16 + 25; // Paragraph spacing
+			bodyY -= lines.length * bodyConfig.lineHeight + bodyConfig.paragraphSpacing;
 		});
 
-		// ========================================
-		// PART 7: SIGNATURE AREA
-		// ========================================
+		// Signature area
+		const signatureConfig = layout.signature;
+		const signatureBaseY = bodyY - signatureConfig.offsetFromBody;
+		const signatureBoxX =
+			contentX +
+			contentWidth -
+			signatureConfig.boxWidth -
+			signatureConfig.horizontalOffset;
 
-		// Signature area (exact positioning from image)
-		const signatureY = bodyY - 60;
-		const signatureBoxWidth = 180;
-		const signatureBoxHeight = 50;
-		const signatureBoxX = contentX + contentWidth - signatureBoxWidth - 30;
-
-		// Draw signature line (solid line, not dotted box)
 		page.drawRectangle({
 			x: signatureBoxX,
-			y: signatureY + 20,
-			width: signatureBoxWidth,
+			y: signatureBaseY + signatureConfig.lineOffsetY,
+			width: signatureConfig.boxWidth,
 			height: 1,
 			color: black,
 		});
 
-		// Signature text (exact positioning from image)
 		const signatureName = officialInfo.name.toUpperCase();
 		const signaturePosition = officialInfo.position;
-		const signatureNameWidth = timesBold.widthOfTextAtSize(signatureName, 11);
-		const signaturePosWidth = timesFont.widthOfTextAtSize(signaturePosition, 9);
+		const signatureNameFont = fontMap[signatureConfig.nameFont];
+		const signaturePositionFont = fontMap[signatureConfig.positionFont];
+		const signatureNameWidth = signatureNameFont.widthOfTextAtSize(
+			signatureName,
+			signatureConfig.nameFontSize
+		);
+		const signaturePosWidth = signaturePositionFont.widthOfTextAtSize(
+			signaturePosition,
+			signatureConfig.positionFontSize
+		);
 
-		// Name above the line
 		page.drawText(signatureName, {
-			x: signatureBoxX + (signatureBoxWidth - signatureNameWidth) / 2,
-			y: signatureY + 25,
-			size: 11,
-			font: timesBold,
+			x:
+				signatureBoxX +
+				(signatureConfig.boxWidth - signatureNameWidth) / 2,
+			y: signatureBaseY + signatureConfig.nameOffsetY,
+			size: signatureConfig.nameFontSize,
+			font: signatureNameFont,
 			color: black,
 		});
 
-		// Position below the line
 		page.drawText(signaturePosition, {
-			x: signatureBoxX + (signatureBoxWidth - signaturePosWidth) / 2,
-			y: signatureY + 5,
-			size: 9,
-			font: timesFont,
+			x:
+				signatureBoxX +
+				(signatureConfig.boxWidth - signaturePosWidth) / 2,
+			y: signatureBaseY + signatureConfig.positionOffsetY,
+			size: signatureConfig.positionFontSize,
+			font: signaturePositionFont,
 			color: black,
 		});
 
-		// ========================================
-		// PART 8: FOOTER
-		// ========================================
-
-		// Footer (exact from image)
-		const footerY = margin + 20;
-		const footerHeight = 25;
-
-		// Footer text (right-aligned, exact positioning)
-		const footerTexts = [
-			"ADDRESS:",
-			"SAN LUIS AVENUE/PUROK 2, BARANGAY MALINTA/LOS BAÑOS, LAGUNA 4030",
-			"TEL. NO. (049) 502-4396",
-		];
-
-		// Draw footer text (right-aligned)
-		footerTexts.forEach((text, index) => {
-			const fontSize = index === 0 ? 8 : 7; // Different sizes
-			const font = index === 0 ? helveticaBold : helveticaFont;
-			const textWidth = font.widthOfTextAtSize(text, fontSize);
-
-			page.drawText(text, {
+		// Footer
+		const footerBaseY = margin + layout.footer.bottomOffset;
+		layout.footer.lines.forEach((line, index) => {
+			const footerFont = fontMap[line.font];
+			const textWidth = footerFont.widthOfTextAtSize(line.text, line.fontSize);
+			page.drawText(line.text, {
 				x: width - margin - textWidth - 5,
-				y: footerY + 15 - index * 8,
-				size: fontSize,
-				font: font,
+				y: footerBaseY + 15 - index * layout.footer.lineSpacing,
+				size: line.fontSize,
+				font: footerFont,
 				color: black,
 			});
 		});
 
-		// Convert to blob
 		const pdfBytes = await pdfDoc.save();
-		const pdfBlob = new Blob([pdfBytes], { type: "application/pdf" });
+		const pdfBuffer = pdfBytes.buffer.slice(
+			pdfBytes.byteOffset,
+			pdfBytes.byteOffset + pdfBytes.byteLength
+		) as ArrayBuffer;
+		const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
 
 		return {
 			success: true,
@@ -445,232 +491,260 @@ export function createCertificatePreview(
 	certificateData: CertificateData,
 	officialInfo: OfficialInfo
 ): string {
-	const currentDate = new Date().toLocaleDateString("en-US", {
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	});
+	const layout = CERTIFICATE_LAYOUT;
+	const sections = buildCertificateSections(certificateData);
+	const issuanceParagraph = getIssuanceParagraph(
+		resolveIssuanceDate(certificateData.generatedOn)
+	);
+	const paragraphs = [...sections.bodyParagraphs, issuanceParagraph];
+
+	const formatNumber = (value: number) => {
+		const rounded = Number(value.toFixed(3));
+		return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toString();
+	};
+	const formatInches = (points: number) =>
+		`${formatNumber(points / 72)}in`;
+	const pageWidthIn = formatInches(layout.page.width);
+	const pageHeightIn = formatInches(layout.page.height);
+	const marginIn = formatInches(layout.margin);
+	const sidebarWidthIn = formatInches(layout.sidebar.width);
+	const contentMarginLeftIn = formatInches(
+		layout.margin +
+			layout.sidebar.width +
+			layout.contentBox.leftGap -
+			layout.contentBox.horizontalPadding
+	);
+	const contentMarginRightIn = formatInches(
+		layout.margin +
+			layout.contentBox.rightGap +
+			layout.contentBox.horizontalPadding
+	);
+	const sidebarTopIn = formatInches(layout.sidebar.topOffset);
+	const sidebarHeightIn = formatInches(
+		layout.page.height - layout.sidebar.topOffset - layout.sidebar.bottomOffset
+	);
+
+	const headerLinesHtml = layout.header.lines
+		.map(
+			(line) => `
+				<div style="
+					font-size: ${line.fontSize}px;
+					font-weight: ${line.font === "helveticaBold" ? "bold" : "normal"};
+					margin-bottom: ${layout.header.lineSpacing - line.fontSize + 2}px;
+				">
+					${line.text}
+				</div>
+			`
+		)
+		.join("");
+
+	const sidebarTitleHtml = layout.sidebar.title
+		.map((entry) => {
+			const textAlign = entry.center ? "center" : "left";
+			return `<div style="
+				font-size: ${entry.fontSize}px;
+				font-weight: ${entry.font === "helveticaBold" ? "bold" : "normal"};
+				text-align: ${textAlign};
+				margin-bottom: ${entry.marginBottom ?? 3}px;
+			">${entry.text}</div>`;
+		})
+		.join("");
+
+	const sidebarEntriesHtml = layout.sidebar.entries
+		.map((entry) => {
+			const fontWeight = entry.font === "helveticaBold" ? "bold" : "normal";
+			const fontStyle = entry.italic ? "italic" : "normal";
+			return `<div style="
+				font-size: ${entry.fontSize}px;
+				font-weight: ${fontWeight};
+				font-style: ${fontStyle};
+				margin-bottom: ${entry.marginBottom ?? 3}px;
+			">${entry.text}</div>`;
+		})
+		.join("");
+
+	const titleHtml = sections.titleLines
+		.map((line, index) => {
+			const marginBottom =
+				index === sections.titleLines.length - 1 ? 0 : line.marginBottom;
+			return `<div style="
+						font-size: ${line.fontSize}px;
+						font-weight: bold;
+						letter-spacing: 4px;
+						margin: 0;
+						margin-bottom: ${marginBottom}px;
+						line-height: 1.4;
+						font-family: 'Times New Roman', serif;
+					">
+						${line.text}
+					</div>`;
+		})
+		.join("");
+
+	const paragraphHtml = paragraphs
+		.map((paragraph, index) => {
+			const marginBottom =
+				index === paragraphs.length - 1
+					? layout.body.paragraphSpacing + 15
+					: layout.body.paragraphSpacing;
+			return `<p style="margin-bottom: ${marginBottom}px;">
+						${paragraph}
+					</p>`;
+		})
+		.join("");
+
+	const footerHtml = layout.footer.lines
+		.map(
+			(line, index) => `
+				<div style="
+					font-weight: ${line.font === "helveticaBold" ? "bold" : "normal"};
+					font-size: ${line.fontSize}px;
+					margin-bottom: ${
+						index === layout.footer.lines.length - 1
+							? 0
+							: layout.footer.lineSpacing - line.fontSize + 1
+					}px;
+				">
+					${line.text}
+				</div>
+			`
+		)
+		.join("");
 
 	return `
 		<div id="certificate-container" style="
-			width: 8.5in;
-			height: 11in;
-			padding: 0.5in;
+			width: ${pageWidthIn};
+			height: ${pageHeightIn};
+			padding: ${marginIn};
 			font-family: 'Helvetica', 'Arial', sans-serif;
 			background: white;
-			border: 3px solid #000;
+			border: ${layout.borderWidth}px solid #000;
 			box-sizing: border-box;
 			position: relative;
 			margin: 0 auto;
 			transform: scale(0.8);
 			transform-origin: top center;
 		">
-			<!-- PART 1: HEADER SECTION -->
+			<!-- Header -->
 			<div style="
 				position: relative;
 				height: 140px;
-				border-bottom: 2px solid #000;
+				border-bottom: ${layout.header.divider.height}px solid #000;
 			">
-				<!-- Barangay Seal (Left Side) -->
 				<div style="
 					position: absolute;
-					left: 20px;
-					top: 20px;
-					width: 80px;
-					height: 80px;
-					border: 2px solid #000;
-					border-radius: 50%;
-					background: white;
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					font-size: 8px;
-					text-align: center;
-					line-height: 1.2;
+					left: ${layout.seal.leftOffset}px;
+					top: ${layout.seal.topOffset}px;
+					width: ${layout.seal.size}px;
+					height: ${layout.seal.size}px;
+					border: ${layout.seal.borderWidth}px solid #000;
+					overflow: hidden;
+					box-sizing: border-box;
 				">
-					<div>
-						<div style="font-weight: bold;">SAGISAG NG</div>
-						<div style="font-weight: bold;">BARANGAY</div>
-						<div style="font-weight: bold;">MALINTA</div>
+					<img src="/images/malinta_logo.jpg" alt="Barangay Seal" style="
+						width: 100%;
+						height: 100%;
+						object-fit: contain;
+					" />
+					<div style="display: none;">
+						<div>SAGISAG NG</div>
+						<div>BARANGAY</div>
+						<div>MALINTA</div>
 						<div style="margin-top: 5px;">19</div>
-						<div style="margin-top: 2px;">86</div>
+						<div>86</div>
 						<div style="margin-top: 5px;">BAYAN NG</div>
 						<div>LOS BAÑOS</div>
 					</div>
 				</div>
 
-				<!-- Header Text (Centered) -->
 				<div style="
 					position: absolute;
-					left: 120px;
-					right: 120px;
-					top: 25px;
-					text-align: center;
+					left: ${layout.header.leftOffset || 120}px;
+					top: ${layout.header.topOffset}px;
 				">
-					<div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">REPUBLIC OF THE PHILIPPINES</div>
-					<div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">PROVINCE OF LAGUNA</div>
-					<div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">MUNICIPALITY OF LOS BAÑOS</div>
-					<div style="font-size: 11px; font-weight: bold;">BARANGAY MALINTA</div>
+					${headerLinesHtml}
 				</div>
 
-				<!-- Horizontal Line -->
 				<div style="
 					position: absolute;
-					left: 100px;
-					right: 100px;
-					top: 85px;
-					height: 2px;
+					left: ${layout.header.divider.leftOffset}px;
+					right: ${layout.header.divider.rightOffset}px;
+					top: ${layout.header.divider.yOffset - 20}px;
+					height: ${layout.header.divider.height}px;
 					background: #000;
 				"></div>
 
-				<!-- Office Title Box (Blue Background) -->
 				<div style="
 					position: absolute;
 					left: 0;
 					right: 0;
-					top: 100px;
-					height: 30px;
-					background: rgb(51, 89, 204);
-					border: 2px solid #000;
+					top: ${layout.header.officeRibbon.topOffset - 40}px;
+					height: ${layout.header.officeRibbon.height}px;
+					background: ${layout.header.officeRibbon.backgroundColor};
+					border: ${layout.header.officeRibbon.borderWidth}px solid #000;
 					display: flex;
 					align-items: center;
 					justify-content: center;
 				">
 					<div style="
-						font-size: 14px;
+						font-size: ${layout.header.officeRibbon.fontSize}px;
 						font-weight: bold;
-						color: white;
+						color: ${layout.header.officeRibbon.textColor};
 					">
-						OFFICE OF THE SANGGUNIANG BARANGAY
+						${layout.header.officeRibbon.text}
 					</div>
 				</div>
 			</div>
 
-			<!-- PART 2: BLUE SIDEBAR -->
+			<!-- Sidebar -->
 			<div style="
 				position: absolute;
-				left: 0.5in;
-				top: 2.2in;
-				width: 1.8in;
-				height: 7.5in;
-				background: rgb(64, 89, 217);
-				color: white;
+				left: ${marginIn};
+				top: ${sidebarTopIn};
+				width: ${sidebarWidthIn};
+				height: ${sidebarHeightIn};
+				background: ${layout.sidebar.backgroundTopColor};
+				color: ${layout.sidebar.textColor};
+				border: ${layout.sidebar.borderWidth || 0}px solid #000;
+				box-sizing: border-box;
 				padding: 12px;
 				font-size: 9px;
 				line-height: 1.3;
 				font-weight: bold;
 			">
-				<div style="text-align: center; margin-bottom: 12px; font-size: 10px;">
-					SANGGUNIANG BARANGAY<br/>OF MALINTA
-				</div>
-				
-				<div style="margin-bottom: 6px;">PUNONG BARANGAY</div>
-				<div style="margin-bottom: 12px;">HON. JESUS H. DE UNA JR.</div>
-				
-				<div style="margin-bottom: 6px;">BARANGAY KAGAWAD</div>
-				<div style="margin-bottom: 3px;">HON. ROLANDO L. ERROBA</div>
-				<div style="margin-bottom: 8px; font-size: 8px;">HEALTH & EDUCATION</div>
-				
-				<div style="margin-bottom: 3px;">HON. RANIE F. ANDAL</div>
-				<div style="margin-bottom: 8px;"></div>
-				
-				<div style="margin-bottom: 3px;">HON. ERNESTO G.</div>
-				<div style="margin-bottom: 3px;">ALCANTARA</div>
-				<div style="margin-bottom: 8px; font-size: 8px;">ENVIRONMENTAL<br/>PROTECTION</div>
-				
-				<div style="margin-bottom: 3px;">HON. ALLAN B. BIENES</div>
-				<div style="margin-bottom: 8px; font-size: 8px;">INFRASTRUCTURE</div>
-				
-				<div style="margin-bottom: 3px;">HON. BENY S. MORALDE</div>
-				<div style="margin-bottom: 8px; font-size: 8px;">PEACE AND ORDER</div>
-				
-				<div style="margin-bottom: 3px;">HON. SHERYL S. BAGNES</div>
-				<div style="margin-bottom: 8px; font-size: 8px;">WOMEN AND FAMILY</div>
-				
-				<div style="margin-bottom: 3px;">HON. GAUDENCIO D.</div>
-				<div style="margin-bottom: 3px;">MARIANO</div>
-				<div style="margin-bottom: 3px; font-size: 8px;">LIVELIHOOD &</div>
-				<div style="margin-bottom: 3px; font-size: 8px;">COOPERATIVE DEVT /</div>
-				<div style="margin-bottom: 3px; font-size: 8px;">APPROPRIATIONS, WAYS &</div>
-				<div style="margin-bottom: 8px; font-size: 8px;">MEANS</div>
-				
-				<div style="margin-bottom: 3px;">HON. EDMUND LLOYD E.</div>
-				<div style="margin-bottom: 3px;">VELASCO</div>
-				<div style="margin-bottom: 3px; font-size: 8px;">SPORTS & YOUTH</div>
-				<div style="margin-bottom: 8px; font-size: 8px;">DEVELOPMENT</div>
-				
-				<div style="margin-bottom: 3px;">MS. RICHET E. TAKAHASHI</div>
-				<div style="margin-bottom: 3px; font-style: italic; font-size: 8px;">SECRETARY</div>
-				
-				<div style="margin-bottom: 3px;">MS. JANE CAMILLE</div>
-				<div style="margin-bottom: 3px;">RETIRADO</div>
-				<div style="margin-bottom: 3px; font-style: italic; font-size: 8px;">TREASURER</div>
-				
-				<div style="margin-bottom: 3px;">MR. JEFFREY BONITA</div>
-				<div style="font-style: italic; font-size: 8px;">ADMIN</div>
+				${sidebarTitleHtml}
+				${sidebarEntriesHtml}
 			</div>
 
-			<!-- PART 4: MAIN CONTENT AREA -->
+			<!-- Content -->
 			<div style="
-				margin-left: 2.6in;
-				margin-right: 0.5in;
-				margin-top: 0.5in;
-				padding: 35px;
-				border: 2px solid #000;
+				margin-left: ${contentMarginLeftIn};
+				margin-right: ${contentMarginRightIn};
+				margin-top: ${marginIn};
+				padding: 35px 30px;
+				border: ${layout.contentBox.borderWidth}px solid #000;
 				min-height: 6.5in;
 				background: white;
 			">
-				<!-- PART 5: CERTIFICATE TITLE -->
 				<div style="text-align: center; margin-bottom: 50px; margin-top: 30px;">
-					<h1 style="
-						font-size: 22px;
-						font-weight: bold;
-						letter-spacing: 4px;
-						margin: 0;
-						line-height: 1.4;
-						font-family: 'Times New Roman', serif;
-					">
-						C E R T I F I C A T E<br/>
-						<span style="font-size: 20px;">O F</span><br/>
-						I N D I G E N C Y
-					</h1>
+					${titleHtml}
 				</div>
 
-				<!-- PART 6: CERTIFICATE BODY TEXT -->
 				<div style="margin-bottom: 60px; line-height: 1.6; font-size: 11px; text-align: justify; font-family: 'Times New Roman', serif;">
-					<p style="margin-bottom: 25px;">
-						This is to certify that <strong>${certificateData.requestedBy.toUpperCase()}</strong> of legal 
-						age is a resident of Brgy. Malinta, Los Baños, Laguna. This certifies 
-						further that the name belongs to indigent families of this barangay.
-					</p>
-					
-					<p style="margin-bottom: 25px;">
-						This certification is being issued upon the request of above 
-						mentioned name as a requirement for whatever legal purpose it may 
-						serve to her.
-					</p>
-					
-					<p style="margin-bottom: 40px;">
-						Given this <strong>${new Date().getDate()}${getOrdinalSuffix(
-		new Date().getDate()
-	)}</strong> day of <strong>${new Date().toLocaleDateString("en-US", {
-		month: "long",
-	})}, ${new Date().getFullYear()}</strong>.
-					</p>
+					${paragraphHtml}
 				</div>
 
-				<!-- PART 7: SIGNATURE AREA -->
 				<div style="margin-top: 80px; text-align: center;">
 					<div style="
-						width: 180px; 
-						height: 1px; 
-						margin: 0 auto 15px; 
+						width: ${layout.signature.boxWidth}px;
+						height: 1px;
+						margin: 0 auto 15px;
 						border-bottom: 1px solid #000;
 						position: relative;
 					">
 						${
 							certificateData.hasSignature && certificateData.signatureUrl
-								? `<img src="${certificateData.signatureUrl}" alt="Signature" style="height: 50px; max-width: 160px; position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);" />`
+								? `<img src="${certificateData.signatureUrl}" alt="Signature" style="height: 50px; max-width: ${layout.signature.boxWidth - 20}px; position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);" />`
 								: ``
 						}
 					</div>
@@ -683,24 +757,18 @@ export function createCertificatePreview(
 				</div>
 			</div>
 
-			<!-- PART 8: FOOTER -->
+			<!-- Footer -->
 			<div style="
 				position: absolute;
 				bottom: 0.2in;
-				left: 0.5in;
-				right: 0.5in;
+				left: ${marginIn};
+				right: ${marginIn};
 				text-align: right;
 				font-size: 7px;
 				padding: 8px;
 				font-family: 'Helvetica', 'Arial', sans-serif;
 			">
-				<div style="font-weight: bold; margin-bottom: 3px; font-size: 8px;">
-					ADDRESS:
-				</div>
-				<div>
-					SAN LUIS AVENUE/PUROK 2, BARANGAY MALINTA/LOS BAÑOS, LAGUNA 4030<br/>
-					TEL. NO. (049) 502-4396
-				</div>
+				${footerHtml}
 			</div>
 		</div>
 	`;

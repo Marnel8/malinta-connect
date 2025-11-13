@@ -37,7 +37,8 @@ Since Firebase Admin SDK requires service account setup, please manually update 
    residents/{resident-uid}/
    ├── verification/
    │   ├── status: "verified"
-   │   ├── idPhotoUrl: "placeholder-url"
+  │   ├── idFrontPhotoUrl: "placeholder-url"
+  │   ├── idBackPhotoUrl: "placeholder-url"
    │   ├── selfiePhotoUrl: "placeholder-url"
    │   └── submittedAt: ${Date.now()}
    └── ... (existing fields)
@@ -51,7 +52,8 @@ Since Firebase Admin SDK requires service account setup, please manually update 
    residents/{resident-uid}/
    ├── verification/
    │   ├── status: "pending"
-   │   ├── idPhotoUrl: "placeholder-url"
+  │   ├── idFrontPhotoUrl: "placeholder-url"
+  │   ├── idBackPhotoUrl: "placeholder-url"
    │   ├── selfiePhotoUrl: "placeholder-url"
    │   └── submittedAt: ${Date.now()}
    └── ... (existing fields)

@@ -241,6 +241,105 @@ export async function getRecentBlotterCases(limit: number = 10): Promise<Blotter
   }
 }
 
+export async function getAllCertificateRequests(): Promise<CertificateRequest[]> {
+	try {
+		const certificatesSnapshot = await adminDatabase.ref("certificates").once("value")
+
+		if (!certificatesSnapshot.exists()) {
+			return []
+		}
+
+		const certificates = certificatesSnapshot.val()
+		return Object.entries(certificates)
+			.map(([id, cert]: [string, any]) => ({
+				id,
+				type: cert.type || "Unknown",
+				status: cert.status || "pending",
+				requestedBy: cert.requestedBy || "Unknown",
+				requestedOn: cert.requestedOn || 0,
+				referenceNumber: cert.referenceNumber || "",
+				userId: cert.userId || "",
+			}))
+			.sort((a, b) => b.requestedOn - a.requestedOn)
+	} catch (error) {
+		console.error("Error fetching all certificate requests:", error)
+		return []
+	}
+}
+
+export async function getAllAppointments(): Promise<AppointmentItem[]> {
+	try {
+		const appointmentsSnapshot = await adminDatabase.ref("appointments").once("value")
+
+		if (!appointmentsSnapshot.exists()) {
+			return []
+		}
+
+		const appointments = appointmentsSnapshot.val()
+		return Object.entries(appointments)
+			.map(([id, apt]: [string, any]) => ({
+				id,
+				type: apt.type || "Unknown",
+				status: apt.status || "scheduled",
+				residentName: apt.residentName || "Unknown",
+				scheduledDate: Number(apt.scheduledDate) || 0,
+				timeSlot: apt.timeSlot || "",
+				userId: apt.userId || "",
+			}))
+			.sort((a, b) => (a.scheduledDate || 0) - (b.scheduledDate || 0))
+	} catch (error) {
+		console.error("Error fetching all appointments:", error)
+		return []
+	}
+}
+
+export async function getAllBlotterCases(): Promise<BlotterItem[]> {
+	try {
+		const blotterSnapshot = await adminDatabase.ref("blotter").once("value")
+
+		if (!blotterSnapshot.exists()) {
+			return []
+		}
+
+		const blotterCases = blotterSnapshot.val()
+		return Object.entries(blotterCases)
+			.map(([id, blot]: [string, any]) => ({
+				id,
+				caseNumber: blot.caseNumber || "",
+				status: blot.status || "active",
+				complainant: blot.complainant || "Unknown",
+				respondent: blot.respondent || "Unknown",
+				incidentDate: blot.incidentDate || 0,
+				caseType: blot.caseType || "Unknown",
+				userId: blot.userId || "",
+			}))
+			.sort((a, b) => (b.incidentDate || 0) - (a.incidentDate || 0))
+	} catch (error) {
+		console.error("Error fetching all blotter cases:", error)
+		return []
+	}
+}
+
+export interface DashboardExportData {
+	certificates: CertificateRequest[]
+	appointments: AppointmentItem[]
+	blotter: BlotterItem[]
+}
+
+export async function getDashboardDataForExport(): Promise<DashboardExportData> {
+	const [certificates, appointments, blotter] = await Promise.all([
+		getAllCertificateRequests(),
+		getAllAppointments(),
+		getAllBlotterCases(),
+	])
+
+	return {
+		certificates,
+		appointments,
+		blotter,
+	}
+}
+
 // Get user profile for display name
 export async function getUserDisplayName(userId: string): Promise<string> {
   try {

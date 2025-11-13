@@ -39,6 +39,7 @@ import {
 	UserCog,
 	UserCheck,
 	Speaker,
+	ArchiveRestore,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { LanguageSelector } from "@/components/language-selector";
@@ -380,6 +381,19 @@ export function AdminSidebar() {
 										<Link href="/admin/settings">
 											<Settings className="h-4 w-4" />
 											<span>{t("admin.settings")}</span>
+										</Link>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							)}
+							{userProfile?.role === "admin" && (
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										asChild
+										isActive={isActive("/admin/archives")}
+									>
+										<Link href="/admin/archives">
+											<ArchiveRestore className="h-4 w-4" />
+											<span>Archives</span>
 										</Link>
 									</SidebarMenuButton>
 								</SidebarMenuItem>

@@ -35,21 +35,27 @@ export async function uploadGoodMoralPhotoAction(
 }
 
 export async function uploadResidentImagesAction(images: {
-	idPhoto: string;
+	idFrontPhoto: string;
+	idBackPhoto: string;
 	selfiePhoto: string;
 }): Promise<{
 	success: boolean;
-	idPhotoUrl?: string;
+	idFrontPhotoUrl?: string;
+	idBackPhotoUrl?: string;
 	selfiePhotoUrl?: string;
 	error?: string;
 }> {
 	try {
-		if (!images.idPhoto || !images.selfiePhoto) {
-			return { success: false, error: "Both ID photo and selfie are required" };
+		if (!images.idFrontPhoto || !images.idBackPhoto || !images.selfiePhoto) {
+			return {
+				success: false,
+				error: "Front ID, back ID, and selfie photos are required",
+			};
 		}
 
 		if (
-			typeof images.idPhoto !== "string" ||
+			typeof images.idFrontPhoto !== "string" ||
+			typeof images.idBackPhoto !== "string" ||
 			typeof images.selfiePhoto !== "string"
 		) {
 			return { success: false, error: "Invalid image data format" };
@@ -57,7 +63,8 @@ export async function uploadResidentImagesAction(images: {
 
 		// Validate that the images are data URLs
 		if (
-			!images.idPhoto.startsWith("data:image/") ||
+			!images.idFrontPhoto.startsWith("data:image/") ||
+			!images.idBackPhoto.startsWith("data:image/") ||
 			!images.selfiePhoto.startsWith("data:image/")
 		) {
 			return {
@@ -67,16 +74,17 @@ export async function uploadResidentImagesAction(images: {
 		}
 
 		console.log("Starting image upload for resident...");
-		console.log("ID Photo length:", images.idPhoto.length);
+		console.log("ID Front Photo length:", images.idFrontPhoto.length);
+		console.log("ID Back Photo length:", images.idBackPhoto.length);
 		console.log("Selfie Photo length:", images.selfiePhoto.length);
 
-		// Upload ID photo
-		console.log("Uploading ID photo...");
-		const idPhotoResult = await uploadToCloudinary(images.idPhoto, {
-			folder: "malinta-connect/residents/id-photos",
+		// Upload ID front photo
+		console.log("Uploading ID front photo...");
+		const idFrontPhotoResult = await uploadToCloudinary(images.idFrontPhoto, {
+			folder: "malinta-connect/residents/id-photos/front",
 			resource_type: "image",
 			allowed_formats: ["jpg", "jpeg", "png", "webp"],
-			tags: ["resident", "id-photo", "verification"],
+			tags: ["resident", "id-photo-front", "verification"],
 			transformation: [
 				{
 					width: 800,
@@ -87,7 +95,32 @@ export async function uploadResidentImagesAction(images: {
 				},
 			],
 		});
-		console.log("ID photo uploaded successfully:", idPhotoResult.secure_url);
+		console.log(
+			"ID front photo uploaded successfully:",
+			idFrontPhotoResult.secure_url
+		);
+
+		// Upload ID back photo
+		console.log("Uploading ID back photo...");
+		const idBackPhotoResult = await uploadToCloudinary(images.idBackPhoto, {
+			folder: "malinta-connect/residents/id-photos/back",
+			resource_type: "image",
+			allowed_formats: ["jpg", "jpeg", "png", "webp"],
+			tags: ["resident", "id-photo-back", "verification"],
+			transformation: [
+				{
+					width: 800,
+					height: 600,
+					crop: "limit",
+					quality: "auto",
+					format: "auto",
+				},
+			],
+		});
+		console.log(
+			"ID back photo uploaded successfully:",
+			idBackPhotoResult.secure_url
+		);
 
 		// Upload selfie photo
 		console.log("Uploading selfie photo...");
@@ -113,7 +146,8 @@ export async function uploadResidentImagesAction(images: {
 
 		return {
 			success: true,
-			idPhotoUrl: idPhotoResult.secure_url,
+			idFrontPhotoUrl: idFrontPhotoResult.secure_url,
+			idBackPhotoUrl: idBackPhotoResult.secure_url,
 			selfiePhotoUrl: selfiePhotoResult.secure_url,
 		};
 	} catch (error) {

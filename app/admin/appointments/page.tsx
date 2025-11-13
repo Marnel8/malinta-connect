@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -9,18 +9,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -29,12 +29,40 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Search, Users, Clock, CheckCircle, X, Loader2, Eye, Edit, Trash2, Plus, MoreHorizontal } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
-import { useToast } from "@/hooks/use-toast"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+} from "@/components/ui/dialog";
+import {
+  Search,
+  Users,
+  Clock,
+  CheckCircle,
+  X,
+  Loader2,
+  Eye,
+  Edit,
+  Trash2,
+  Plus,
+  MoreHorizontal,
+} from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   getAllAppointmentsAction,
   updateAppointmentStatusAction,
@@ -42,22 +70,23 @@ import {
   getAppointmentsByStatusAction,
   createAppointmentAction,
   type Appointment,
-  type CreateAppointmentData
-} from "@/app/actions/appointments"
+  type CreateAppointmentData,
+} from "@/app/actions/appointments";
 
 export default function AdminAppointmentsPage() {
-  const { t } = useLanguage()
-  const { toast } = useToast()
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [dateFilter, setDateFilter] = useState("all")
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [createLoading, setCreateLoading] = useState(false)
-  const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
   const [formData, setFormData] = useState<CreateAppointmentData>({
     title: "",
     description: "",
@@ -66,48 +95,48 @@ export default function AdminAppointmentsPage() {
     requestedBy: "",
     contactNumber: "",
     email: "",
-    notes: ""
-  })
+    notes: "",
+  });
 
   // Load appointments on component mount
   useEffect(() => {
-    loadAppointments()
-  }, [])
+    loadAppointments();
+  }, []);
 
   const loadAppointments = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const result = await getAllAppointmentsAction()
+      const result = await getAllAppointmentsAction();
       if (result.success && result.appointments) {
-        setAppointments(result.appointments)
+        setAppointments(result.appointments);
       } else {
         toast({
           title: "Error",
           description: result.error || "Failed to load appointments",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to load appointments",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCreateAppointment = async () => {
-    setCreateLoading(true)
+    setCreateLoading(true);
     try {
-      const result = await createAppointmentAction(formData)
+      const result = await createAppointmentAction(formData);
       if (result.success) {
         toast({
           title: "Success",
           description: "Appointment created successfully",
-        })
-        setCreateDialogOpen(false)
+        });
+        setCreateDialogOpen(false);
         setFormData({
           title: "",
           description: "",
@@ -116,108 +145,114 @@ export default function AdminAppointmentsPage() {
           requestedBy: "",
           contactNumber: "",
           email: "",
-          notes: ""
-        })
-        await loadAppointments()
+          notes: "",
+        });
+        await loadAppointments();
       } else {
         toast({
           title: "Error",
           description: result.error || "Failed to create appointment",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to create appointment",
         variant: "destructive",
-      })
+      });
     } finally {
-      setCreateLoading(false)
+      setCreateLoading(false);
     }
-  }
+  };
 
-  const handleStatusUpdate = async (appointmentId: string, newStatus: Appointment["status"]) => {
-    setActionLoading(appointmentId)
+  const handleStatusUpdate = async (
+    appointmentId: string,
+    newStatus: Exclude<Appointment["status"], "pending">
+  ) => {
+    setActionLoading(appointmentId);
     try {
-      const result = await updateAppointmentStatusAction(appointmentId, newStatus)
+      const result = await updateAppointmentStatusAction(
+        appointmentId,
+        newStatus
+      );
       if (result.success) {
         toast({
           title: "Success",
           description: `Appointment ${newStatus} successfully`,
-        })
+        });
         // Reload appointments to get updated data
-        await loadAppointments()
+        await loadAppointments();
       } else {
         toast({
           title: "Error",
           description: result.error || "Failed to update appointment status",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update appointment status",
         variant: "destructive",
-      })
+      });
     } finally {
-      setActionLoading(null)
+      setActionLoading(null);
     }
-  }
+  };
 
   const handleDelete = async (appointmentId: string) => {
-    if (!confirm("Are you sure you want to delete this appointment?")) return
-    
-    setActionLoading(appointmentId)
+    setActionLoading(appointmentId);
     try {
-      const result = await deleteAppointmentAction(appointmentId)
+      const result = await deleteAppointmentAction(appointmentId);
       if (result.success) {
         toast({
           title: "Success",
           description: "Appointment deleted successfully",
-        })
+        });
         // Reload appointments to get updated data
-        await loadAppointments()
+        await loadAppointments();
       } else {
         toast({
           title: "Error",
           description: result.error || "Failed to delete appointment",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to delete appointment",
         variant: "destructive",
-      })
+      });
     } finally {
-      setActionLoading(null)
+      setActionLoading(null);
     }
-  }
+  };
 
   const handleViewAppointment = (appointment: Appointment) => {
-    setSelectedAppointment(appointment)
-    setViewDialogOpen(true)
-  }
+    setSelectedAppointment(appointment);
+    setViewDialogOpen(true);
+  };
 
   const handleStatusFilter = async (status: string) => {
-    setStatusFilter(status)
-    setLoading(true)
+    setStatusFilter(status);
+    setLoading(true);
     try {
       if (status === "all") {
-        await loadAppointments()
+        await loadAppointments();
       } else {
-        const result = await getAppointmentsByStatusAction(status as Appointment["status"])
+        const result = await getAppointmentsByStatusAction(
+          status as Appointment["status"]
+        );
         if (result.success && result.appointments) {
-          setAppointments(result.appointments)
+          setAppointments(result.appointments);
         } else {
           toast({
             title: "Error",
             description: result.error || "Failed to filter appointments",
             variant: "destructive",
-          })
+          });
         }
       }
     } catch (error) {
@@ -225,87 +260,111 @@ export default function AdminAppointmentsPage() {
         title: "Error",
         description: "Failed to filter appointments",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const filteredAppointments = appointments.filter(appointment => {
-    const matchesSearch = appointment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         appointment.requestedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (appointment.referenceNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesDateFilter = dateFilter === "all" || (() => {
-      const appointmentDate = new Date(appointment.date)
-      const today = new Date()
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      
-      switch (dateFilter) {
-        case "today":
-          return appointmentDate.toDateString() === today.toDateString()
-        case "tomorrow":
-          return appointmentDate.toDateString() === tomorrow.toDateString()
-        case "week":
-          const weekFromNow = new Date(today)
-          weekFromNow.setDate(weekFromNow.getDate() + 7)
-          return appointmentDate >= today && appointmentDate <= weekFromNow
-        case "month":
-          const monthFromNow = new Date(today)
-          monthFromNow.setMonth(monthFromNow.getMonth() + 1)
-          return appointmentDate >= today && appointmentDate <= monthFromNow
-        default:
-          return true
-      }
-    })()
-    
-    return matchesSearch && matchesDateFilter
-  })
+  const filteredAppointments = appointments.filter((appointment) => {
+    const matchesSearch =
+      appointment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      appointment.requestedBy
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (appointment.referenceNumber || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+    const matchesDateFilter =
+      dateFilter === "all" ||
+      (() => {
+        const appointmentDate = new Date(appointment.date);
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        switch (dateFilter) {
+          case "today":
+            return appointmentDate.toDateString() === today.toDateString();
+          case "tomorrow":
+            return appointmentDate.toDateString() === tomorrow.toDateString();
+          case "week":
+            const weekFromNow = new Date(today);
+            weekFromNow.setDate(weekFromNow.getDate() + 7);
+            return appointmentDate >= today && appointmentDate <= weekFromNow;
+          case "month":
+            const monthFromNow = new Date(today);
+            monthFromNow.setMonth(monthFromNow.getMonth() + 1);
+            return appointmentDate >= today && appointmentDate <= monthFromNow;
+          default:
+            return true;
+        }
+      })();
+
+    return matchesSearch && matchesDateFilter;
+  });
+
+  const getLocalizedText = (key: string, fallback: string) => {
+    const translated = t(key);
+    return translated && translated !== key ? translated : fallback;
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
         return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+          <Badge
+            variant="outline"
+            className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+          >
             <CheckCircle className="mr-1 h-3 w-3" />
-            {t("appointments.status.confirmed") || "Confirmed"}
+            {getLocalizedText("appointments.status.confirmed", "Confirmed")}
           </Badge>
-        )
+        );
       case "pending":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+          <Badge
+            variant="outline"
+            className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+          >
             <Clock className="mr-1 h-3 w-3" />
-            {t("appointments.status.pending") || "Pending"}
+            {getLocalizedText("appointments.status.pending", "Pending")}
           </Badge>
-        )
+        );
       case "cancelled":
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          <Badge
+            variant="outline"
+            className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+          >
             <X className="mr-1 h-3 w-3" />
-            {t("appointments.status.cancelled") || "Cancelled"}
+            {getLocalizedText("appointments.status.cancelled", "Cancelled")}
           </Badge>
-        )
+        );
       case "completed":
         return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+          <Badge
+            variant="outline"
+            className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+          >
             <CheckCircle className="mr-1 h-3 w-3" />
-            {t("appointments.status.completed") || "Completed"}
+            {getLocalizedText("appointments.status.completed", "Completed")}
           </Badge>
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   if (loading) {
     return (
@@ -315,7 +374,7 @@ export default function AdminAppointmentsPage() {
           <span className="ml-2">Loading appointments...</span>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -323,7 +382,9 @@ export default function AdminAppointmentsPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Appointments</h1>
-          <p className="text-muted-foreground mt-2">Manage and schedule appointments with residents</p>
+          <p className="text-muted-foreground mt-2">
+            Manage and schedule appointments with residents
+          </p>
         </div>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -336,7 +397,8 @@ export default function AdminAppointmentsPage() {
             <DialogHeader>
               <DialogTitle>Schedule New Appointment</DialogTitle>
               <DialogDescription>
-                Create a new appointment for a resident. Fill in all required fields.
+                Create a new appointment for a resident. Fill in all required
+                fields.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -346,7 +408,9 @@ export default function AdminAppointmentsPage() {
                   <Input
                     id="title"
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
                     placeholder="Appointment title"
                   />
                 </div>
@@ -355,7 +419,9 @@ export default function AdminAppointmentsPage() {
                   <Input
                     id="requestedBy"
                     value={formData.requestedBy}
-                    onChange={(e) => setFormData({ ...formData, requestedBy: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, requestedBy: e.target.value })
+                    }
                     placeholder="Resident name"
                   />
                 </div>
@@ -365,7 +431,9 @@ export default function AdminAppointmentsPage() {
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   placeholder="Appointment purpose or description"
                   rows={3}
                 />
@@ -377,7 +445,9 @@ export default function AdminAppointmentsPage() {
                     id="date"
                     type="date"
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, date: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -386,7 +456,9 @@ export default function AdminAppointmentsPage() {
                     id="time"
                     type="time"
                     value={formData.time}
-                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, time: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -396,7 +468,12 @@ export default function AdminAppointmentsPage() {
                   <Input
                     id="contactNumber"
                     value={formData.contactNumber}
-                    onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        contactNumber: e.target.value,
+                      })
+                    }
                     placeholder="Phone number"
                   />
                 </div>
@@ -406,7 +483,9 @@ export default function AdminAppointmentsPage() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     placeholder="Email address"
                   />
                 </div>
@@ -416,7 +495,9 @@ export default function AdminAppointmentsPage() {
                 <Textarea
                   id="notes"
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   placeholder="Additional notes or comments"
                   rows={2}
                 />
@@ -434,7 +515,16 @@ export default function AdminAppointmentsPage() {
               <Button
                 type="button"
                 onClick={handleCreateAppointment}
-                disabled={createLoading || !formData.title || !formData.description || !formData.date || !formData.time || !formData.requestedBy || !formData.contactNumber || !formData.email}
+                disabled={
+                  createLoading ||
+                  !formData.title ||
+                  !formData.description ||
+                  !formData.date ||
+                  !formData.time ||
+                  !formData.requestedBy ||
+                  !formData.contactNumber ||
+                  !formData.email
+                }
               >
                 {createLoading ? (
                   <>
@@ -462,67 +552,118 @@ export default function AdminAppointmentsPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Reference Number</Label>
-                    <p className="text-sm">{selectedAppointment.referenceNumber || selectedAppointment.id}</p>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Reference Number
+                    </Label>
+                    <p className="text-sm">
+                      {selectedAppointment.referenceNumber ||
+                        selectedAppointment.id}
+                    </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-                    <div className="mt-1">{getStatusBadge(selectedAppointment.status)}</div>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Status
+                    </Label>
+                    <div className="mt-1">
+                      {getStatusBadge(selectedAppointment.status)}
+                    </div>
                   </div>
-                </div>
-                
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Title</Label>
-                  <p className="text-sm font-medium">{selectedAppointment.title}</p>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Description</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Title
+                  </Label>
+                  <p className="text-sm font-medium">
+                    {selectedAppointment.title}
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Description
+                  </Label>
                   <p className="text-sm">{selectedAppointment.description}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Requested By</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Requested By
+                    </Label>
                     <p className="text-sm">{selectedAppointment.requestedBy}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Contact Number</Label>
-                    <p className="text-sm">{selectedAppointment.contactNumber}</p>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Contact Number
+                    </Label>
+                    <p className="text-sm">
+                      {selectedAppointment.contactNumber}
+                    </p>
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Email
+                  </Label>
                   <p className="text-sm">{selectedAppointment.email}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Date</Label>
-                    <p className="text-sm">{formatDate(selectedAppointment.date)}</p>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Date
+                    </Label>
+                    <p className="text-sm">
+                      {formatDate(selectedAppointment.date)}
+                    </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Time</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Time
+                    </Label>
                     <p className="text-sm">{selectedAppointment.time}</p>
                   </div>
                 </div>
 
                 {selectedAppointment.notes && (
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Notes</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Notes
+                    </Label>
                     <p className="text-sm">{selectedAppointment.notes}</p>
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Created At</Label>
-                    <p className="text-sm">{selectedAppointment.createdAt ? formatDate(new Date(selectedAppointment.createdAt).toISOString()) : 'N/A'}</p>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Created At
+                    </Label>
+                    <p className="text-sm">
+                      {selectedAppointment.createdAt
+                        ? formatDate(
+                            new Date(
+                              selectedAppointment.createdAt
+                            ).toISOString()
+                          )
+                        : "N/A"}
+                    </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Updated At</Label>
-                    <p className="text-sm">{selectedAppointment.updatedAt ? formatDate(new Date(selectedAppointment.updatedAt).toISOString()) : 'N/A'}</p>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Updated At
+                    </Label>
+                    <p className="text-sm">
+                      {selectedAppointment.updatedAt
+                        ? formatDate(
+                            new Date(
+                              selectedAppointment.updatedAt
+                            ).toISOString()
+                          )
+                        : "N/A"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -543,9 +684,9 @@ export default function AdminAppointmentsPage() {
       <div className="flex items-center space-x-2 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            type="search" 
-            placeholder="Search appointments..." 
+          <Input
+            type="search"
+            placeholder="Search appointments..."
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -593,14 +734,19 @@ export default function AdminAppointmentsPage() {
           <TableBody>
             {filteredAppointments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={7}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No appointments found
                 </TableCell>
               </TableRow>
             ) : (
               filteredAppointments.map((appointment) => (
                 <TableRow key={appointment.id}>
-                  <TableCell className="font-medium">{appointment.referenceNumber || appointment.id}</TableCell>
+                  <TableCell className="font-medium">
+                    {appointment.referenceNumber || appointment.id}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       <Users className="mr-2 h-4 w-4 text-primary" />
@@ -611,7 +757,9 @@ export default function AdminAppointmentsPage() {
                   <TableCell>
                     {formatDate(appointment.date)} at {appointment.time}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">{appointment.description}</TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {appointment.description}
+                  </TableCell>
                   <TableCell>{getStatusBadge(appointment.status)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -632,7 +780,9 @@ export default function AdminAppointmentsPage() {
                         {appointment.status === "pending" && (
                           <>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(appointment.id, "confirmed")}
+                              onClick={() =>
+                                handleStatusUpdate(appointment.id, "confirmed")
+                              }
                               disabled={actionLoading === appointment.id}
                             >
                               {actionLoading === appointment.id ? (
@@ -640,10 +790,14 @@ export default function AdminAppointmentsPage() {
                               ) : (
                                 <CheckCircle className="h-4 w-4 mr-2" />
                               )}
-                              {actionLoading === appointment.id ? "Updating..." : "Confirm"}
+                              {actionLoading === appointment.id
+                                ? "Updating..."
+                                : "Confirm"}
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(appointment.id, "cancelled")}
+                              onClick={() =>
+                                handleStatusUpdate(appointment.id, "cancelled")
+                              }
                               disabled={actionLoading === appointment.id}
                             >
                               {actionLoading === appointment.id ? (
@@ -651,7 +805,9 @@ export default function AdminAppointmentsPage() {
                               ) : (
                                 <X className="h-4 w-4 mr-2" />
                               )}
-                              {actionLoading === appointment.id ? "Updating..." : "Reject"}
+                              {actionLoading === appointment.id
+                                ? "Updating..."
+                                : "Reject"}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -659,7 +815,9 @@ export default function AdminAppointmentsPage() {
                         {appointment.status === "confirmed" && (
                           <>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(appointment.id, "completed")}
+                              onClick={() =>
+                                handleStatusUpdate(appointment.id, "completed")
+                              }
                               disabled={actionLoading === appointment.id}
                             >
                               {actionLoading === appointment.id ? (
@@ -667,10 +825,14 @@ export default function AdminAppointmentsPage() {
                               ) : (
                                 <CheckCircle className="h-4 w-4 mr-2" />
                               )}
-                              {actionLoading === appointment.id ? "Updating..." : "Mark as Completed"}
+                              {actionLoading === appointment.id
+                                ? "Updating..."
+                                : "Mark as Completed"}
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(appointment.id, "cancelled")}
+                              onClick={() =>
+                                handleStatusUpdate(appointment.id, "cancelled")
+                              }
                               disabled={actionLoading === appointment.id}
                             >
                               {actionLoading === appointment.id ? (
@@ -678,7 +840,9 @@ export default function AdminAppointmentsPage() {
                               ) : (
                                 <X className="h-4 w-4 mr-2" />
                               )}
-                              {actionLoading === appointment.id ? "Updating..." : "Cancel"}
+                              {actionLoading === appointment.id
+                                ? "Updating..."
+                                : "Cancel"}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -697,9 +861,12 @@ export default function AdminAppointmentsPage() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Appointment</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Delete Appointment
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                This action cannot be undone. Are you sure you want to delete this appointment?
+                                This action cannot be undone. Are you sure you
+                                want to delete this appointment?
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -731,5 +898,5 @@ export default function AdminAppointmentsPage() {
         </Table>
       </div>
     </div>
-  )
-} 
+  );
+}

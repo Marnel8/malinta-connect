@@ -46,7 +46,8 @@ The resident verification system prevents unverified residents from logging into
   uid: string;
   verification: {
     status: "pending" | "verified" | "rejected";
-    idPhotoUrl: string;
+    idFrontPhotoUrl: string;
+    idBackPhotoUrl: string;
     selfiePhotoUrl: string;
     submittedAt: number;
     reviewedAt?: number;

@@ -44,6 +44,15 @@ export function ResidentVerificationModal({
 }: ResidentVerificationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [notes, setNotes] = useState("");
+  const [imageViewer, setImageViewer] = useState<{
+    isOpen: boolean;
+    src: string;
+    title: string;
+  }>({
+    isOpen: false,
+    src: "",
+    title: "",
+  });
   const { toast } = useToast();
 
   if (!resident) return null;
@@ -82,6 +91,21 @@ export function ResidentVerificationModal({
     }
   };
 
+  const openImageViewer = (src: string, title: string) => {
+    setImageViewer({
+      isOpen: true,
+      src,
+      title,
+    });
+  };
+
+  const closeImageViewer = () => {
+    setImageViewer((prev) => ({
+      ...prev,
+      isOpen: false,
+    }));
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
       year: "numeric",
@@ -93,7 +117,8 @@ export function ResidentVerificationModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -227,33 +252,89 @@ export function ResidentVerificationModal({
             <div>
               <h3 className="text-lg font-semibold mb-3">Verification Documents</h3>
               
-              {/* ID Photo */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <IdCard className="h-4 w-4 text-primary" />
-                  <h4 className="font-medium">Valid ID Photo</h4>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <IdCard className="h-4 w-4 text-primary" />
+                      <h4 className="font-medium">Valid ID - Front</h4>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openImageViewer(
+                          resident.verification.idFrontPhotoUrl,
+                          "Valid ID - Front"
+                        )
+                      }
+                    >
+                      View full
+                    </Button>
+                  </div>
+                  <div className="border rounded-lg p-2 bg-muted/30">
+                    <img
+                      src={resident.verification.idFrontPhotoUrl}
+                      alt="ID Front Photo"
+                      className="w-full h-48 object-contain rounded"
+                    />
+                  </div>
                 </div>
-                <div className="border rounded-lg p-2">
-                  <img
-                    src={resident.verification.idPhotoUrl}
-                    alt="ID Photo"
-                    className="w-full h-48 object-contain rounded"
-                  />
-                </div>
-              </div>
 
-              {/* Selfie Photo */}
-              <div className="space-y-3 mt-4">
-                <div className="flex items-center gap-2">
-                  <Camera className="h-4 w-4 text-primary" />
-                  <h4 className="font-medium">Selfie Photo</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <IdCard className="h-4 w-4 text-primary" />
+                      <h4 className="font-medium">Valid ID - Back</h4>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openImageViewer(
+                          resident.verification.idBackPhotoUrl,
+                          "Valid ID - Back"
+                        )
+                      }
+                    >
+                      View full
+                    </Button>
+                  </div>
+                  <div className="border rounded-lg p-2 bg-muted/30">
+                    <img
+                      src={resident.verification.idBackPhotoUrl}
+                      alt="ID Back Photo"
+                      className="w-full h-48 object-contain rounded"
+                    />
+                  </div>
                 </div>
-                <div className="border rounded-lg p-2">
-                  <img
-                    src={resident.verification.selfiePhotoUrl}
-                    alt="Selfie Photo"
-                    className="w-full h-48 object-contain rounded"
-                  />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-4 w-4 text-primary" />
+                      <h4 className="font-medium">Selfie Photo</h4>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openImageViewer(
+                          resident.verification.selfiePhotoUrl,
+                          "Selfie Photo"
+                        )
+                      }
+                    >
+                      View full
+                    </Button>
+                  </div>
+                  <div className="border rounded-lg p-2 bg-muted/30">
+                    <img
+                      src={resident.verification.selfiePhotoUrl}
+                      alt="Selfie Photo"
+                      className="w-full h-48 object-contain rounded"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -371,6 +452,26 @@ export function ResidentVerificationModal({
           </div>
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      <Dialog open={imageViewer.isOpen} onOpenChange={(open) => (!open ? closeImageViewer() : null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{imageViewer.title}</DialogTitle>
+          </DialogHeader>
+          <div className="w-full">
+            {imageViewer.src ? (
+              <img
+                src={imageViewer.src}
+                alt={imageViewer.title}
+                className="w-full h-[500px] object-contain rounded"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">No image available.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

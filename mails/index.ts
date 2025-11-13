@@ -597,6 +597,34 @@ export interface VerificationEmailData {
 	contactEmail?: string;
 }
 
+// Event email data interface
+export interface EventEmailData {
+	eventName: string;
+	eventDate: string;
+	eventTime: string;
+	eventLocation: string;
+	eventDescription: string;
+	eventCategory: string;
+	organizer: string;
+	contact: string;
+	referenceNumber?: string;
+	contactPhone?: string;
+	contactEmail?: string;
+}
+
+// Announcement email data interface
+export interface AnnouncementEmailData {
+	announcementTitle: string;
+	announcementDescription: string;
+	announcementCategory: string;
+	author: string;
+	publishedOn: string;
+	expiresOn: string;
+	referenceNumber?: string;
+	contactPhone?: string;
+	contactEmail?: string;
+}
+
 // Send account verified email
 export const sendAccountVerifiedEmail = async (
 	to: string,
@@ -646,6 +674,141 @@ export const sendVerificationStatusEmail = async (
 		}
 	} catch (error) {
 		console.error(`Error sending verification ${status} email:`, error);
+		return false;
+	}
+};
+
+// Send event created email
+export const sendEventCreatedEmail = async (
+	to: string | string[],
+	data: EventEmailData
+): Promise<boolean> => {
+	try {
+		const formattedDate = new Date(data.eventDate).toLocaleDateString("en-US", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+		});
+
+		const html = `
+			<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827">
+				<h2 style="margin: 0 0 12px 0;">New Community Event</h2>
+				<p style="margin: 0 0 8px 0;">Hello,</p>
+				<p style="margin: 0 0 16px 0;">A new community event has been created:</p>
+				<div style="background-color: #f9fafb; padding: 16px; border-radius: 8px; margin: 16px 0;">
+					<h3 style="margin: 0 0 12px 0; color: #1f2937;">${data.eventName}</h3>
+					<table style="width: 100%; border-collapse: collapse;">
+						<tr>
+							<td style="padding: 6px 0; width: 160px; color: #6B7280;">Date</td>
+							<td style="padding: 6px 0;">${formattedDate}</td>
+						</tr>
+						<tr>
+							<td style="padding: 6px 0; color: #6B7280;">Time</td>
+							<td style="padding: 6px 0;">${data.eventTime}</td>
+						</tr>
+						<tr>
+							<td style="padding: 6px 0; color: #6B7280;">Location</td>
+							<td style="padding: 6px 0;">${data.eventLocation}</td>
+						</tr>
+						<tr>
+							<td style="padding: 6px 0; color: #6B7280;">Category</td>
+							<td style="padding: 6px 0;">${data.eventCategory}</td>
+						</tr>
+						<tr>
+							<td style="padding: 6px 0; color: #6B7280;">Organizer</td>
+							<td style="padding: 6px 0;">${data.organizer}</td>
+						</tr>
+						<tr>
+							<td style="padding: 6px 0; color: #6B7280;">Contact</td>
+							<td style="padding: 6px 0;">${data.contact}</td>
+						</tr>
+					</table>
+					<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+						<p style="margin: 0 0 8px 0; color: #6B7280; font-weight: 600;">Description:</p>
+						<p style="margin: 0; color: #374151;">${data.eventDescription}</p>
+					</div>
+				</div>
+				<p style="margin: 16px 0 0 0; font-size: 12px; color: #6B7280;">For more information, visit the events page or contact us at ${
+					data.contactEmail ||
+					process.env.CONTACT_EMAIL ||
+					"info@malinta-connect.com"
+				}.</p>
+			</div>
+		`;
+
+		const subject = `New Event: ${data.eventName}`;
+		return await sendEmail({ to, subject, html });
+	} catch (error) {
+		console.error("Error sending event created email:", error);
+		return false;
+	}
+};
+
+// Send announcement created email
+export const sendAnnouncementCreatedEmail = async (
+	to: string | string[],
+	data: AnnouncementEmailData
+): Promise<boolean> => {
+	try {
+		const formattedPublishedDate = new Date(data.publishedOn).toLocaleDateString(
+			"en-US",
+			{
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			}
+		);
+		const formattedExpiryDate = new Date(data.expiresOn).toLocaleDateString(
+			"en-US",
+			{
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			}
+		);
+
+		const html = `
+			<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827">
+				<h2 style="margin: 0 0 12px 0;">New Announcement</h2>
+				<p style="margin: 0 0 8px 0;">Hello,</p>
+				<p style="margin: 0 0 16px 0;">A new announcement has been published:</p>
+				<div style="background-color: #f9fafb; padding: 16px; border-radius: 8px; margin: 16px 0;">
+					<h3 style="margin: 0 0 12px 0; color: #1f2937;">${data.announcementTitle}</h3>
+					<table style="width: 100%; border-collapse: collapse;">
+						<tr>
+							<td style="padding: 6px 0; width: 160px; color: #6B7280;">Category</td>
+							<td style="padding: 6px 0;">${data.announcementCategory}</td>
+						</tr>
+						<tr>
+							<td style="padding: 6px 0; color: #6B7280;">Published On</td>
+							<td style="padding: 6px 0;">${formattedPublishedDate}</td>
+						</tr>
+						<tr>
+							<td style="padding: 6px 0; color: #6B7280;">Expires On</td>
+							<td style="padding: 6px 0;">${formattedExpiryDate}</td>
+						</tr>
+						<tr>
+							<td style="padding: 6px 0; color: #6B7280;">Author</td>
+							<td style="padding: 6px 0;">${data.author}</td>
+						</tr>
+					</table>
+					<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+						<p style="margin: 0 0 8px 0; color: #6B7280; font-weight: 600;">Details:</p>
+						<p style="margin: 0; color: #374151;">${data.announcementDescription}</p>
+					</div>
+				</div>
+				<p style="margin: 16px 0 0 0; font-size: 12px; color: #6B7280;">For more information, visit the announcements page or contact us at ${
+					data.contactEmail ||
+					process.env.CONTACT_EMAIL ||
+					"info@malinta-connect.com"
+				}.</p>
+			</div>
+		`;
+
+		const subject = `New Announcement: ${data.announcementTitle}`;
+		return await sendEmail({ to, subject, html });
+	} catch (error) {
+		console.error("Error sending announcement created email:", error);
 		return false;
 	}
 };

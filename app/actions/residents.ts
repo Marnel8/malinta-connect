@@ -1,6 +1,7 @@
 "use server";
 
 import { adminDatabase, adminAuth } from "@/app/firebase/admin";
+import { archiveRecord } from "@/lib/archive-manager";
 
 export interface ResidentData {
 	uid: string;
@@ -35,7 +36,8 @@ export interface ResidentData {
 		relation: string;
 	};
 	verification: {
-		idPhotoUrl: string;
+		idFrontPhotoUrl: string;
+		idBackPhotoUrl: string;
 		selfiePhotoUrl: string;
 		status: "pending" | "verified" | "rejected";
 		submittedAt: number;
@@ -256,19 +258,46 @@ export async function deleteResidentAction(uid: string): Promise<{
 	error?: string;
 }> {
 	try {
-		// Delete from Firebase Auth first
-		try {
-			await adminAuth.deleteUser(uid);
-		} catch (authError) {
-			console.warn("User not found in Firebase Auth:", authError);
-			// Continue with database cleanup even if user doesn't exist in auth
+		const residentRef = adminDatabase.ref(`residents/${uid}`);
+		const userRef = adminDatabase.ref(`users/${uid}`);
+
+		const [residentSnapshot, userSnapshot] = await Promise.all([
+			residentRef.get(),
+			userRef.get(),
+		]);
+
+		if (!residentSnapshot.exists()) {
+			return { success: false, error: "Resident not found" };
 		}
 
-		// Delete from residents
-		await adminDatabase.ref(`residents/${uid}`).remove();
+		const resident = residentSnapshot.val() as ResidentData;
+		const user = userSnapshot.exists() ? userSnapshot.val() : null;
 
-		// Delete from users
-		await adminDatabase.ref(`users/${uid}`).remove();
+		try {
+			await adminAuth.updateUser(uid, { disabled: true });
+		} catch (authError) {
+			console.warn("Failed to disable resident auth account:", authError);
+		}
+
+		const paths: Record<string, unknown> = {
+			[`residents/${uid}`]: resident,
+		};
+
+		if (user) {
+			paths[`users/${uid}`] = user;
+		}
+
+		await archiveRecord({
+			entity: "residents",
+			id: uid,
+			paths,
+			preview: {
+				name: `${resident.personalInfo.firstName} ${resident.personalInfo.lastName}`.trim(),
+				email: resident.contactInfo.email,
+				status: resident.status,
+				verificationStatus: resident.verification.status,
+			},
+		});
 
 		return { success: true };
 	} catch (error) {

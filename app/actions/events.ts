@@ -1,6 +1,11 @@
 "use server";
 
 import { adminDatabase } from "@/app/firebase/admin";
+import { archiveRecord } from "@/lib/archive-manager";
+import {
+	sendEventCreatedEmail,
+	type EventEmailData,
+} from "@/mails";
 
 export interface Event {
 	id: string;
@@ -114,6 +119,53 @@ export async function createEventAction(
 		} catch (notificationError) {
 			console.error("Error sending event notification:", notificationError);
 			// Don't fail the entire operation if notification fails
+		}
+
+		// Send email notification to all residents about new event
+		try {
+			// Get all resident emails
+			const residentsRef = adminDatabase.ref("residents");
+			const residentsSnapshot = await residentsRef.get();
+			const residentEmails: string[] = [];
+
+			if (residentsSnapshot.exists()) {
+				const residents = residentsSnapshot.val();
+				Object.values(residents).forEach((resident: any) => {
+					if (resident?.contactInfo?.email) {
+						residentEmails.push(resident.contactInfo.email);
+					}
+				});
+			}
+
+			if (residentEmails.length > 0) {
+				const formattedDate = new Date(eventData.date).toLocaleDateString(
+					"en-US",
+					{
+						year: "numeric",
+						month: "long",
+						day: "numeric",
+					}
+				);
+
+				const emailData: EventEmailData = {
+					eventName: eventData.name,
+					eventDate: formattedDate,
+					eventTime: eventData.time,
+					eventLocation: eventData.location,
+					eventDescription: eventData.description,
+					eventCategory: eventData.category,
+					organizer: eventData.organizer,
+					contact: eventData.contact,
+					referenceNumber,
+					contactPhone: process.env.CONTACT_PHONE || "+63 912 345 6789",
+					contactEmail: process.env.CONTACT_EMAIL || "info@malinta-connect.com",
+				};
+
+				await sendEventCreatedEmail(residentEmails, emailData);
+			}
+		} catch (emailError) {
+			console.error("Failed to send event created email:", emailError);
+			// Don't fail the entire operation if email fails
 		}
 
 		return {
@@ -282,8 +334,21 @@ export async function deleteEventAction(
 			};
 		}
 
-		// Delete the event
-		await eventRef.remove();
+		const event = snapshot.val();
+
+		await archiveRecord({
+			entity: "events",
+			id,
+			paths: {
+				[`events/${id}`]: event,
+			},
+			preview: {
+				title: event.title,
+				status: event.status || "draft",
+				category: event.category,
+				date: event.date,
+			},
+		});
 
 		return { success: true };
 	} catch (error) {

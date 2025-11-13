@@ -1,6 +1,7 @@
 "use server";
 
 import { adminDatabase } from "@/app/firebase/admin";
+import { archiveRecord } from "@/lib/archive-manager";
 import {
 	sendAppointmentRequestReceivedEmail,
 	sendAppointmentStatusEmail,
@@ -8,6 +9,7 @@ import {
 } from "@/mails";
 
 export interface Appointment {
+	userId: string;
 	// Database key (push key)
 	id: string;
 	// Human-readable reference number (e.g., APT-2025-0526-001)
@@ -26,6 +28,7 @@ export interface Appointment {
 }
 
 export interface CreateAppointmentData {
+	userId?: string;
 	title: string;
 	description: string;
 	date: string;
@@ -84,6 +87,7 @@ export async function createAppointmentAction(
 
 		const appointmentToSave = {
 			...appointmentData,
+			userId: appointmentData.userId || "",
 			referenceNumber,
 			status: "pending" as const,
 			createdAt: Date.now(),
@@ -172,6 +176,7 @@ export async function getAllAppointmentsAction(): Promise<{
 
 		Object.entries(appointments).forEach(([id, appointment]: [string, any]) => {
 			appointmentsList.push({
+			userId: appointment.userId || "",
 				id, // push key
 				referenceNumber: appointment.referenceNumber || id,
 				title: appointment.title,
@@ -202,6 +207,62 @@ export async function getAllAppointmentsAction(): Promise<{
 	}
 }
 
+// Get appointments for a specific user
+export async function getAppointmentsForUserAction(
+	userId: string
+): Promise<{ success: boolean; appointments?: Appointment[]; error?: string }> {
+	try {
+		if (!userId) {
+			return { success: false, error: "User ID is required." };
+		}
+
+		const appointmentsRef = adminDatabase.ref("appointments");
+		const snapshot = await appointmentsRef
+			.orderByChild("userId")
+			.equalTo(userId)
+			.get();
+
+		if (!snapshot.exists()) {
+			return { success: true, appointments: [] };
+		}
+
+		const appointments = snapshot.val();
+		const appointmentsList: Appointment[] = [];
+
+		Object.entries(appointments).forEach(
+			([id, appointment]: [string, any]) => {
+				appointmentsList.push({
+					userId: appointment.userId || userId,
+					id,
+					referenceNumber: appointment.referenceNumber || id,
+					title: appointment.title,
+					description: appointment.description,
+					date: appointment.date,
+					time: appointment.time,
+					requestedBy: appointment.requestedBy,
+					contactNumber: appointment.contactNumber,
+					email: appointment.email,
+					status: appointment.status || "pending",
+					notes: appointment.notes,
+					createdAt: appointment.createdAt || 0,
+					updatedAt: appointment.updatedAt || 0,
+				});
+			}
+		);
+
+		appointmentsList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+		return { success: true, appointments: appointmentsList };
+	} catch (error) {
+		console.error("Error fetching appointments for user:", error);
+		return {
+			success: false,
+			error:
+				"Failed to fetch appointments. Please check your connection and try again.",
+		};
+	}
+}
+
 // Update appointment status and notify resident
 export async function updateAppointmentStatusAction(
 	appointmentId: string,
@@ -224,6 +285,28 @@ export async function updateAppointmentStatusAction(
 			notes: notes || appointment.notes,
 			updatedAt: Date.now(),
 		});
+
+		// Send email notification based on status change
+		try {
+			if (appointment.email) {
+				const emailData: AppointmentEmailData = {
+					userName: appointment.requestedBy,
+					referenceNumber: appointment.referenceNumber || appointmentId,
+					appointmentTitle: appointment.title,
+					appointmentDate: appointment.date,
+					appointmentTime: appointment.time,
+					purpose: appointment.description,
+					contactPhone: appointment.contactNumber,
+					contactEmail: appointment.email,
+					notes: notes || appointment.notes,
+				};
+
+				await sendAppointmentStatusEmail(appointment.email, status, emailData);
+			}
+		} catch (emailError) {
+			console.error("Failed to send appointment status email:", emailError);
+			// Don't fail the status update if email fails
+		}
 
 		// Send push notification to resident about status update
 		try {
@@ -354,7 +437,21 @@ export async function deleteAppointmentAction(
 			};
 		}
 
-		await appointmentRef.remove();
+		const appointment = snapshot.val() as Appointment;
+
+		await archiveRecord({
+			entity: "appointments",
+			id: appointmentId,
+			paths: {
+				[`appointments/${appointmentId}`]: appointment,
+			},
+			preview: {
+				title: appointment.title,
+				status: appointment.status || "pending",
+				requestedBy: appointment.requestedBy,
+				referenceNumber: appointment.referenceNumber,
+			},
+		});
 
 		return { success: true };
 	} catch (error) {
@@ -390,6 +487,7 @@ export async function getAppointmentsByStatusAction(
 
 		Object.entries(appointments).forEach(([id, appointment]: [string, any]) => {
 			appointmentsList.push({
+			userId: appointment.userId || "",
 				id,
 				referenceNumber: appointment.referenceNumber || id,
 				title: appointment.title,
@@ -438,6 +536,7 @@ export async function getAppointmentByIdAction(appointmentId: string): Promise<{
 
 		const appointment = snapshot.val();
 		const appointmentData: Appointment = {
+		userId: appointment.userId || "",
 			id: appointmentId,
 			referenceNumber: appointment.referenceNumber || appointmentId,
 			title: appointment.title,

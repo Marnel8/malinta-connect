@@ -336,7 +336,8 @@ export interface ResidentRegistrationData {
 	password: string;
 
 	// Photo URLs
-	idPhotoUrl: string;
+	idFrontPhotoUrl: string;
+	idBackPhotoUrl: string;
 	selfiePhotoUrl: string;
 }
 
@@ -411,7 +412,8 @@ export async function registerResidentAction(
 				relation: data.emergencyContactRelation,
 			},
 			verification: {
-				idPhotoUrl: data.idPhotoUrl,
+				idFrontPhotoUrl: data.idFrontPhotoUrl,
+				idBackPhotoUrl: data.idBackPhotoUrl,
 				selfiePhotoUrl: data.selfiePhotoUrl,
 				status: "pending", // Will be reviewed by admin
 				submittedAt: Date.now(),

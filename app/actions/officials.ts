@@ -1,6 +1,7 @@
 "use server";
 
 import { adminDatabase } from "../firebase/admin";
+import { archiveRecord } from "@/lib/archive-manager";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../cloudinary/cloudinary";
 
 export interface Official {
@@ -316,16 +317,20 @@ export async function deleteOfficialAction(
 
     const official = snapshot.val();
 
-    // Delete photo from Cloudinary if exists
-    if (official.photoPublicId) {
-      try {
-        await deleteFromCloudinary(official.photoPublicId);
-      } catch (deleteError) {
-        console.warn("Failed to delete photo from Cloudinary:", deleteError);
-      }
-    }
-
-    await officialRef.remove();
+    await archiveRecord({
+      entity: "officials",
+      id,
+      paths: {
+        [`officials/${id}`]: official,
+      },
+      preview: {
+        name: official.name,
+        position: official.position,
+        status: official.status,
+        photo: official.photo,
+        photoPublicId: official.photoPublicId,
+      },
+    });
 
     return { success: true };
   } catch (error) {

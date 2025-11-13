@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { requestForToken } from "@/app/firebase/firebase";
 import { useFCMToken } from "@/hooks/use-fcm-token";
 import {
-	getAllCertificatesAction,
+	getCertificatesForUserAction,
 	createCertificateAction,
 	type Certificate,
 } from "@/app/actions/certificates";
@@ -446,8 +446,12 @@ export default function CertificatesPage() {
 
 	// Fetch certificates on component mount
 	useEffect(() => {
-		fetchCertificates();
-	}, []);
+		if (!user?.uid) {
+			setCertificates([]);
+			return;
+		}
+		fetchCertificates(user.uid);
+	}, [user?.uid]);
 
 	// Register FCM token for notifications
 	useEffect(() => {
@@ -478,10 +482,10 @@ export default function CertificatesPage() {
 		registerFCMToken();
 	}, [user, userProfile, updateToken]);
 
-	const fetchCertificates = async () => {
+	const fetchCertificates = async (uid: string) => {
 		try {
 			setLoading(true);
-			const result = await getAllCertificatesAction();
+			const result = await getCertificatesForUserAction(uid);
 
 			if (result.success && result.certificates) {
 				setCertificates(result.certificates);
@@ -544,6 +548,7 @@ export default function CertificatesPage() {
 
 		try {
 			const result = await createCertificateAction({
+				userId: user.uid,
 				type: formData.type,
 				requestedBy: formData.requestedBy,
 				emailToNotify: formData.emailToNotify,
@@ -611,7 +616,7 @@ export default function CertificatesPage() {
 				setPhotoPreview(null); // Clear preview on success
 
 				// Refresh certificates
-				await fetchCertificates();
+				await fetchCertificates(user.uid);
 			} else {
 				console.error("Certificate request failed:", result.error);
 				toast({
@@ -1293,72 +1298,91 @@ export default function CertificatesPage() {
 				</TabsContent>
 
 				<TabsContent value="track">
-					<Card>
-						<CardHeader>
-							<CardTitle>{t("certificates.yourRequests")}</CardTitle>
-							<CardDescription>{t("certificates.trackStatus")}</CardDescription>
-						</CardHeader>
-						<CardContent>
-							{loading ? (
-								<div className="flex items-center justify-center py-8">
-									<Loader2 className="h-6 w-6 animate-spin mr-2" />
-									<span>Loading your requests...</span>
-								</div>
-							) : certificates.length === 0 ? (
-								<div className="text-center py-8 text-muted-foreground">
-									<FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-									<p className="text-lg font-medium">
-										No certificate requests found
-									</p>
-									<p className="text-sm">
-										Submit your first request to get started
-									</p>
-								</div>
-							) : (
-								<div className="space-y-4">
-									{certificates.map((cert) => (
-										<div key={cert.id} className="rounded-lg border p-4">
-											<div className="flex items-start justify-between">
-												<div>
-													<div className="flex items-center">
-														<FileText className="mr-2 h-5 w-5 text-primary" />
-														<h3 className="font-medium">{cert.type}</h3>
+					{!user?.uid ? (
+						<Card>
+							<CardHeader>
+								<CardTitle>{t("certificates.yourRequests")}</CardTitle>
+								<CardDescription>
+									Please sign in to view your certificate requests.
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<p className="text-sm text-muted-foreground">
+									You must be logged in to track the status of your submissions.
+								</p>
+							</CardContent>
+						</Card>
+					) : (
+						<Card>
+							<CardHeader>
+								<CardTitle>{t("certificates.yourRequests")}</CardTitle>
+								<CardDescription>
+									{t("certificates.trackStatus")}
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								{loading ? (
+									<div className="flex items-center justify-center py-8">
+										<Loader2 className="h-6 w-6 animate-spin mr-2" />
+										<span>Loading your requests...</span>
+									</div>
+								) : certificates.length === 0 ? (
+									<div className="text-center py-8 text-muted-foreground">
+										<FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+										<p className="text-lg font-medium">
+											No certificate requests found
+										</p>
+										<p className="text-sm">
+											Submit your first request to get started
+										</p>
+									</div>
+								) : (
+									<div className="space-y-4">
+										{certificates.map((cert) => (
+											<div key={cert.id} className="rounded-lg border p-4">
+												<div className="flex items-start justify-between">
+													<div>
+														<div className="flex items-center">
+															<FileText className="mr-2 h-5 w-5 text-primary" />
+															<h3 className="font-medium">{cert.type}</h3>
+														</div>
+														<p className="text-sm text-muted-foreground mt-1">
+															{t("certificates.requestedOn")}:{" "}
+															{cert.requestedOn}
+														</p>
 													</div>
-													<p className="text-sm text-muted-foreground mt-1">
-														{t("certificates.requestedOn")}: {cert.requestedOn}
-													</p>
+													<div className="flex items-center">
+														{getStatusBadge(cert.status)}
+													</div>
 												</div>
-												<div className="flex items-center">
-													{getStatusBadge(cert.status)}
+												<div className="mt-4">
+													<p className="text-sm">
+														{t("certificates.reference")}: {cert.id}
+													</p>
+													<p className="text-sm text-muted-foreground mt-1">
+														{cert.status === "ready"
+															? "Available for pickup at the Barangay Hall"
+															: cert.status === "rejected"
+															? `Rejected: ${cert.rejectedReason}`
+															: cert.status === "additionalInfo"
+															? "Additional information required"
+															: `Estimated completion: ${getEstimatedCompletion(
+																	cert
+															  )}`}
+													</p>
+													{cert.notes && (
+														<p className="text-sm text-muted-foreground mt-1">
+															Notes: {cert.notes}
+														</p>
+													)}
 												</div>
 											</div>
-											<div className="mt-4">
-												<p className="text-sm">
-													{t("certificates.reference")}: {cert.id}
-												</p>
-												<p className="text-sm text-muted-foreground mt-1">
-													{cert.status === "ready"
-														? "Available for pickup at the Barangay Hall"
-														: cert.status === "rejected"
-														? `Rejected: ${cert.rejectedReason}`
-														: cert.status === "additionalInfo"
-														? "Additional information required"
-														: `Estimated completion: ${getEstimatedCompletion(
-																cert
-														  )}`}
-												</p>
-												{cert.notes && (
-													<p className="text-sm text-muted-foreground mt-1">
-														Notes: {cert.notes}
-													</p>
-												)}
-											</div>
-										</div>
-									))}
-								</div>
-							)}
-						</CardContent>
-					</Card>
+										))}
+									</div>
+								)}
+							</CardContent>
+						</Card>
+					)}
 				</TabsContent>
 			</Tabs>
 		</div>

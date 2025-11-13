@@ -1,6 +1,7 @@
 "use server";
 
 import { adminDatabase } from "@/app/firebase/admin";
+import { archiveRecord } from "@/lib/archive-manager";
 import { UserProfile } from "./auth";
 
 export interface StaffMember extends Omit<UserProfile, "permissions"> {
@@ -256,34 +257,48 @@ export async function deleteStaffMemberAction(
 	uid: string
 ): Promise<{ success: boolean; error?: string }> {
 	try {
-		// Import Firebase Auth Admin SDK
-		const { getAuth } = await import("firebase-admin/auth");
-		const auth = getAuth();
+		const staffRef = adminDatabase.ref(`users/${uid}`);
+		const snapshot = await staffRef.get();
 
-		// Delete from Firebase Auth
-		await auth.deleteUser(uid);
+		if (!snapshot.exists()) {
+			return {
+				success: false,
+				error: "Staff member not found.",
+			};
+		}
 
-		// Delete from database
-		await adminDatabase.ref(`users/${uid}`).remove();
+		const staffMember = snapshot.val() as StaffMember;
+
+		try {
+			const { getAuth } = await import("firebase-admin/auth");
+			const auth = getAuth();
+			await auth.updateUser(uid, { disabled: true });
+		} catch (authError: any) {
+			if (authError.code !== "auth/user-not-found") {
+				console.error("Failed to disable staff auth account:", authError);
+			}
+		}
+
+		await archiveRecord({
+			entity: "staff",
+			id: uid,
+			paths: {
+				[`users/${uid}`]: staffMember,
+			},
+			preview: {
+				name: `${staffMember.firstName ?? ""} ${staffMember.lastName ?? ""}`.trim(),
+				email: staffMember.email,
+				role: staffMember.role,
+				status: staffMember.status,
+			},
+		});
 
 		return { success: true };
 	} catch (error: any) {
 		console.error("Error deleting staff member:", error);
-
-		let errorMessage = "Failed to delete staff member. Please try again.";
-		if (error.code === "auth/user-not-found") {
-			// Still try to remove from database
-			try {
-				await adminDatabase.ref(`users/${uid}`).remove();
-				return { success: true };
-			} catch (dbError) {
-				errorMessage = "Staff member not found.";
-			}
-		}
-
 		return {
 			success: false,
-			error: errorMessage,
+			error: "Failed to delete staff member. Please try again.",
 		};
 	}
 }

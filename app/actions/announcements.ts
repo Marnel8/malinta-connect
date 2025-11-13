@@ -1,6 +1,11 @@
 "use server";
 
 import { adminDatabase } from "@/app/firebase/admin";
+import { archiveRecord } from "@/lib/archive-manager";
+import {
+	sendAnnouncementCreatedEmail,
+	type AnnouncementEmailData,
+} from "@/mails";
 
 export interface Announcement {
 	id: string;
@@ -97,6 +102,42 @@ export async function createAnnouncementAction(
 				notificationError
 			);
 			// Don't fail the entire operation if notification fails
+		}
+
+		// Send email notification to all residents about new announcement
+		try {
+			// Get all resident emails
+			const residentsRef = adminDatabase.ref("residents");
+			const residentsSnapshot = await residentsRef.get();
+			const residentEmails: string[] = [];
+
+			if (residentsSnapshot.exists()) {
+				const residents = residentsSnapshot.val();
+				Object.values(residents).forEach((resident: any) => {
+					if (resident?.contactInfo?.email) {
+						residentEmails.push(resident.contactInfo.email);
+					}
+				});
+			}
+
+			if (residentEmails.length > 0) {
+				const emailData: AnnouncementEmailData = {
+					announcementTitle: announcementData.title,
+					announcementDescription: announcementData.description,
+					announcementCategory: announcementData.category,
+					author: announcementData.author,
+					publishedOn: announcement.publishedOn,
+					expiresOn: announcementData.expiresOn,
+					referenceNumber,
+					contactPhone: process.env.CONTACT_PHONE || "+63 912 345 6789",
+					contactEmail: process.env.CONTACT_EMAIL || "info@malinta-connect.com",
+				};
+
+				await sendAnnouncementCreatedEmail(residentEmails, emailData);
+			}
+		} catch (emailError) {
+			console.error("Failed to send announcement created email:", emailError);
+			// Don't fail the entire operation if email fails
 		}
 
 		return {
@@ -266,7 +307,21 @@ export async function deleteAnnouncementAction(
 			};
 		}
 
-		await announcementRef.remove();
+		const announcement = snapshot.val();
+
+		await archiveRecord({
+			entity: "announcements",
+			id,
+			paths: {
+				[`announcements/${id}`]: announcement,
+			},
+			preview: {
+				title: announcement.title,
+				status: announcement.status || "draft",
+				author: announcement.author,
+				category: announcement.category,
+			},
+		});
 
 		return { success: true };
 	} catch (error) {

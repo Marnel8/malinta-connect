@@ -13,18 +13,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Download, Signature } from "lucide-react";
+import { Loader2, Upload, FileText, Download } from "lucide-react";
 import {
 	generateCertificatePDFAction,
 	uploadSignatureAction,
 	type Certificate,
 } from "@/app/actions/certificates";
 import {
-	createCertificatePreview,
 	generateCertificatePDF,
 	type CertificateData,
 	type OfficialInfo,
 } from "@/lib/certificate-pdf-generator";
+import { getCertificateTemplateConfig } from "@/lib/certificate-templates";
 import { Switch } from "@/components/ui/switch";
 
 interface CertificateGeneratorModalProps {
@@ -43,7 +43,6 @@ export function CertificateGeneratorModal({
 	// Reset states when modal opens/closes
 	useEffect(() => {
 		if (!isOpen) {
-			setPreviewMode(false);
 			setPdfBlob(null);
 			setSignatureFile(null);
 		}
@@ -55,7 +54,6 @@ export function CertificateGeneratorModal({
 		certificate.hasSignature || false
 	);
 	const [signatureFile, setSignatureFile] = useState<File | null>(null);
-	const [previewMode, setPreviewMode] = useState(false);
 	const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,17 +68,35 @@ export function CertificateGeneratorModal({
 		type: certificate.type,
 		requestedBy: certificate.requestedBy,
 		purpose: certificate.purpose,
+		generatedOn:
+			certificate.generatedOn ||
+			new Date().toLocaleDateString("en-US", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			}),
 		age: certificate.age,
 		address: certificate.address,
-		generatedOn: new Date().toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "long",
-			day: "numeric",
-		}),
+		occupation: certificate.occupation,
+		income: certificate.income,
+		incomeYear: certificate.incomeYear,
+		jobTitle: certificate.jobTitle,
+		employmentPeriod: certificate.employmentPeriod,
+		businessName: certificate.businessName,
+		businessLocation: certificate.businessLocation,
+		closureDate: certificate.closureDate,
+		closureReason: certificate.closureReason,
+		relationship: certificate.relationship,
+		nonResidenceDuration: certificate.nonResidenceDuration,
+		supportDetails: certificate.supportDetails,
+		allowanceAmount: certificate.allowanceAmount,
 		signatureUrl: certificate.signatureUrl,
 		hasSignature:
 			includeSignature && (!!certificate.signatureUrl || !!signatureFile),
 	};
+
+	const templateConfig = getCertificateTemplateConfig(certificate.type || "");
+	const certificateTypeLabel = templateConfig.previewDescription || certificate.type || "Certificate";
 
 	const handleSignatureUpload = async () => {
 		if (!signatureFile) {
@@ -132,12 +148,11 @@ export function CertificateGeneratorModal({
 			if (result.success && result.pdfBlob) {
 				// Store the PDF blob for preview/download
 				setPdfBlob(result.pdfBlob);
-				setPreviewMode(true);
 
 				toast({
 					title: "Success",
 					description:
-						"Certificate PDF generated successfully. You can now preview, print, or download.",
+						"Certificate PDF generated successfully. You can now print or download it.",
 				});
 
 				// Update certificate status to completed if it was ready
@@ -220,117 +235,13 @@ export function CertificateGeneratorModal({
 		}
 	};
 
-	if (previewMode) {
-		return (
-			<Dialog open={isOpen} onOpenChange={onClose}>
-				<DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
-					<DialogHeader>
-						<DialogTitle>Certificate Preview & Actions</DialogTitle>
-						<DialogDescription>
-							Preview of the Certificate of Indigency for{" "}
-							{certificate.requestedBy} - Shows exact size and layout
-						</DialogDescription>
-					</DialogHeader>
-
-					<div className="space-y-6">
-						{/* Certificate Preview */}
-						<div className="border rounded-lg p-4 bg-gray-50">
-							<div className="text-center mb-4">
-								<div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-									<FileText className="h-4 w-4" />
-									Preview Size: 8.5" × 11" (Letter) - Exact PDF Dimensions
-								</div>
-							</div>
-							<div
-								className="border rounded-lg p-4 bg-white shadow-lg"
-								dangerouslySetInnerHTML={{
-									__html: createCertificatePreview(
-										certificateData,
-										officialInfo
-									),
-								}}
-							/>
-							<div className="text-center mt-4 space-y-2">
-								<div className="text-sm text-muted-foreground">
-									This preview shows the exact size and layout that will appear
-									in the downloaded PDF
-								</div>
-								<Button
-									onClick={() => window.print()}
-									variant="outline"
-									size="sm"
-									className="mx-auto"
-								>
-									<FileText className="h-4 w-4 mr-2" />
-									Print Preview (Full Size)
-								</Button>
-							</div>
-						</div>
-
-						{/* PDF Actions */}
-						{pdfBlob && (
-							<div className="border rounded-lg p-4 bg-gray-50">
-								<h3 className="text-lg font-semibold mb-3">PDF Actions</h3>
-								<div className="flex gap-3">
-									<Button
-										onClick={handlePrint}
-										variant="outline"
-										className="flex-1"
-									>
-										<FileText className="h-4 w-4 mr-2" />
-										Print Certificate
-									</Button>
-									<Button onClick={handleDownload} className="flex-1">
-										<Download className="h-4 w-4 mr-2" />
-										Download PDF
-									</Button>
-								</div>
-								<p className="text-xs text-muted-foreground mt-2">
-									The PDF has been generated successfully. You can print it
-									directly or download it to your device.
-								</p>
-							</div>
-						)}
-					</div>
-
-					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => {
-								setPreviewMode(false);
-								setPdfBlob(null);
-							}}
-						>
-							Back to Generator
-						</Button>
-						{!pdfBlob && (
-							<Button onClick={handleGeneratePDF} disabled={isGenerating}>
-								{isGenerating ? (
-									<>
-										<Loader2 className="h-4 w-4 animate-spin mr-2" />
-										Generating PDF...
-									</>
-								) : (
-									<>
-										<FileText className="h-4 w-4 mr-2" />
-										Generate PDF
-									</>
-								)}
-							</Button>
-						)}
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		);
-	}
-
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>
 					<DialogTitle>Generate Certificate</DialogTitle>
 					<DialogDescription>
-						Generate a Certificate of Indigency for {certificate.requestedBy}
+						Generate {certificateTypeLabel} for {certificate.requestedBy}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -454,15 +365,38 @@ export function CertificateGeneratorModal({
 							</p>
 						</div>
 					</div>
+
+					{/* PDF Actions */}
+					{pdfBlob && (
+						<div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+							<div>
+								<h3 className="text-lg font-semibold">Certificate Ready</h3>
+								<p className="text-xs text-muted-foreground">
+									The PDF has been generated successfully. You can print it
+									or download it to your device.
+								</p>
+							</div>
+							<div className="flex gap-3">
+								<Button
+									onClick={handlePrint}
+									variant="outline"
+									className="flex-1"
+								>
+									<FileText className="h-4 w-4 mr-2" />
+									Print Certificate
+								</Button>
+								<Button onClick={handleDownload} className="flex-1">
+									<Download className="h-4 w-4 mr-2" />
+									Download PDF
+								</Button>
+							</div>
+						</div>
+					)}
 				</div>
 
 				<DialogFooter>
 					<Button variant="outline" onClick={onClose}>
 						Cancel
-					</Button>
-					<Button variant="outline" onClick={() => setPreviewMode(true)}>
-						<FileText className="h-4 w-4 mr-2" />
-						Preview Certificate
 					</Button>
 					<Button onClick={handleGeneratePDF} disabled={isGenerating}>
 						{isGenerating ? (
