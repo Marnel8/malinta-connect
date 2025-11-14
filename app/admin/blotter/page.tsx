@@ -70,6 +70,8 @@ import {
   type BlotterEntry,
   type CreateBlotterData,
 } from "@/app/actions/blotter";
+import { uploadBlotterProofImageAction } from "@/app/actions/uploads";
+import { Image as ImageIcon, X } from "lucide-react";
 
 export default function AdminBlotterPage() {
   const { t } = useLanguage();
@@ -89,6 +91,12 @@ export default function AdminBlotterPage() {
     useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Image upload state
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(
+    null
+  );
+  const [proofImageUploading, setProofImageUploading] = useState(false);
+
   // Form state for new report
   const [newReportForm, setNewReportForm] = useState<CreateBlotterData>({
     type: "",
@@ -99,6 +107,9 @@ export default function AdminBlotterPage() {
     priority: "medium",
     location: "",
     incidentDate: "",
+    incidentDateTime: "",
+    age: undefined,
+    proofImageUrl: undefined,
     notes: "",
   });
 
@@ -201,6 +212,77 @@ export default function AdminBlotterPage() {
     }
   };
 
+  // Handle proof image upload
+  const handleProofImageUpload = async (file: File) => {
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file (JPG, PNG, or WebP)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setProofImagePreview(dataUrl);
+      setProofImageUploading(true);
+      try {
+        const res = await uploadBlotterProofImageAction(dataUrl);
+        if (res.success && res.url) {
+          setNewReportForm((prev) => ({
+            ...prev,
+            proofImageUrl: res.url,
+          }));
+          toast({
+            title: "Image uploaded successfully",
+            description: "Proof image has been uploaded",
+          });
+        } else {
+          console.error("Image upload failed:", res.error);
+          toast({
+            title: "Upload failed",
+            description: res.error || "Failed to upload image",
+            variant: "destructive",
+          });
+          setProofImagePreview(null);
+        }
+      } catch (error) {
+        console.error("Image upload error:", error);
+        toast({
+          title: "Upload failed",
+          description: "Failed to upload image",
+          variant: "destructive",
+        });
+        setProofImagePreview(null);
+      } finally {
+        setProofImageUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Remove proof image
+  const handleRemoveProofImage = () => {
+    setProofImagePreview(null);
+    setNewReportForm((prev) => ({
+      ...prev,
+      proofImageUrl: undefined,
+    }));
+  };
+
   // Handle new report submission
   const handleNewReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,8 +305,12 @@ export default function AdminBlotterPage() {
             priority: "medium",
             location: "",
             incidentDate: "",
+            incidentDateTime: "",
+            age: undefined,
+            proofImageUrl: undefined,
             notes: "",
           });
+          setProofImagePreview(null);
           loadBlotterEntries();
         } else {
           toast({
@@ -348,6 +434,16 @@ export default function AdminBlotterPage() {
           >
             <Clock className="mr-1 h-3 w-3" />
             {t("blotter.status.investigating")}
+          </Badge>
+        );
+      case "readyForAppointment":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+          >
+            <MessageSquare className="mr-1 h-3 w-3" />
+            Ready to Set Appointment
           </Badge>
         );
       case "resolved":
@@ -526,34 +622,105 @@ export default function AdminBlotterPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="age">Age</Label>
                   <Input
-                    id="location"
-                    value={newReportForm.location}
+                    id="age"
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={newReportForm.age || ""}
                     onChange={(e) =>
                       setNewReportForm((prev) => ({
                         ...prev,
-                        location: e.target.value,
+                        age: e.target.value
+                          ? parseInt(e.target.value)
+                          : undefined,
                       }))
                     }
-                    placeholder="Address or location of incident"
+                    placeholder="Enter age"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="incidentDate">Incident Date</Label>
+                <Label htmlFor="location">Location</Label>
                 <Input
-                  id="incidentDate"
-                  type="date"
-                  value={newReportForm.incidentDate}
+                  id="location"
+                  value={newReportForm.location}
                   onChange={(e) =>
                     setNewReportForm((prev) => ({
                       ...prev,
-                      incidentDate: e.target.value,
+                      location: e.target.value,
+                    }))
+                  }
+                  placeholder="Address or location of incident"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="incidentDateTime">Incident Date & Time</Label>
+                <Input
+                  id="incidentDateTime"
+                  type="datetime-local"
+                  value={newReportForm.incidentDateTime || ""}
+                  onChange={(e) =>
+                    setNewReportForm((prev) => ({
+                      ...prev,
+                      incidentDateTime: e.target.value,
                     }))
                   }
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="proof-image">Proof Image (Optional)</Label>
+                {proofImagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={proofImagePreview}
+                      alt="Proof preview"
+                      className="w-full h-48 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={handleRemoveProofImage}
+                      disabled={proofImageUploading}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                    <ImageIcon className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Upload proof image (JPG, PNG, WebP)
+                    </p>
+                    <Input
+                      id="proof-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleProofImageUpload(file);
+                        }
+                      }}
+                      disabled={proofImageUploading}
+                      className="cursor-pointer"
+                    />
+                    {proofImageUploading && (
+                      <div className="mt-2 flex items-center justify-center">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span className="text-sm text-muted-foreground">
+                          Uploading...
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -615,6 +782,9 @@ export default function AdminBlotterPage() {
             <SelectItem value="all">All Reports</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="investigating">Under Investigation</SelectItem>
+            <SelectItem value="readyForAppointment">
+              Ready to Set Appointment
+            </SelectItem>
             <SelectItem value="resolved">Resolved</SelectItem>
             <SelectItem value="additionalInfo">Needs Info</SelectItem>
             <SelectItem value="closed">Closed</SelectItem>
@@ -721,6 +891,14 @@ export default function AdminBlotterPage() {
                           Request Additional Info
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          disabled={entry.status === "readyForAppointment"}
+                          onClick={() =>
+                            quickUpdateStatus(entry, "readyForAppointment")
+                          }
+                        >
+                          Set to Ready for Appointment
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           disabled={entry.status === "resolved"}
                           onClick={() => quickUpdateStatus(entry, "resolved")}
                         >
@@ -799,7 +977,7 @@ export default function AdminBlotterPage() {
 
       {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Blotter Report Details</DialogTitle>
           </DialogHeader>
@@ -893,11 +1071,58 @@ export default function AdminBlotterPage() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">
-                    Incident Date
+                    Incident Date & Time
                   </Label>
-                  <p>{selectedEntry.incidentDate || "Not specified"}</p>
+                  <p>
+                    {selectedEntry.incidentDateTime
+                      ? new Date(selectedEntry.incidentDateTime).toLocaleString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )
+                      : selectedEntry.incidentDate || "Not specified"}
+                  </p>
                 </div>
               </div>
+
+              {selectedEntry.age && (
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Age
+                  </Label>
+                  <p>{selectedEntry.age} years old</p>
+                </div>
+              )}
+
+              {selectedEntry.proofImageUrl && (
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Proof Image
+                  </Label>
+                  <div className="mt-2">
+                    <a
+                      href={selectedEntry.proofImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <img
+                        src={selectedEntry.proofImageUrl}
+                        alt="Proof image"
+                        className="w-full max-w-md h-auto rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                      />
+                    </a>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Click image to view full size
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {selectedEntry.notes && (
                 <div>
@@ -917,7 +1142,7 @@ export default function AdminBlotterPage() {
         open={isStatusUpdateDialogOpen}
         onOpenChange={setIsStatusUpdateDialogOpen}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Update Blotter Status</DialogTitle>
           </DialogHeader>
@@ -948,6 +1173,9 @@ export default function AdminBlotterPage() {
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="investigating">
                       Under Investigation
+                    </SelectItem>
+                    <SelectItem value="readyForAppointment">
+                      Ready to Set Appointment
                     </SelectItem>
                     <SelectItem value="resolved">Resolved</SelectItem>
                     <SelectItem value="additionalInfo">

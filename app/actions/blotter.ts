@@ -16,12 +16,16 @@ export interface BlotterEntry {
 	status:
 		| "pending"
 		| "investigating"
+		| "readyForAppointment"
 		| "resolved"
 		| "additionalInfo"
 		| "closed";
 	priority: "low" | "medium" | "high" | "urgent";
 	location?: string;
 	incidentDate?: string;
+	incidentDateTime?: string;
+	age?: number;
+	proofImageUrl?: string;
 	date: string;
 	notes?: string;
 	createdAt: number;
@@ -38,6 +42,9 @@ export interface CreateBlotterData {
 	priority: BlotterEntry["priority"];
 	location?: string;
 	incidentDate?: string;
+	incidentDateTime?: string;
+	age?: number;
+	proofImageUrl?: string;
 	notes?: string;
 }
 
@@ -176,6 +183,9 @@ export async function getAllBlotterAction(): Promise<{
 				priority: entry.priority || "medium",
 				location: entry.location,
 				incidentDate: entry.incidentDate,
+				incidentDateTime: entry.incidentDateTime,
+				age: entry.age,
+				proofImageUrl: entry.proofImageUrl,
 				date:
 					entry.date ||
 					new Date(entry.createdAt || Date.now()).toLocaleDateString("en-US", {
@@ -236,6 +246,9 @@ export async function getBlotterEntriesForUserAction(
 				priority: entry.priority || "medium",
 				location: entry.location,
 				incidentDate: entry.incidentDate,
+				incidentDateTime: entry.incidentDateTime,
+				age: entry.age,
+				proofImageUrl: entry.proofImageUrl,
 				date:
 					entry.date ||
 					new Date(entry.createdAt || Date.now()).toLocaleDateString("en-US", {
@@ -401,11 +414,23 @@ export async function updateBlotterStatusAction(
 			const { sendBlotterUpdateNotificationAction } = await import(
 				"@/app/actions/notifications"
 			);
+			
+			// Map blotter status to notification status
+			let notificationStatus: "processing" | "resolved" | "closed";
+			if (status === "resolved") {
+				notificationStatus = "resolved";
+			} else if (status === "closed") {
+				notificationStatus = "closed";
+			} else {
+				// Map pending, investigating, additionalInfo to "processing"
+				notificationStatus = "processing";
+			}
+			
 			await sendBlotterUpdateNotificationAction(
 				current.reportedBy, // This should be UID in a real implementation
 				current.reportedBy, // Resident name
 				current.type || current.title || "General Report",
-				status,
+				notificationStatus,
 				id,
 				notes
 			);
@@ -555,6 +580,9 @@ export async function getBlotterEntriesByStatusAction(
 				priority: entry.priority || "medium",
 				location: entry.location,
 				incidentDate: entry.incidentDate,
+				incidentDateTime: entry.incidentDateTime,
+				age: entry.age,
+				proofImageUrl: entry.proofImageUrl,
 				date:
 					entry.date ||
 					new Date(entry.createdAt || Date.now()).toLocaleDateString("en-US", {

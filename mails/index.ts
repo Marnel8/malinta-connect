@@ -506,6 +506,7 @@ export const sendBlotterStatusEmail = async (
 	status:
 		| "pending"
 		| "investigating"
+		| "readyForAppointment"
 		| "additionalInfo"
 		| "resolved"
 		| "closed",
@@ -522,6 +523,10 @@ export const sendBlotterStatusEmail = async (
 			case "investigating":
 				subject = `Blotter Report Under Investigation - ${data.referenceNumber}`;
 				intro = "Your blotter report is now under investigation.";
+				break;
+			case "readyForAppointment":
+				subject = `Ready to Set Appointment - ${data.referenceNumber}`;
+				intro = "Your blotter report is ready for appointment scheduling. Please contact us to set up an appointment.";
 				break;
 			case "additionalInfo":
 				subject = `Additional Information Requested - ${data.referenceNumber}`;

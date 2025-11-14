@@ -214,3 +214,42 @@ export async function uploadAvatarAction(
 		return { success: false, error: "Failed to upload avatar" };
 	}
 }
+
+export async function uploadBlotterProofImageAction(
+	dataUrl: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+	try {
+		if (!dataUrl || typeof dataUrl !== "string") {
+			return { success: false, error: "Invalid image data" };
+		}
+
+		// Validate that the image is a data URL
+		if (!dataUrl.startsWith("data:image/")) {
+			return {
+				success: false,
+				error: "Invalid image format. Image must be a data URL.",
+			};
+		}
+
+		const result = await uploadToCloudinary(dataUrl, {
+			folder: "malinta-connect/blotter/proof-images",
+			resource_type: "image",
+			allowed_formats: ["jpg", "jpeg", "png", "webp"],
+			tags: ["blotter", "proof", "evidence"],
+			transformation: [
+				{
+					width: 1200,
+					height: 1200,
+					crop: "limit",
+					quality: "auto",
+					format: "auto",
+				},
+			],
+		});
+
+		return { success: true, url: result.secure_url };
+	} catch (error) {
+		console.error("Blotter proof image upload failed:", error);
+		return { success: false, error: "Failed to upload proof image" };
+	}
+}
