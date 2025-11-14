@@ -119,6 +119,214 @@ function splitParagraphIntoLines(
 
 	return lines;
 }
+
+// Helper function to convert PDF points to inches
+function pointsToInches(points: number): string {
+	const inches = points / 72;
+	const rounded = Number(inches.toFixed(3));
+	return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toString();
+}
+
+// Helper function to convert PDF points to pixels (assuming 96 DPI)
+function pointsToPixels(points: number): string {
+	const pixels = (points / 72) * 96;
+	return Math.round(pixels).toString();
+}
+
+// Helper function to build sidebar gradient CSS
+function buildSidebarGradientCSS(
+	topColor: string,
+	bottomColor: string
+): string {
+	return `linear-gradient(to bottom, ${topColor}, ${bottomColor})`;
+}
+
+// Helper function to split text into lines for HTML (approximate)
+function splitTextIntoLinesHTML(
+	text: string,
+	fontSize: number,
+	maxWidthPx: number
+): string[] {
+	// Approximate character width (rough estimate: 0.6 * fontSize for average character)
+	const avgCharWidth = fontSize * 0.6;
+	const maxCharsPerLine = Math.floor(maxWidthPx / avgCharWidth);
+	const words = text.split(" ");
+	const lines: string[] = [];
+	let currentLine = "";
+
+	words.forEach((word) => {
+		const candidate = currentLine ? `${currentLine} ${word}` : word;
+		if (candidate.length <= maxCharsPerLine) {
+			currentLine = candidate;
+		} else {
+			if (currentLine) {
+				lines.push(currentLine);
+			}
+			currentLine = word;
+		}
+	});
+
+	if (currentLine) {
+		lines.push(currentLine);
+	}
+
+	return lines;
+}
+
+// Helper function to build content box styles
+function buildContentBoxStyles(layout: typeof CERTIFICATE_LAYOUT): string {
+	const cb = layout.contentBox;
+	const paddingTop = cb.paddingTop ?? cb.horizontalPadding;
+	const paddingBottom = cb.paddingBottom ?? cb.horizontalPadding;
+	const paddingLeft = cb.paddingLeft ?? cb.horizontalPadding;
+	const paddingRight = cb.paddingRight ?? cb.horizontalPadding;
+	const borderColor = cb.borderColor ?? "#000000";
+	const borderStyle = cb.borderStyle ?? "solid";
+	const backgroundColor = cb.backgroundColor ?? "#FFFFFF";
+
+	return `
+		padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;
+		border: ${cb.borderWidth}px ${borderStyle} ${borderColor};
+		background: ${backgroundColor};
+	`.trim();
+}
+
+// Helper function to build title section styles
+function buildTitleSectionStyles(layout: typeof CERTIFICATE_LAYOUT): string {
+	const titleSection = layout.contentBox.titleSection;
+	const title = layout.title;
+	
+	if (!titleSection) {
+		return `
+			text-align: center;
+			margin-top: 30px;
+			margin-bottom: 50px;
+		`.trim();
+	}
+
+	return `
+		text-align: ${titleSection.textAlign ?? "center"};
+		margin-top: ${titleSection.marginTop ?? 30}px;
+		margin-bottom: ${titleSection.marginBottom ?? 50}px;
+		${titleSection.fontSize ? `font-size: ${titleSection.fontSize}px;` : ""}
+		${titleSection.fontWeight ? `font-weight: ${titleSection.fontWeight};` : ""}
+		${titleSection.fontFamily ? `font-family: ${titleSection.fontFamily};` : ""}
+		${titleSection.letterSpacing !== undefined ? `letter-spacing: ${titleSection.letterSpacing}px;` : ""}
+		${titleSection.color ? `color: ${titleSection.color};` : ""}
+	`.trim();
+}
+
+// Helper function to build body section styles
+function buildBodySectionStyles(layout: typeof CERTIFICATE_LAYOUT): string {
+	const bodySection = layout.contentBox.bodySection;
+	const body = layout.body;
+	
+	if (!bodySection) {
+		return `
+			margin-bottom: 60px;
+			line-height: 1.6;
+			font-size: 11px;
+			text-align: justify;
+			font-family: 'Times New Roman', serif;
+		`.trim();
+	}
+
+	return `
+		margin-top: ${bodySection.marginTop ?? 0}px;
+		margin-bottom: ${bodySection.marginBottom ?? 60}px;
+		text-align: ${bodySection.textAlign ?? "justify"};
+		font-size: ${bodySection.fontSize ?? body.fontSize}px;
+		font-family: ${bodySection.fontFamily ?? body.fontFamily ?? "'Times New Roman', serif"};
+		line-height: ${bodySection.lineHeight ?? body.lineHeight / body.fontSize};
+		color: ${bodySection.color ?? body.color ?? "#000000"};
+	`.trim();
+}
+
+// Helper function to build signature section styles
+function buildSignatureSectionStyles(layout: typeof CERTIFICATE_LAYOUT): string {
+	const sigSection = layout.contentBox.signatureSection;
+	const sig = layout.signature;
+	
+	if (!sigSection) {
+		return `
+			text-align: center;
+		`.trim();
+	}
+
+	const alignment = sigSection.alignment ?? sigSection.textAlign ?? "center";
+	
+	return `
+		text-align: ${sigSection.textAlign ?? "center"};
+		${alignment === "right" ? "display: flex; justify-content: flex-end;" : ""}
+		${alignment === "left" ? "display: flex; justify-content: flex-start;" : ""}
+	`.trim();
+}
+
+// Helper function to build content box styles (for print - uses inches)
+function buildContentBoxStylesInches(layout: typeof CERTIFICATE_LAYOUT): string {
+	const cb = layout.contentBox;
+	const paddingTop = cb.paddingTop ?? cb.horizontalPadding;
+	const paddingBottom = cb.paddingBottom ?? cb.horizontalPadding;
+	const paddingLeft = cb.paddingLeft ?? cb.horizontalPadding;
+	const paddingRight = cb.paddingRight ?? cb.horizontalPadding;
+	const borderColor = cb.borderColor ?? "#000000";
+	const borderStyle = cb.borderStyle ?? "solid";
+	const backgroundColor = cb.backgroundColor ?? "#FFFFFF";
+
+	return `
+		border: ${pointsToInches(cb.borderWidth)}in ${borderStyle} ${borderColor};
+		background: ${backgroundColor};
+		box-sizing: border-box;
+		padding: ${pointsToInches(paddingTop)}in ${pointsToInches(paddingRight)}in ${pointsToInches(paddingBottom)}in ${pointsToInches(paddingLeft)}in;
+	`.trim();
+}
+
+// Helper function to build title section styles (for print - uses inches)
+function buildTitleSectionStylesInches(layout: typeof CERTIFICATE_LAYOUT): string {
+	const titleSection = layout.contentBox.titleSection;
+	const title = layout.title;
+	
+	if (!titleSection) {
+		return `
+			text-align: center;
+			padding-top: ${pointsToInches(25)}in;
+		`.trim();
+	}
+
+	return `
+		text-align: ${titleSection.textAlign ?? "center"};
+		padding-top: ${pointsToInches(titleSection.marginTop ?? 25)}in;
+		${titleSection.fontSize ? `font-size: ${titleSection.fontSize}pt;` : ""}
+		${titleSection.fontWeight ? `font-weight: ${titleSection.fontWeight};` : ""}
+		${titleSection.fontFamily ? `font-family: ${titleSection.fontFamily};` : ""}
+		${titleSection.letterSpacing !== undefined ? `letter-spacing: ${pointsToInches(titleSection.letterSpacing)}in;` : ""}
+		${titleSection.color ? `color: ${titleSection.color};` : ""}
+	`.trim();
+}
+
+// Helper function to build body section styles (for print - uses inches)
+function buildBodySectionStylesInches(layout: typeof CERTIFICATE_LAYOUT): string {
+	const bodySection = layout.contentBox.bodySection;
+	const body = layout.body;
+	
+	if (!bodySection) {
+		return `
+			text-align: justify;
+			font-size: ${body.fontSize}pt;
+			line-height: ${body.lineHeight / body.fontSize};
+			font-family: 'Times New Roman', Times, serif;
+		`.trim();
+	}
+
+	return `
+		text-align: ${bodySection.textAlign ?? "justify"};
+		font-size: ${bodySection.fontSize ?? body.fontSize}pt;
+		font-family: ${bodySection.fontFamily ?? body.fontFamily ?? "'Times New Roman', Times, serif"};
+		line-height: ${bodySection.lineHeight ?? body.lineHeight / body.fontSize};
+		color: ${bodySection.color ?? body.color ?? "#000000"};
+	`.trim();
+}
+
 // Generate PDF from certificate data using pdf-lib
 export async function generateCertificatePDF(
 	certificateData: CertificateData,
@@ -146,6 +354,8 @@ export async function generateCertificatePDF(
 			helveticaBold,
 			times: timesFont,
 			timesBold,
+			arial: helveticaFont, // Arial maps to Helvetica (visually similar, standard PDF font)
+			arialBold: helveticaBold,
 		};
 
 		const { width, height } = page.getSize();
@@ -282,7 +492,8 @@ export async function generateCertificatePDF(
 
 		// Sidebar gradient background
 		const sidebarStartY = margin + layout.sidebar.bottomOffset;
-		const sidebarHeight = height - margin - layout.sidebar.topOffset;
+		const sidebarTopY = height - margin - layout.sidebar.topOffset;
+		const sidebarHeight = sidebarTopY - sidebarStartY;
 		const topColor = hexToRgbTuple(layout.sidebar.backgroundTopColor);
 		const bottomColor = hexToRgbTuple(layout.sidebar.backgroundBottomColor);
 		const steps: number = 40;
@@ -344,11 +555,12 @@ export async function generateCertificatePDF(
 
 		// Content box
 		const contentBox = layout.contentBox;
+		const contentTopMargin = 5; // 5px top margin for right content area
 		const contentX = margin + layout.sidebar.width + contentBox.leftGap;
 		const contentWidth = width - contentX - margin - contentBox.rightGap;
 		const contentBorderX = contentX - contentBox.horizontalPadding;
 		const contentBorderY = margin + contentBox.bottomOffset;
-		const contentBorderTop = height - margin - contentBox.topOffset;
+		const contentBorderTop = height - margin - contentBox.topOffset - contentTopMargin;
 		const contentBorderHeight = contentBorderTop - contentBorderY;
 
 		page.drawRectangle({
@@ -362,7 +574,7 @@ export async function generateCertificatePDF(
 		});
 
 		// Title lines
-		let titleY = height - margin - contentBox.titleOffset;
+		let titleY = height - margin - contentBox.titleOffset - contentTopMargin;
 		sections.titleLines.forEach((line) => {
 			const textWidth = timesBold.widthOfTextAtSize(line.text, line.fontSize);
 			page.drawText(line.text, {
@@ -567,14 +779,17 @@ export function createCertificatePreview(
 		.map((line, index) => {
 			const marginBottom =
 				index === sections.titleLines.length - 1 ? 0 : line.marginBottom;
+			const titleConfig = layout.title;
+			const titleSection = layout.contentBox.titleSection;
 			return `<div style="
 						font-size: ${line.fontSize}px;
-						font-weight: bold;
-						letter-spacing: 4px;
+						font-weight: ${titleSection?.fontWeight ?? titleConfig.fontWeight ?? "bold"};
+						letter-spacing: ${titleSection?.letterSpacing !== undefined ? titleSection.letterSpacing : (titleConfig.letterSpacing ?? 4)}px;
 						margin: 0;
 						margin-bottom: ${marginBottom}px;
 						line-height: 1.4;
-						font-family: 'Times New Roman', serif;
+						font-family: ${titleSection?.fontFamily ?? "'Times New Roman', serif"};
+						color: ${titleSection?.color ?? titleConfig.color ?? "#000000"};
 					">
 						${line.text}
 					</div>`;
@@ -717,29 +932,27 @@ export function createCertificatePreview(
 			</div>
 
 			<!-- Content -->
-			<div style="
+			<div class="content-box" style="
 				margin-left: ${contentMarginLeftIn};
 				margin-right: ${contentMarginRightIn};
-				margin-top: ${marginIn};
-				padding: 35px 30px;
-				border: ${layout.contentBox.borderWidth}px solid #000;
+				margin-top: calc(${marginIn} + 5px);
 				min-height: 6.5in;
-				background: white;
+				${buildContentBoxStyles(layout)}
 			">
-				<div style="text-align: center; margin-bottom: 50px; margin-top: 30px;">
+				<div class="title-section" style="${buildTitleSectionStyles(layout)}">
 					${titleHtml}
 				</div>
 
-				<div style="margin-bottom: 60px; line-height: 1.6; font-size: 11px; text-align: justify; font-family: 'Times New Roman', serif;">
+				<div class="body-section" style="${buildBodySectionStyles(layout)}">
 					${paragraphHtml}
 				</div>
 
-				<div style="margin-top: 80px; text-align: center;">
+				<div class="signature-section" style="${buildSignatureSectionStyles(layout)}">
 					<div style="
 						width: ${layout.signature.boxWidth}px;
 						height: 1px;
 						margin: 0 auto 15px;
-						border-bottom: 1px solid #000;
+						border-bottom: 1px ${layout.signature.boxBorderStyle ?? "solid"} ${layout.signature.boxBorderColor ?? "#000000"};
 						position: relative;
 					">
 						${
@@ -748,10 +961,21 @@ export function createCertificatePreview(
 								: ``
 						}
 					</div>
-					<div style="font-weight: bold; font-size: 11px; margin-top: 5px; font-family: 'Times New Roman', serif;">
+					<div style="
+						font-weight: bold;
+						font-size: ${layout.signature.nameFontSize}px;
+						margin-top: 5px;
+						font-family: 'Times New Roman', serif;
+						color: ${layout.signature.nameColor ?? "#000000"};
+					">
 						${officialInfo.name.toUpperCase()}
 					</div>
-					<div style="font-size: 9px; margin-top: 3px; font-family: 'Times New Roman', serif;">
+					<div style="
+						font-size: ${layout.signature.positionFontSize}px;
+						margin-top: 3px;
+						font-family: 'Times New Roman', serif;
+						color: ${layout.signature.positionColor ?? "#000000"};
+					">
 						${officialInfo.position}
 					</div>
 				</div>
@@ -772,4 +996,842 @@ export function createCertificatePreview(
 			</div>
 		</div>
 	`;
+}
+
+// Build printable certificate HTML for printing
+function buildPrintableCertificateHtmlLegacy(
+	certificateData: CertificateData,
+	officialInfo: OfficialInfo
+): string {
+	const layout = CERTIFICATE_LAYOUT;
+	const sections = buildCertificateSections(certificateData);
+	const issuanceDate = resolveIssuanceDate(certificateData.generatedOn);
+	const bodyParagraphs = [
+		...sections.bodyParagraphs,
+		getIssuanceParagraph(issuanceDate),
+	];
+
+	// Convert measurements to inches for print
+	const pageWidthIn = `${pointsToInches(layout.page.width)}in`;
+	const pageHeightIn = `${pointsToInches(layout.page.height)}in`;
+	const marginIn = `${pointsToInches(layout.margin)}in`;
+	const sidebarWidthIn = `${pointsToInches(layout.sidebar.width)}in`;
+	const sealSizeIn = `${pointsToInches(layout.seal.size)}in`;
+	const sealLeftIn = `${pointsToInches(layout.margin + layout.seal.leftOffset)}in`;
+	// PDF: height - margin - topOffset - size (from bottom), HTML: margin + topOffset (from top)
+	const sealTopIn = `${pointsToInches(layout.margin + layout.seal.topOffset)}in`;
+
+	// Calculate content area
+	const contentLeftIn = `${pointsToInches(layout.margin + layout.sidebar.width + layout.contentBox.leftGap)}in`;
+	const contentWidthIn = `${pointsToInches(layout.page.width - layout.margin - layout.sidebar.width - layout.contentBox.leftGap - layout.contentBox.rightGap - layout.margin)}in`;
+	const contentPaddingIn = `${pointsToInches(layout.contentBox.horizontalPadding)}in`;
+
+	// Sidebar positioning - topOffset is from top margin in PDF, same for HTML
+	const sidebarTopIn = `${pointsToInches(layout.margin + layout.sidebar.topOffset)}in`;
+	const sidebarHeightIn = `${pointsToInches(layout.page.height - layout.margin - layout.sidebar.topOffset - layout.sidebar.bottomOffset - layout.margin)}in`;
+
+	// Header positioning - topOffset is from top margin
+	const headerTopIn = `${pointsToInches(layout.margin + layout.header.topOffset)}in`;
+	const headerLeftIn = `${pointsToInches(layout.margin + (layout.header.leftOffset || 0))}in`;
+
+	// Office ribbon - topOffset is from top margin
+	const ribbonTopIn = `${pointsToInches(layout.margin + layout.header.officeRibbon.topOffset)}in`;
+	const ribbonHeightIn = `${pointsToInches(layout.header.officeRibbon.height)}in`;
+
+	// Content box positioning - topOffset is from top margin
+	const contentTopMargin = 5; // 5px top margin for right content area
+	const contentBoxTopIn = `${pointsToInches(layout.margin + layout.contentBox.topOffset + contentTopMargin)}in`;
+	const contentBoxHeightIn = `${pointsToInches(layout.page.height - layout.margin - layout.contentBox.topOffset - layout.contentBox.bottomOffset - layout.margin - contentTopMargin)}in`;
+
+	// Title positioning - titleOffset is from top margin (relative to page, not content box)
+	// Adjust for better spacing within content box
+	const titleTopIn = `${pointsToInches((layout.contentBox.titleOffset - layout.contentBox.topOffset) - 10)}in`;
+
+	// Body text area
+	const bodyMaxWidthPx = Number(pointsToPixels(
+		layout.page.width -
+			layout.margin -
+			layout.sidebar.width -
+			layout.contentBox.leftGap -
+			layout.contentBox.rightGap -
+			layout.margin -
+			layout.contentBox.horizontalPadding * 2 -
+			layout.body.contentMarginX * 2
+	));
+
+	// Build header lines HTML
+	const headerLinesHtml = layout.header.lines
+		.map(
+			(line, index) => `
+				<div style="
+					font-size: ${line.fontSize}pt;
+					font-weight: ${line.font === "helveticaBold" ? "bold" : "normal"};
+					font-family: 'Helvetica', 'Arial', sans-serif;
+					margin-bottom: ${index < layout.header.lines.length - 1 ? `${pointsToInches(layout.header.lineSpacing - line.fontSize)}in` : "0"};
+					line-height: 1.2;
+				">
+					${line.text}
+				</div>
+			`
+		)
+		.join("");
+
+	// Build sidebar title HTML
+	const sidebarTitleHtml = layout.sidebar.title
+		.map((entry) => {
+			const textAlign = entry.center ? "center" : "left";
+			const marginBottomPt = (entry.marginBottom ?? 3);
+			return `<div style="
+				font-size: ${entry.fontSize}pt;
+				font-weight: ${entry.font === "helveticaBold" ? "bold" : "normal"};
+				font-family: 'Helvetica', 'Arial', sans-serif;
+				text-align: ${textAlign};
+				margin-bottom: ${pointsToInches(marginBottomPt)}in;
+				color: #000000;
+				line-height: 1.3;
+			">${entry.text}</div>`;
+		})
+		.join("");
+
+	// Build sidebar entries HTML
+	const sidebarEntriesHtml = layout.sidebar.entries
+		.map((entry) => {
+			const fontWeight = entry.font === "helveticaBold" ? "bold" : "normal";
+			const fontStyle = entry.italic ? "italic" : "normal";
+			const marginBottomPt = (entry.marginBottom ?? 3);
+			return `<div style="
+				font-size: ${entry.fontSize}pt;
+				font-weight: ${fontWeight};
+				font-style: ${fontStyle};
+				font-family: 'Helvetica', 'Arial', sans-serif;
+				margin-bottom: ${pointsToInches(marginBottomPt)}in;
+				color: ${layout.sidebar.textColor};
+				line-height: 1.3;
+			">${entry.text}</div>`;
+		})
+		.join("");
+
+	// Build title HTML
+	const titleHtml = sections.titleLines
+		.map((line, index) => {
+			const marginBottom =
+				index === sections.titleLines.length - 1 ? 0 : line.marginBottom;
+			const titleConfig = layout.title;
+			const titleSection = layout.contentBox.titleSection;
+			return `<div style="
+				font-size: ${line.fontSize}pt;
+				font-weight: ${titleSection?.fontWeight ?? titleConfig.fontWeight ?? "bold"};
+				letter-spacing: ${pointsToInches(titleSection?.letterSpacing !== undefined ? titleSection.letterSpacing : (titleConfig.letterSpacing ?? 4))}in;
+				margin: 0;
+				margin-bottom: ${pointsToInches(marginBottom)}in;
+				line-height: 1.4;
+				font-family: ${titleSection?.fontFamily ?? "'Times New Roman', Times, serif"};
+				text-align: center;
+				color: ${titleSection?.color ?? titleConfig.color ?? "#000000"};
+			">
+				${line.text}
+			</div>`;
+		})
+		.join("");
+
+	// Build body paragraphs HTML with proper line wrapping
+	const paragraphSpacingIn = `${pointsToInches(layout.body.paragraphSpacing)}in`;
+	const paragraphHtml = bodyParagraphs
+		.map((paragraph, index) => {
+			const lines = splitTextIntoLinesHTML(
+				paragraph,
+				layout.body.fontSize,
+				bodyMaxWidthPx
+			);
+			const spacing = index === bodyParagraphs.length - 1 ? "0" : paragraphSpacingIn;
+			return `<p style="
+				margin: 0 0 ${spacing} 0;
+				font-size: ${layout.body.fontSize}pt;
+				line-height: ${layout.body.lineHeight / layout.body.fontSize};
+				font-family: 'Times New Roman', Times, serif;
+				text-align: justify;
+			">
+				${lines.map((line) => line).join(" ")}
+			</p>`;
+		})
+		.join("");
+
+	// Build signature HTML
+	const signatureHtml = (() => {
+		const signatureImg = certificateData.hasSignature && certificateData.signatureUrl
+			? `<img src="${certificateData.signatureUrl}" alt="Signature" style="
+				height: ${pointsToInches(50)}in;
+				max-width: 100%;
+				object-fit: contain;
+			" />`
+			: "";
+		
+		return `
+			<div style="
+				display:flex;
+				flex-direction:column;
+				align-items:flex-end;
+				gap:0.1in;
+			">
+				<div style="
+					width: ${pointsToInches(layout.signature.boxWidth)}in;
+					border-bottom: 1px ${layout.signature.boxBorderStyle ?? "solid"} ${layout.signature.boxBorderColor ?? "#000000"};
+					height: 0.8in;
+					display:flex;
+					align-items:flex-end;
+					justify-content:center;
+				">
+					${signatureImg}
+				</div>
+				<div style="
+					font-weight: bold;
+					font-size: ${layout.signature.nameFontSize}pt;
+					font-family: 'Times New Roman', Times, serif;
+					color: ${layout.signature.nameColor ?? "#000000"};
+				">
+					${officialInfo.name.toUpperCase()}
+				</div>
+				<div style="
+					font-size: ${layout.signature.positionFontSize}pt;
+					font-family: 'Times New Roman', Times, serif;
+					color: ${layout.signature.positionColor ?? "#000000"};
+				">
+					${officialInfo.position}
+				</div>
+			</div>
+		`;
+	})();
+
+	// Build footer HTML
+	const footerHtml = layout.footer.lines
+		.map(
+			(line, index) => {
+				const marginBottom = index === layout.footer.lines.length - 1
+					? 0
+					: layout.footer.lineSpacing - line.fontSize;
+				return `
+				<div style="
+					font-weight: ${line.font === "helveticaBold" ? "bold" : "normal"};
+					font-size: ${line.fontSize}pt;
+					font-family: 'Helvetica', 'Arial', sans-serif;
+					margin-bottom: ${marginBottom > 0 ? `${pointsToInches(marginBottom)}in` : "0"};
+					line-height: 1.2;
+				">
+					${line.text}
+				</div>
+			`;
+			}
+		)
+		.join("");
+
+	// Logo URL - use absolute path
+	const logoUrl = typeof window !== "undefined" 
+		? `${window.location.origin}/images/malinta_logo.jpg`
+		: "/images/malinta_logo.jpg";
+
+	// Sidebar gradient
+	const sidebarGradient = buildSidebarGradientCSS(
+		layout.sidebar.backgroundTopColor,
+		layout.sidebar.backgroundBottomColor
+	);
+
+	return `
+		<!doctype html>
+		<html>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>Certificate - ${certificateData.type}</title>
+			<style>
+				@media print {
+					@page { 
+						size: 8.5in 11in; 
+						margin: 0.3in; 
+					}
+					html, body { 
+						width: 8.5in; 
+						height: 11in; 
+						margin: 0; 
+						padding: 0;
+					}
+					body { 
+						margin: 0; 
+						-webkit-print-color-adjust: exact; 
+						print-color-adjust: exact; 
+					}
+					* { 
+						page-break-inside: avoid;
+					}
+				}
+				* { 
+					margin: 0; 
+					padding: 0; 
+					box-sizing: border-box; 
+				}
+				body { 
+					font-family: 'Helvetica', 'Arial', sans-serif; 
+					padding: 0; 
+					color: #000; 
+					background: #fff;
+					width: ${pageWidthIn};
+					height: ${pageHeightIn};
+					position: relative;
+				}
+			</style>
+		</head>
+		<body>
+			<!-- Border -->
+			<div style="
+				position: absolute;
+				left: 0;
+				top: 0;
+				width: ${pageWidthIn};
+				height: ${pageHeightIn};
+				border: ${pointsToInches(layout.borderWidth)}in solid #000;
+				pointer-events: none;
+			"></div>
+
+			<!-- Seal/Logo -->
+			<div style="
+				position: absolute;
+				left: ${sealLeftIn};
+				top: ${sealTopIn};
+				width: ${sealSizeIn};
+				height: ${sealSizeIn};
+				border: ${pointsToInches(layout.seal.borderWidth)}in solid #000;
+				overflow: hidden;
+				box-sizing: border-box;
+			">
+				<img src="${logoUrl}" alt="Barangay Seal" style="
+					width: 100%;
+					height: 100%;
+					object-fit: contain;
+				" onerror="this.style.display='none';" />
+			</div>
+
+			<!-- Header Text -->
+			<div style="
+				position: absolute;
+				left: ${headerLeftIn};
+				top: ${headerTopIn};
+			">
+				${headerLinesHtml}
+			</div>
+
+			<!-- Header Divider -->
+			<div style="
+				position: absolute;
+				left: ${pointsToInches(layout.margin + layout.header.divider.leftOffset)}in;
+				right: ${pointsToInches(layout.margin + layout.header.divider.rightOffset)}in;
+				top: ${pointsToInches(layout.margin + layout.header.divider.yOffset)}in;
+				height: ${pointsToInches(layout.header.divider.height)}in;
+				background: #000;
+			"></div>
+
+			<!-- Office Ribbon -->
+			<div style="
+				position: absolute;
+				left: ${marginIn};
+				right: ${marginIn};
+				top: ${ribbonTopIn};
+				height: ${ribbonHeightIn};
+				background: ${layout.header.officeRibbon.backgroundColor};
+				border: ${pointsToInches(layout.header.officeRibbon.borderWidth)}in solid #000;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			">
+				<div style="
+					font-size: ${layout.header.officeRibbon.fontSize}pt;
+					font-weight: bold;
+					color: ${layout.header.officeRibbon.textColor};
+					font-family: 'Helvetica', 'Arial', sans-serif;
+					letter-spacing: 0.5pt;
+					text-align: center;
+				">
+					${layout.header.officeRibbon.text}
+				</div>
+			</div>
+
+			<!-- Sidebar -->
+			<div style="
+				position: absolute;
+				left: ${marginIn};
+				top: ${sidebarTopIn};
+				width: ${sidebarWidthIn};
+				height: ${sidebarHeightIn};
+				background: ${sidebarGradient};
+				color: ${layout.sidebar.textColor};
+				border: ${pointsToInches(layout.sidebar.borderWidth || 0)}in solid #000;
+				box-sizing: border-box;
+				padding: ${pointsToInches(layout.sidebar.textHorizontalPadding)}in;
+				overflow: hidden;
+			">
+				${sidebarTitleHtml}
+				${sidebarEntriesHtml}
+			</div>
+
+			<!-- Content Box -->
+			<div class="content-box" style="
+				position: absolute;
+				left: ${pointsToInches(layout.margin + layout.sidebar.width + layout.contentBox.leftGap - layout.contentBox.horizontalPadding)}in;
+				top: ${contentBoxTopIn};
+				width: ${pointsToInches(layout.page.width - layout.margin - layout.sidebar.width - layout.contentBox.leftGap - layout.contentBox.rightGap - layout.margin + layout.contentBox.horizontalPadding * 2)}in;
+				height: ${contentBoxHeightIn};
+				${buildContentBoxStylesInches(layout)}
+			">
+				<!-- Title -->
+				<div class="title-section" style="
+					position: absolute;
+					top: ${titleTopIn};
+					left: ${contentPaddingIn};
+					right: ${contentPaddingIn};
+					${buildTitleSectionStylesInches(layout)}
+				">
+					${titleHtml}
+				</div>
+
+				<!-- Body Paragraphs -->
+				<div class="body-section" style="
+					position: absolute;
+					top: ${pointsToInches((layout.contentBox.titleOffset - layout.contentBox.topOffset) - 10 + 25 + sections.titleLines.reduce((sum, line) => sum + line.fontSize + line.marginBottom, 0) + layout.body.topSpacing - 30)}in;
+					left: ${pointsToInches(layout.body.contentMarginX)}in;
+					right: ${pointsToInches(layout.body.contentMarginX)}in;
+					${buildBodySectionStylesInches(layout)}
+				">
+					${paragraphHtml}
+				</div>
+
+				<!-- Signature -->
+				<div class="signature-section" style="
+					position: absolute;
+					bottom: ${pointsToInches(layout.signature.offsetFromBody)}in;
+					right: ${pointsToInches(layout.signature.horizontalOffset)}in;
+					text-align: center;
+				">
+					${signatureHtml}
+				</div>
+			</div>
+
+			<!-- Footer -->
+			<div style="
+				position: absolute;
+				bottom: ${pointsToInches(layout.margin + layout.footer.bottomOffset)}in;
+				left: ${marginIn};
+				right: ${marginIn};
+				text-align: right;
+				padding: ${pointsToInches(8)}in;
+			">
+				${footerHtml}
+			</div>
+		</body>
+		</html>
+	`;
+}
+
+export function buildPrintableCertificateHtml(
+	certificateData: CertificateData,
+	officialInfo: OfficialInfo
+): string {
+	const layout = CERTIFICATE_LAYOUT;
+	const sections = buildCertificateSections(certificateData);
+	const issuanceDate = resolveIssuanceDate(certificateData.generatedOn);
+	const bodyParagraphs = [
+		...sections.bodyParagraphs,
+		getIssuanceParagraph(issuanceDate),
+	];
+
+	const pageWidthIn = `${pointsToInches(layout.page.width)}in`;
+	const pageHeightIn = `${pointsToInches(layout.page.height)}in`;
+	const marginIn = `${pointsToInches(layout.margin)}in`;
+	const leftColumnPercent = (layout.columns.leftWidthRatio ?? 0.2) * 100;
+	const columnGapPx = `1px`;
+	const leftGradient = `linear-gradient(180deg, ${layout.columns.leftBackgroundTopColor} 0%, ${layout.columns.leftBackgroundBottomColor} 100%)`;
+	const leftPaddingXIn = `2px`;
+	const leftPaddingTopIn = `${pointsToInches(layout.columns.leftPaddingTop ?? 18)}in`;
+	const paragraphSpacingIn = `${pointsToInches(layout.body.paragraphSpacing)}in`;
+	const footerSpacing = `${pointsToInches(layout.footer.lineSpacing)}in`;
+
+	const headerLinesHtml = layout.header.lines
+		.map(
+			(line) => `
+			<div style="
+				font-size:${line.fontSize}pt;
+				font-weight:${line.font === "helveticaBold" ? "bold" : "normal"};
+				letter-spacing:0.5pt;
+				text-transform:uppercase;
+			">
+				${line.text}
+			</div>`
+		)
+		.join("");
+
+	const sidebarTitleHtml = layout.sidebar.title
+		.map(
+			(entry) => `
+			<div style="
+				font-size:${entry.fontSize}pt;
+				font-weight:bold;
+				text-transform:uppercase;
+				letter-spacing:1px;
+			">
+				${entry.text}
+			</div>`
+		)
+		.join("");
+
+	const sidebarEntriesHtml = layout.sidebar.entries
+		.map((entry) => {
+			const fontWeight = entry.font === "helveticaBold" ? "bold" : "normal";
+			const fontStyle = entry.italic ? "italic" : "normal";
+			const marginBottom = `${pointsToInches(entry.marginBottom ?? 3)}in`;
+			return `<div style="
+				font-size:${entry.fontSize}pt;
+				font-weight:${fontWeight};
+				font-style:${fontStyle};
+				margin-bottom:${marginBottom};
+				line-height:1.3;
+				text-transform:uppercase;
+			">
+				${entry.text}
+			</div>`;
+		})
+		.join("");
+
+	const titleHtml = sections.titleLines
+		.map(
+			(line) => {
+				const titleConfig = layout.title;
+				const titleSection = layout.contentBox.titleSection;
+				return `
+		<div style="
+			font-size:${line.fontSize}pt;
+			font-weight:${titleSection?.fontWeight ?? titleConfig.fontWeight ?? "bold"};
+			letter-spacing:${pointsToInches(titleSection?.letterSpacing !== undefined ? titleSection.letterSpacing : (titleConfig.letterSpacing ?? 4))}in;
+			line-height:1.4;
+			text-align:center;
+			font-family:${titleSection?.fontFamily ?? "'Times New Roman', Times, serif"};
+			color:${titleSection?.color ?? titleConfig.color ?? "#000000"};
+		">
+			${line.text}
+		</div>`;
+			}
+		)
+		.join("");
+
+	const paragraphHtml = bodyParagraphs
+		.map((paragraph, index) => {
+			const spacing = index === bodyParagraphs.length - 1 ? "0" : paragraphSpacingIn;
+			const bodySection = layout.contentBox.bodySection;
+			const body = layout.body;
+			return `<p style="
+				margin:0 0 ${spacing} 0;
+				font-size:${bodySection?.fontSize ?? body.fontSize}pt;
+				line-height:${bodySection?.lineHeight ?? body.lineHeight / body.fontSize};
+				font-family:${bodySection?.fontFamily ?? body.fontFamily ?? "'Times New Roman', Times, serif"};
+				text-align:${bodySection?.textAlign ?? "justify"};
+				color:${bodySection?.color ?? body.color ?? "#000000"};
+			">
+				${paragraph}
+			</p>`;
+		})
+		.join("");
+
+	const signatureImg =
+		certificateData.hasSignature && certificateData.signatureUrl
+			? `<img src="${certificateData.signatureUrl}" alt="Signature" style="height:${pointsToInches(50)}in;max-width:100%;object-fit:contain;" />`
+			: "";
+
+	const signatureHtml = `
+		<div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.1in;">
+			<div style="
+				width:${pointsToInches(layout.signature.boxWidth)}in;
+				height:0.8in;
+				border-bottom:1px ${layout.signature.boxBorderStyle ?? "solid"} ${layout.signature.boxBorderColor ?? "#000000"};
+				display:flex;
+				align-items:flex-end;
+				justify-content:center;
+			">
+				${signatureImg}
+			</div>
+			<div style="
+				font-weight:bold;
+				font-size:${layout.signature.nameFontSize}pt;
+				font-family:'Times New Roman', Times, serif;
+				color:${layout.signature.nameColor ?? "#000000"};
+			">
+				${officialInfo.name.toUpperCase()}
+			</div>
+			<div style="
+				font-size:${layout.signature.positionFontSize}pt;
+				font-family:'Times New Roman', Times, serif;
+				color:${layout.signature.positionColor ?? "#000000"};
+			">
+				${officialInfo.position}
+			</div>
+		</div>
+	`;
+
+	const footerHtml = layout.footer.lines
+		.map(
+			(line) => `
+		<div style="
+			font-size:${line.fontSize}pt;
+			font-weight:${line.font === "helveticaBold" ? "bold" : "normal"};
+			text-transform:uppercase;
+			line-height:1.4;
+		">
+			${line.text}
+		</div>`
+		)
+		.join("");
+
+	const logoUrl =
+		typeof window !== "undefined"
+			? `${window.location.origin}/images/malinta_logo.jpg`
+			: "/images/malinta_logo.jpg";
+
+	return `
+	<!doctype html>
+	<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<title>Certificate - ${certificateData.type}</title>
+		<style>
+			@media print {
+				@page {
+					size: 8.5in 11in;
+					margin: 0.3in;
+				}
+				html, body {
+					margin: 0;
+					padding: 0;
+				}
+				body {
+					-webkit-print-color-adjust: exact;
+					print-color-adjust: exact;
+				}
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				font-family: 'Helvetica', 'Arial', sans-serif;
+				background:#fff;
+				color:#000;
+				margin:0;
+			}
+		</style>
+	</head>
+	<body>
+		<div style="
+			width:${pageWidthIn};
+			height:${pageHeightIn};
+			margin:0 auto;
+			padding:${marginIn};
+			display:flex;
+			gap:${columnGapPx};
+			background:#fff;
+		">
+			<div style="
+				flex:0 0 ${leftColumnPercent}%;
+				display:flex;
+				flex-direction:column;
+				gap:${columnGapPx};
+			">
+				<div style="
+					flex:1;
+					border:none;
+					background:transparent;
+					padding:0 ${leftPaddingXIn};
+					display:flex;
+					flex-direction:column;
+					align-items:center;
+					gap:2px;
+				">
+					<div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:0.15in;">
+						<div style="
+							width:${pointsToInches(layout.seal.size)}in;
+							height:${pointsToInches(layout.seal.size)}in;
+							background:#fff;
+							display:flex;
+							align-items:center;
+							justify-content:center;
+						">
+							<img src="${logoUrl}" alt="Barangay Seal" style="width:100%;height:100%;object-fit:contain;"/>
+						</div>
+					
+					</div>
+					<div style="
+						width:100%;
+						background:${leftGradient};
+						padding:${leftPaddingTopIn} 4px;
+						display:flex;
+						flex-direction:column;
+						gap:0.1in;
+						color:${layout.columns.leftTextColor};
+					">
+						<div style="
+							width:100%;
+							color:${layout.columns.leftHeadingColor};
+							padding:0.12in 0.1in;
+							text-align:center;
+							text-transform:uppercase;
+							font-weight:bold;
+							letter-spacing:1px;
+						">
+							${sidebarTitleHtml}
+						</div>
+						<div style="
+							width:100%;
+							display:flex;
+							flex-direction:column;
+							gap:0.05in;
+							font-size:9pt;
+							text-align:left;
+							text-transform:uppercase;
+						">
+							${sidebarEntriesHtml}
+						</div>
+					</div>
+				</div>
+			</div>
+			<div style="
+				flex:1;
+				display:flex;
+				flex-direction:column;
+				gap:${columnGapPx};
+				margin-top:5px;
+			">
+				<div style="
+					display:flex;
+					flex-direction:column;
+					gap:0.04in;
+					font-weight:bold;
+					text-transform:uppercase;
+					letter-spacing:0.5pt;
+				">
+					${headerLinesHtml}
+				</div>
+				<div style="height:2px;background:#000;"></div>
+				<div style="
+					color:#000080;
+					text-align:left;
+					font-weight:bold;
+					font-size:18pt;
+					font-family: 'times new roman', times, serif;
+					margin-top: 10px;
+					letter-spacing:0.5pt;
+				">
+					${layout.header.officeRibbon.text}
+				</div>
+				<div class="content-box" style="
+					min-height: 7.5in;
+					display:flex;
+					margin: 10px 0;
+					flex-direction:column;
+					gap:0.35in;
+					${buildContentBoxStylesInches(layout)}
+				">
+					<div class="title-section" style="
+						text-align:${layout.contentBox.titleSection?.textAlign ?? "center"};
+					">
+						${titleHtml}
+					</div>
+					<div class="body-section" style="
+						display:flex;
+						flex-direction:column;
+						gap:${paragraphSpacingIn};
+						${buildBodySectionStylesInches(layout)}
+					">
+						${paragraphHtml}
+					</div>
+					<div class="signature-section">
+						${signatureHtml}
+					</div>
+				</div>
+				<div style="
+					text-align:right;
+					font-size:7pt;
+					line-height:1.4;
+					text-transform:uppercase;
+					display:flex;
+					flex-direction:column;
+					gap:${footerSpacing};
+				">
+					${footerHtml}
+				</div>
+			</div>
+		</div>
+	</body>
+	</html>
+	`;
+}
+
+// Open certificate print window
+export function openCertificatePrintWindow(html: string): void {
+	try {
+		const printWindow = window.open("", "_blank");
+		if (!printWindow) {
+			console.error("Failed to open print window");
+			return;
+		}
+
+		printWindow.document.open();
+		printWindow.document.write(html);
+		printWindow.document.close();
+
+		// Wait for images to load before printing
+		const waitForImages = () => {
+			const images = printWindow.document.getElementsByTagName("img");
+			let loadedCount = 0;
+			const totalImages = images.length;
+
+			if (totalImages === 0) {
+				// No images, print immediately
+				setTimeout(() => {
+					printWindow.focus();
+					printWindow.print();
+				}, 300);
+				return;
+			}
+
+			const checkComplete = () => {
+				loadedCount++;
+				if (loadedCount === totalImages) {
+					setTimeout(() => {
+						printWindow.focus();
+						printWindow.print();
+					}, 300);
+				}
+			};
+
+			// Set up image load handlers
+			Array.from(images).forEach((img) => {
+				if (img.complete) {
+					checkComplete();
+				} else {
+					img.onload = checkComplete;
+					img.onerror = checkComplete; // Continue even if image fails to load
+				}
+			});
+		};
+
+		// Wait for document to be ready
+		if (printWindow.document.readyState === "complete") {
+			waitForImages();
+		} else {
+			printWindow.onload = waitForImages;
+		}
+
+		// Fallback: if onload doesn't fire, try after a delay
+		setTimeout(() => {
+			if (printWindow.document.readyState === "complete") {
+				waitForImages();
+			}
+		}, 2000);
+	} catch (error) {
+		console.error("Error opening print window:", error);
+	}
 }

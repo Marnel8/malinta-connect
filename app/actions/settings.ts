@@ -2,6 +2,7 @@
 
 import { adminDatabase } from "@/app/firebase/admin"
 import { revalidatePath } from "next/cache"
+import { cloudinary } from "@/cloudinary/cloudinary"
 
 export interface BarangaySettings {
   barangayName: string
@@ -43,11 +44,18 @@ export interface UserRoleSettings {
   }
 }
 
+export interface CertificateSettings {
+  signatureUrl?: string
+  officialName: string
+  officialPosition: string
+}
+
 export interface AllSettings {
   barangay: BarangaySettings
   officeHours: OfficeHours
   notifications: NotificationSettings
   userRoles: UserRoleSettings
+  certificateSettings: CertificateSettings
 }
 
 // Get all settings
@@ -57,7 +65,12 @@ export async function getSettings(): Promise<AllSettings | null> {
     const snapshot = await settingsRef.get()
     
     if (snapshot.exists()) {
-      return snapshot.val()
+      const settings = snapshot.val()
+      // Ensure certificateSettings exists for backward compatibility
+      if (!settings.certificateSettings) {
+        settings.certificateSettings = getDefaultSettings().certificateSettings
+      }
+      return settings
     }
     
     // Return default settings if none exist
@@ -131,6 +144,60 @@ export async function updateUserRoleSettings(data: UserRoleSettings) {
   }
 }
 
+// Upload signature to settings
+export async function uploadSignatureToSettings(
+  signatureFile: File
+): Promise<{ success: boolean; signatureUrl?: string; error?: string }> {
+  try {
+    // Configure Cloudinary
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    })
+
+    const bytes = await signatureFile.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    const base64Data = buffer.toString("base64")
+    const dataURI = `data:${signatureFile.type};base64,${base64Data}`
+
+    const uploadResult = await cloudinary.uploader.upload(dataURI, {
+      folder: "malinta-connect/settings/signatures",
+      public_id: `official_signature_${Date.now()}`,
+      resource_type: "image",
+    })
+
+    return {
+      success: true,
+      signatureUrl: uploadResult.secure_url,
+    }
+  } catch (error) {
+    console.error("Error uploading signature to settings:", error)
+    return {
+      success: false,
+      error: "Failed to upload signature",
+    }
+  }
+}
+
+// Update certificate settings
+export async function updateCertificateSettings(
+  data: CertificateSettings
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const settingsRef = adminDatabase.ref("settings/certificateSettings")
+    await settingsRef.set(data)
+    revalidatePath("/admin/settings")
+    return {
+      success: true,
+      message: "Certificate settings updated successfully",
+    }
+  } catch (error) {
+    console.error("Error updating certificate settings:", error)
+    throw new Error("Failed to update certificate settings")
+  }
+}
+
 // Update all settings at once
 export async function updateAllSettings(data: AllSettings) {
   try {
@@ -142,6 +209,11 @@ export async function updateAllSettings(data: AllSettings) {
       const currentSettings = snapshot.val()
       // Keep the current SMS setting unchanged
       data.notifications.smsNotifications = currentSettings.smsNotifications || false
+    }
+    
+    // Ensure certificateSettings exists in data
+    if (!data.certificateSettings) {
+      data.certificateSettings = getDefaultSettings().certificateSettings
     }
     
     const settingsRef = adminDatabase.ref("settings")
@@ -211,6 +283,11 @@ function getDefaultSettings(): AllSettings {
         description: "Access to resident portal only",
         permissions: ["profile", "requests", "certificates"]
       }
+    },
+    certificateSettings: {
+      signatureUrl: undefined,
+      officialName: "HON. JESUS H. DE UNA JR.",
+      officialPosition: "Punong Barangay"
     }
   }
 }

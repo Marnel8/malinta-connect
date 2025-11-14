@@ -1,418 +1,322 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Download } from "lucide-react";
+import { Loader2, FileText } from "lucide-react";
 import {
-	generateCertificatePDFAction,
-	uploadSignatureAction,
-	type Certificate,
+  type Certificate,
 } from "@/app/actions/certificates";
 import {
-	generateCertificatePDF,
-	type CertificateData,
-	type OfficialInfo,
+  buildPrintableCertificateHtml,
+  openCertificatePrintWindow,
+  type CertificateData,
+  type OfficialInfo,
 } from "@/lib/certificate-pdf-generator";
 import { getCertificateTemplateConfig } from "@/lib/certificate-templates";
 import { Switch } from "@/components/ui/switch";
+import { getSettings } from "@/app/actions/settings";
 
 interface CertificateGeneratorModalProps {
-	isOpen: boolean;
-	onClose: () => void;
-	certificate: Certificate;
-	onCertificateUpdated: () => void;
+  isOpen: boolean;
+  onClose: () => void;
+  certificate: Certificate;
+  onCertificateUpdated: () => void;
 }
 
 export function CertificateGeneratorModal({
-	isOpen,
-	onClose,
-	certificate,
-	onCertificateUpdated,
+  isOpen,
+  onClose,
+  certificate,
+  onCertificateUpdated,
 }: CertificateGeneratorModalProps) {
-	// Reset states when modal opens/closes
-	useEffect(() => {
-		if (!isOpen) {
-			setPdfBlob(null);
-			setSignatureFile(null);
-		}
-	}, [isOpen]);
-	const { toast } = useToast();
-	const [isGenerating, setIsGenerating] = useState(false);
-	const [isUploadingSignature, setIsUploadingSignature] = useState(false);
-	const [includeSignature, setIncludeSignature] = useState(
-		certificate.hasSignature || false
-	);
-	const [signatureFile, setSignatureFile] = useState<File | null>(null);
-	const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-	const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [includeSignature, setIncludeSignature] = useState(false);
+  const [certificateReady, setCertificateReady] = useState(false);
+  const [settingsSignatureUrl, setSettingsSignatureUrl] = useState<string | undefined>(undefined);
+  const [officialInfo, setOfficialInfo] = useState<OfficialInfo>({
+    name: "HON. JESUS H. DE UNA JR.",
+    position: "Punong Barangay",
+  });
+  const [loadingSettings, setLoadingSettings] = useState(false);
 
-	// Default official info (can be made configurable later)
-	const officialInfo: OfficialInfo = {
-		name: "HON. JESUS H. DE UNA JR.",
-		position: "Punong Barangay",
-	};
+  // Load certificate settings when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadCertificateSettings();
+      setCertificateReady(false);
+    }
+  }, [isOpen]);
 
-	const certificateData: CertificateData = {
-		id: certificate.id,
-		type: certificate.type,
-		requestedBy: certificate.requestedBy,
-		purpose: certificate.purpose,
-		generatedOn:
-			certificate.generatedOn ||
-			new Date().toLocaleDateString("en-US", {
-				year: "numeric",
-				month: "long",
-				day: "numeric",
-			}),
-		age: certificate.age,
-		address: certificate.address,
-		occupation: certificate.occupation,
-		income: certificate.income,
-		incomeYear: certificate.incomeYear,
-		jobTitle: certificate.jobTitle,
-		employmentPeriod: certificate.employmentPeriod,
-		businessName: certificate.businessName,
-		businessLocation: certificate.businessLocation,
-		closureDate: certificate.closureDate,
-		closureReason: certificate.closureReason,
-		relationship: certificate.relationship,
-		nonResidenceDuration: certificate.nonResidenceDuration,
-		supportDetails: certificate.supportDetails,
-		allowanceAmount: certificate.allowanceAmount,
-		signatureUrl: certificate.signatureUrl,
-		hasSignature:
-			includeSignature && (!!certificate.signatureUrl || !!signatureFile),
-	};
+  const loadCertificateSettings = async () => {
+    try {
+      setLoadingSettings(true);
+      const settings = await getSettings();
+      if (settings?.certificateSettings) {
+        const certSettings = settings.certificateSettings;
+        setSettingsSignatureUrl(certSettings.signatureUrl);
+        setOfficialInfo({
+          name: certSettings.officialName,
+          position: certSettings.officialPosition,
+        });
+        // Auto-enable signature if available in settings
+        setIncludeSignature(!!certSettings.signatureUrl);
+      }
+    } catch (error) {
+      console.error("Error loading certificate settings:", error);
+      toast({
+        title: "Warning",
+        description: "Could not load certificate settings. Using defaults.",
+        variant: "default",
+      });
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
 
-	const templateConfig = getCertificateTemplateConfig(certificate.type || "");
-	const certificateTypeLabel = templateConfig.previewDescription || certificate.type || "Certificate";
+  const certificateData: CertificateData = {
+    id: certificate.id,
+    type: certificate.type,
+    requestedBy: certificate.requestedBy,
+    purpose: certificate.purpose,
+    generatedOn:
+      certificate.generatedOn ||
+      new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    age: certificate.age,
+    address: certificate.address,
+    occupation: certificate.occupation,
+    income: certificate.income,
+    incomeYear: certificate.incomeYear,
+    jobTitle: certificate.jobTitle,
+    employmentPeriod: certificate.employmentPeriod,
+    businessName: certificate.businessName,
+    businessLocation: certificate.businessLocation,
+    closureDate: certificate.closureDate,
+    closureReason: certificate.closureReason,
+    relationship: certificate.relationship,
+    nonResidenceDuration: certificate.nonResidenceDuration,
+    supportDetails: certificate.supportDetails,
+    allowanceAmount: certificate.allowanceAmount,
+    signatureUrl: includeSignature ? settingsSignatureUrl : undefined,
+    hasSignature: includeSignature && !!settingsSignatureUrl,
+  };
 
-	const handleSignatureUpload = async () => {
-		if (!signatureFile) {
-			toast({
-				title: "Error",
-				description: "Please select a signature file",
-				variant: "destructive",
-			});
-			return;
-		}
+  const templateConfig = getCertificateTemplateConfig(certificate.type || "");
+  const certificateTypeLabel =
+    templateConfig.previewDescription || certificate.type || "Certificate";
 
-		setIsUploadingSignature(true);
-		try {
-			const result = await uploadSignatureAction(certificate.id, signatureFile);
+  const handleGenerateCertificate = () => {
+    setIsGenerating(true);
+    try {
+      // Generate HTML for printing
+      const html = buildPrintableCertificateHtml(certificateData, officialInfo);
 
-			if (result.success) {
-				toast({
-					title: "Success",
-					description: "Signature uploaded successfully",
-				});
-				onCertificateUpdated();
-			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to upload signature",
-					variant: "destructive",
-				});
-			}
-		} catch (error) {
-			toast({
-				title: "Error",
-				description: "Failed to upload signature",
-				variant: "destructive",
-			});
-		} finally {
-			setIsUploadingSignature(false);
-		}
-	};
+      // Mark as ready
+      setCertificateReady(true);
 
-	const handleGeneratePDF = async () => {
-		setIsGenerating(true);
-		try {
-			// Generate PDF using client-side library
-			const result = await generateCertificatePDF(
-				certificateData,
-				officialInfo
-			);
+      toast({
+        title: "Success",
+        description:
+          "Certificate ready for printing. Click Print Certificate to open the print dialog.",
+      });
+    } catch (error) {
+      console.error("Error generating certificate:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate certificate",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-			if (result.success && result.pdfBlob) {
-				// Store the PDF blob for preview/download
-				setPdfBlob(result.pdfBlob);
+  const handlePrint = () => {
+    if (!certificateReady) {
+      toast({
+        title: "Error",
+        description: "Please generate the certificate first",
+        variant: "destructive",
+      });
+      return;
+    }
 
-				toast({
-					title: "Success",
-					description:
-						"Certificate PDF generated successfully. You can now print or download it.",
-				});
+    try {
+      // Generate HTML and open print window
+      const html = buildPrintableCertificateHtml(certificateData, officialInfo);
+      openCertificatePrintWindow(html);
+    } catch (error) {
+      console.error("Error printing certificate:", error);
+      toast({
+        title: "Error",
+        description: "Failed to open print dialog",
+        variant: "destructive",
+      });
+    }
+  };
 
-				// Update certificate status to completed if it was ready
-				if (certificate.status === "ready") {
-					// You can add logic here to update status to completed
-				}
-			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to generate PDF",
-					variant: "destructive",
-				});
-			}
-		} catch (error) {
-			console.error("Error generating PDF:", error);
-			toast({
-				title: "Error",
-				description: "Failed to generate certificate PDF",
-				variant: "destructive",
-			});
-		} finally {
-			setIsGenerating(false);
-		}
-	};
 
-	const handlePrint = () => {
-		if (pdfBlob) {
-			const url = URL.createObjectURL(pdfBlob);
-			const printWindow = window.open(url);
-			if (printWindow) {
-				printWindow.onload = () => {
-					printWindow.print();
-				};
-			}
-		}
-	};
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Generate Certificate</DialogTitle>
+          <DialogDescription>
+            Generate {certificateTypeLabel} for {certificate.requestedBy}
+          </DialogDescription>
+        </DialogHeader>
 
-	const handleDownload = () => {
-		if (pdfBlob) {
-			const url = URL.createObjectURL(pdfBlob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = `Certificate_${certificate.type}_${certificate.requestedBy}_${certificate.id}.pdf`;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
+        <div className="space-y-6">
+          {/* Certificate Info */}
+          <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50">
+            <div>
+              <Label className="text-sm font-medium">Reference No.</Label>
+              <p className="text-sm text-muted-foreground">{certificate.id}</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Type</Label>
+              <p className="text-sm text-muted-foreground">
+                {certificate.type}
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Requested By</Label>
+              <p className="text-sm text-muted-foreground">
+                {certificate.requestedBy}
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Purpose</Label>
+              <p className="text-sm text-muted-foreground">
+                {certificate.purpose}
+              </p>
+            </div>
+          </div>
 
-			toast({
-				title: "Success",
-				description: "Certificate PDF downloaded successfully",
-			});
-		}
-	};
+          {/* Signature Options */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="include-signature"
+                className="text-sm font-medium"
+              >
+                Include Official Signature
+              </Label>
+              <Switch
+                id="include-signature"
+                checked={includeSignature}
+                onCheckedChange={setIncludeSignature}
+                disabled={!settingsSignatureUrl || loadingSettings}
+              />
+            </div>
 
-	const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const file = event.target.files?.[0];
-		if (file) {
-			// Validate file type
-			if (!file.type.startsWith("image/")) {
-				toast({
-					title: "Error",
-					description: "Please select an image file for the signature",
-					variant: "destructive",
-				});
-				return;
-			}
+            {loadingSettings && (
+              <div className="flex items-center text-sm text-muted-foreground p-4 border rounded-lg">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Loading signature settings...
+              </div>
+            )}
 
-			// Validate file size (max 5MB)
-			if (file.size > 5 * 1024 * 1024) {
-				toast({
-					title: "Error",
-					description: "File size must be less than 5MB",
-					variant: "destructive",
-				});
-				return;
-			}
+            {!loadingSettings && includeSignature && settingsSignatureUrl && (
+              <div className="space-y-4 p-4 border rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">
+                    Signature from Settings
+                  </Label>
+                  <div className="mt-2">
+                    <img
+                      src={settingsSignatureUrl}
+                      alt="Official signature"
+                      className="max-h-20 border rounded"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This signature is configured in Settings. You can update it in Admin → Settings → Certificates.
+                  </p>
+                </div>
+              </div>
+            )}
 
-			setSignatureFile(file);
-		}
-	};
+            {!loadingSettings && includeSignature && !settingsSignatureUrl && (
+              <div className="p-4 border rounded-lg bg-yellow-50">
+                <p className="text-sm text-yellow-800">
+                  No signature configured. Please upload a signature in Admin → Settings → Certificates.
+                </p>
+              </div>
+            )}
+          </div>
 
-	return (
-		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className="max-w-2xl">
-				<DialogHeader>
-					<DialogTitle>Generate Certificate</DialogTitle>
-					<DialogDescription>
-						Generate {certificateTypeLabel} for {certificate.requestedBy}
-					</DialogDescription>
-				</DialogHeader>
+          {/* Official Info */}
+          <div className="p-4 border rounded-lg bg-blue-50">
+            <Label className="text-sm font-medium">Signing Official</Label>
+            <div className="mt-2">
+              <p className="text-sm font-semibold">{officialInfo.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {officialInfo.position}
+              </p>
+            </div>
+          </div>
 
-				<div className="space-y-6">
-					{/* Certificate Info */}
-					<div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50">
-						<div>
-							<Label className="text-sm font-medium">Reference No.</Label>
-							<p className="text-sm text-muted-foreground">{certificate.id}</p>
-						</div>
-						<div>
-							<Label className="text-sm font-medium">Type</Label>
-							<p className="text-sm text-muted-foreground">
-								{certificate.type}
-							</p>
-						</div>
-						<div>
-							<Label className="text-sm font-medium">Requested By</Label>
-							<p className="text-sm text-muted-foreground">
-								{certificate.requestedBy}
-							</p>
-						</div>
-						<div>
-							<Label className="text-sm font-medium">Purpose</Label>
-							<p className="text-sm text-muted-foreground">
-								{certificate.purpose}
-							</p>
-						</div>
-					</div>
+          {/* Certificate Ready Actions */}
+          {certificateReady && (
+            <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+              <div>
+                <h3 className="text-lg font-semibold">Certificate Ready</h3>
+                <p className="text-xs text-muted-foreground">
+                  The certificate has been generated successfully. Click Print
+                  Certificate to open the print dialog.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handlePrint}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Print Certificate
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
 
-					{/* Signature Options */}
-					<div className="space-y-4">
-						<div className="flex items-center justify-between">
-							<Label
-								htmlFor="include-signature"
-								className="text-sm font-medium"
-							>
-								Include Official Signature
-							</Label>
-							<Switch
-								id="include-signature"
-								checked={includeSignature}
-								onCheckedChange={setIncludeSignature}
-							/>
-						</div>
-
-						{includeSignature && (
-							<div className="space-y-4 p-4 border rounded-lg">
-								{certificate.signatureUrl ? (
-									<div>
-										<Label className="text-sm font-medium">
-											Current Signature
-										</Label>
-										<div className="mt-2">
-											<img
-												src={certificate.signatureUrl}
-												alt="Current signature"
-												className="max-h-20 border rounded"
-											/>
-										</div>
-										<p className="text-xs text-muted-foreground mt-1">
-											You can upload a new signature to replace this one
-										</p>
-									</div>
-								) : (
-									<div>
-										<Label className="text-sm font-medium">
-											Upload Signature
-										</Label>
-										<p className="text-xs text-muted-foreground mb-2">
-											Upload an image file of the official's signature
-										</p>
-									</div>
-								)}
-
-								<div className="flex items-center gap-2">
-									<Input
-										ref={fileInputRef}
-										type="file"
-										accept="image/*"
-										onChange={handleFileChange}
-										className="flex-1"
-									/>
-									{signatureFile && (
-										<Button
-											onClick={handleSignatureUpload}
-											disabled={isUploadingSignature}
-											size="sm"
-										>
-											{isUploadingSignature ? (
-												<>
-													<Loader2 className="h-4 w-4 animate-spin mr-2" />
-													Uploading...
-												</>
-											) : (
-												<>
-													<Upload className="h-4 w-4 mr-2" />
-													Upload
-												</>
-											)}
-										</Button>
-									)}
-								</div>
-
-								{signatureFile && (
-									<p className="text-xs text-muted-foreground">
-										Selected: {signatureFile.name}
-									</p>
-								)}
-							</div>
-						)}
-					</div>
-
-					{/* Official Info */}
-					<div className="p-4 border rounded-lg bg-blue-50">
-						<Label className="text-sm font-medium">Signing Official</Label>
-						<div className="mt-2">
-							<p className="text-sm font-semibold">{officialInfo.name}</p>
-							<p className="text-xs text-muted-foreground">
-								{officialInfo.position}
-							</p>
-						</div>
-					</div>
-
-					{/* PDF Actions */}
-					{pdfBlob && (
-						<div className="space-y-4 border rounded-lg p-4 bg-gray-50">
-							<div>
-								<h3 className="text-lg font-semibold">Certificate Ready</h3>
-								<p className="text-xs text-muted-foreground">
-									The PDF has been generated successfully. You can print it
-									or download it to your device.
-								</p>
-							</div>
-							<div className="flex gap-3">
-								<Button
-									onClick={handlePrint}
-									variant="outline"
-									className="flex-1"
-								>
-									<FileText className="h-4 w-4 mr-2" />
-									Print Certificate
-								</Button>
-								<Button onClick={handleDownload} className="flex-1">
-									<Download className="h-4 w-4 mr-2" />
-									Download PDF
-								</Button>
-							</div>
-						</div>
-					)}
-				</div>
-
-				<DialogFooter>
-					<Button variant="outline" onClick={onClose}>
-						Cancel
-					</Button>
-					<Button onClick={handleGeneratePDF} disabled={isGenerating}>
-						{isGenerating ? (
-							<>
-								<Loader2 className="h-4 w-4 animate-spin mr-2" />
-								Generating PDF...
-							</>
-						) : (
-							<>
-								<FileText className="h-4 w-4 mr-2" />
-								Generate PDF
-							</>
-						)}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
-	);
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleGenerateCertificate} disabled={isGenerating}>
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4 mr-2" />
+                Generate Certificate
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }

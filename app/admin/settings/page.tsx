@@ -25,16 +25,21 @@ import {
   updateUserRoleSettings,
   updateAllSettings,
   initializeDefaultSettings,
+  uploadSignatureToSettings,
+  updateCertificateSettings,
   type BarangaySettings,
   type OfficeHours,
   type NotificationSettings,
   type UserRoleSettings,
+  type CertificateSettings,
   type AllSettings
 } from "@/app/actions/settings"
 import {
   Save,
   Loader2,
+  Upload,
 } from "lucide-react"
+import { useRef } from "react"
 
 export default function AdminSettingsPage() {
   const { t } = useLanguage()
@@ -71,6 +76,15 @@ export default function AdminSettingsPage() {
     resident: { description: "", permissions: [] }
   })
 
+  const [certificateForm, setCertificateForm] = useState<CertificateSettings>({
+    signatureUrl: undefined,
+    officialName: "HON. JESUS H. DE UNA JR.",
+    officialPosition: "Punong Barangay"
+  })
+
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false)
+  const signatureFileInputRef = useRef<HTMLInputElement>(null)
+
   // Load settings on component mount
   useEffect(() => {
     loadSettings()
@@ -86,6 +100,11 @@ export default function AdminSettingsPage() {
         setOfficeHoursForm(data.officeHours)
         setNotificationForm(data.notifications)
         setUserRolesForm(data.userRoles)
+        setCertificateForm(data.certificateSettings || {
+          signatureUrl: undefined,
+          officialName: "HON. JESUS H. DE UNA JR.",
+          officialPosition: "Punong Barangay"
+        })
       } else {
         // Initialize default settings if none exist
         await initializeDefaultSettings()
@@ -96,6 +115,11 @@ export default function AdminSettingsPage() {
           setOfficeHoursForm(defaultData.officeHours)
           setNotificationForm(defaultData.notifications)
           setUserRolesForm(defaultData.userRoles)
+          setCertificateForm(defaultData.certificateSettings || {
+            signatureUrl: undefined,
+            officialName: "HON. JESUS H. DE UNA JR.",
+            officialPosition: "Punong Barangay"
+          })
         }
       }
     } catch (error) {
@@ -189,6 +213,89 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const handleCertificateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      await updateCertificateSettings(certificateForm)
+      toast({
+        title: "Success",
+        description: "Certificate settings updated successfully"
+      })
+      // Reload settings to get updated data
+      await loadSettings()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update certificate settings",
+        variant: "destructive"
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSignatureFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Error",
+        description: "Please select an image file for the signature",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsUploadingSignature(true)
+    try {
+      const result = await uploadSignatureToSettings(file)
+
+      if (result.success && result.signatureUrl) {
+        setCertificateForm(prev => ({
+          ...prev,
+          signatureUrl: result.signatureUrl
+        }))
+        toast({
+          title: "Success",
+          description: "Signature uploaded successfully"
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to upload signature",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload signature",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUploadingSignature(false)
+      // Reset file input
+      if (signatureFileInputRef.current) {
+        signatureFileInputRef.current.value = ""
+      }
+    }
+  }
+
   const handleSaveAll = async () => {
     if (!settings) return
     
@@ -198,7 +305,8 @@ export default function AdminSettingsPage() {
         barangay: barangayForm,
         officeHours: officeHoursForm,
         notifications: notificationForm,
-        userRoles: userRolesForm
+        userRoles: userRolesForm,
+        certificateSettings: certificateForm
       }
       
       await updateAllSettings(updatedSettings)
@@ -240,6 +348,7 @@ export default function AdminSettingsPage() {
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="certificates">Certificates</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
         </TabsList>
 
@@ -524,6 +633,125 @@ export default function AdminSettingsPage() {
                     <>
                       <Save className="mr-2 h-4 w-4" />
                       Update Notification Settings
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="certificates">
+          <Card>
+            <CardHeader>
+              <CardTitle>Certificate Settings</CardTitle>
+              <CardDescription>
+                Configure default signature and official information for certificates
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCertificateSubmit} className="space-y-6">
+                {/* Signature Upload Section */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Official Signature</Label>
+                    <p className="text-xs text-muted-foreground mt-1 mb-3">
+                      Upload a signature image that will be used for all certificate generations. 
+                      Supported formats: PNG, JPG, JPEG. Max size: 5MB
+                    </p>
+                    
+                    {certificateForm.signatureUrl && (
+                      <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+                        <Label className="text-sm font-medium mb-2 block">
+                          Current Signature
+                        </Label>
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={certificateForm.signatureUrl}
+                            alt="Official signature"
+                            className="max-h-20 border rounded"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none"
+                            }}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            This signature will be used when generating certificates
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <Input
+                        ref={signatureFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSignatureFileChange}
+                        disabled={isUploadingSignature}
+                        className="flex-1"
+                      />
+                      {isUploadingSignature && (
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Uploading...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Official Information */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="officialName">Official Name</Label>
+                      <Input
+                        id="officialName"
+                        value={certificateForm.officialName}
+                        onChange={(e) =>
+                          setCertificateForm(prev => ({
+                            ...prev,
+                            officialName: e.target.value
+                          }))
+                        }
+                        placeholder="e.g., HON. JESUS H. DE UNA JR."
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Name of the official signing certificates
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="officialPosition">Official Position</Label>
+                      <Input
+                        id="officialPosition"
+                        value={certificateForm.officialPosition}
+                        onChange={(e) =>
+                          setCertificateForm(prev => ({
+                            ...prev,
+                            officialPosition: e.target.value
+                          }))
+                        }
+                        placeholder="e.g., Punong Barangay"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Position/title of the official
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={saving || isUploadingSignature}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Certificate Settings
                     </>
                   )}
                 </Button>

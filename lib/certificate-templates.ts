@@ -25,7 +25,7 @@ export interface CertificateContentData {
 	hasSignature?: boolean;
 }
 
-export type PdfFontKey = "helvetica" | "helveticaBold" | "times" | "timesBold";
+export type PdfFontKey = "helvetica" | "helveticaBold" | "times" | "timesBold" | "arial" | "arialBold";
 
 export interface LayoutHeaderLine {
 	text: string;
@@ -46,6 +46,18 @@ export interface CertificateLayoutConfig {
 	page: { width: number; height: number };
 	margin: number;
 	borderWidth: number;
+	columns: {
+		leftWidthRatio: number;
+		gap: number;
+		leftPaddingX: number;
+		leftPaddingTop: number;
+		leftBackgroundTopColor: string;
+		leftBackgroundBottomColor: string;
+		leftHeadingBackground: string;
+		leftHeadingColor: string;
+		leftTextColor: string;
+		leftLineColor: string;
+	};
 	header: {
 		lines: LayoutHeaderLine[];
 		lineSpacing: number;
@@ -89,12 +101,43 @@ export interface CertificateLayoutConfig {
 	};
 	contentBox: {
 		horizontalPadding: number;
+		paddingTop?: number;
+		paddingBottom?: number;
+		paddingLeft?: number;
+		paddingRight?: number;
 		borderWidth: number;
+		borderColor?: string;
+		borderStyle?: string;
+		backgroundColor?: string;
 		topOffset: number;
 		bottomOffset: number;
 		leftGap: number;
 		rightGap: number;
 		titleOffset: number;
+		titleSection?: {
+			marginTop?: number;
+			marginBottom?: number;
+			textAlign?: "left" | "center" | "right";
+			fontSize?: number;
+			fontWeight?: "normal" | "bold";
+			fontFamily?: string;
+			letterSpacing?: number;
+			color?: string;
+		};
+		bodySection?: {
+			marginTop?: number;
+			marginBottom?: number;
+			textAlign?: "left" | "center" | "right" | "justify";
+			fontSize?: number;
+			fontFamily?: string;
+			lineHeight?: number;
+			color?: string;
+		};
+		signatureSection?: {
+			marginTop?: number;
+			textAlign?: "left" | "center" | "right";
+			alignment?: "left" | "center" | "right";
+		};
 	};
 	body: {
 		font: PdfFontKey;
@@ -103,6 +146,15 @@ export interface CertificateLayoutConfig {
 		paragraphSpacing: number;
 		contentMarginX: number;
 		topSpacing: number;
+		fontFamily?: string;
+		color?: string;
+	};
+	title: {
+		fontSize?: number;
+		fontWeight?: "normal" | "bold";
+		letterSpacing?: number;
+		color?: string;
+		marginBottom?: number;
 	};
 	signature: {
 		boxWidth: number;
@@ -116,6 +168,10 @@ export interface CertificateLayoutConfig {
 		positionFont: PdfFontKey;
 		positionFontSize: number;
 		positionOffsetY: number;
+		boxBorderColor?: string;
+		boxBorderStyle?: string;
+		nameColor?: string;
+		positionColor?: string;
 	};
 	footer: {
 		lines: LayoutHeaderLine[];
@@ -141,7 +197,19 @@ export interface CertificateTemplateConfig {
 export const CERTIFICATE_LAYOUT: CertificateLayoutConfig = {
 	page: { width: 595, height: 842 },
 	margin: 39,
-	borderWidth: 0,
+	borderWidth: 2,
+	columns: {
+		leftWidthRatio: 0.2,
+		gap: 2,
+		leftPaddingX: 14,
+		leftPaddingTop: 24,
+		leftBackgroundTopColor: "#2f3ebd",
+		leftBackgroundBottomColor: "#e6e6ff",
+		leftHeadingBackground: "#2b39c6",
+		leftHeadingColor: "#ffffff",
+		leftTextColor: "#0b1c68",
+		leftLineColor: "#000000",
+	},
 	header: {
 		lines: [
 			{
@@ -166,36 +234,36 @@ export const CERTIFICATE_LAYOUT: CertificateLayoutConfig = {
 			},
 		],
 		lineSpacing: 13,
-		topOffset: 51,
+		topOffset: 40,
 		leftOffset: 130,
 		officeRibbon: {
 			text: "OFFICE OF THE SANGGUNIANG BARANGAY",
 			font: "helveticaBold",
 			fontSize: 16,
 			height: 25,
-			backgroundColor: "#FFFFFF",
-			textColor: "#000000",
-			borderWidth: 0,
-			topOffset: 116,
+			backgroundColor: "#000080",
+			textColor: "#FFFFFF",
+			borderWidth: 1,
+			topOffset: 110,
 		},
 		divider: {
 			leftOffset: 0,
 			rightOffset: 0,
-			yOffset: 0,
-			height: 0,
+			yOffset: 100,
+			height: 1,
 		},
 	},
 	seal: {
 		size: 90,
 		borderWidth: 1,
-		topOffset: 40,
+		topOffset: 35,
 		leftOffset: 6,
 	},
 	sidebar: {
 		width: 120,
-		topOffset: 127,
-		bottomOffset: 75,
-		contentTopOffset: 136,
+		topOffset: 180,
+		bottomOffset: 120,
+		contentTopOffset: 176,
 		backgroundTopColor: "#FFFFFF",
 		backgroundBottomColor: "#FFFFFF",
 		textColor: "#000000",
@@ -220,206 +288,206 @@ export const CERTIFICATE_LAYOUT: CertificateLayoutConfig = {
 		entries: [
 			{
 				text: "PUNONG BARANGAY",
-				font: "helveticaBold",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 1,
 			},
 			{
 				text: "HON. JESUS H. DE UNA JR.",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 6,
 			},
 			{
 				text: "BARANGAY KAGAWAD",
-				font: "helveticaBold",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 1,
 			},
 			{
 				text: "HON. ROLANDO L. ERROBA",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "HEALTH & EDUCATION",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 4,
 			},
 			{
 				text: "HON. RANIE F. ANDAL",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 6,
 			},
 			{
 				text: "HON. ERNESTO G.",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "ALCANTARA",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 1,
 			},
 			{
 				text: "ENVIRONMENTAL PROTECTION",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 5,
 			},
 			{
 				text: "HON. ALLAN B. BIENES",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 1,
 			},
 			{
 				text: "INFRASTRUCTURE",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 5,
 			},
 			{
 				text: "HON. BENY S. MORALDE",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 1,
 			},
 			{
 				text: "PEACE AND ORDER",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 5,
 			},
 			{
 				text: "HON. SHERYL S. BAGNES",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 1,
 			},
 			{
 				text: "WOMEN AND FAMILY",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 5,
 			},
 			{
 				text: "HON. GAUDENCIO D.",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "MARIANO",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "LIVELIHOOD &",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 0,
 			},
 			{
 				text: "COOPERATIVE DEVT /",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 0,
 			},
 			{
 				text: "APPROPRIATIONS, WAYS &",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 0,
 			},
 			{
 				text: "MEANS",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 5,
 			},
 			{
 				text: "HON. EDMUND LLOYD E.",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "VELASCO",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 1,
 			},
 			{
 				text: "SPORTS & YOUTH",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 0,
 			},
 			{
 				text: "DEVELOPMENT",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 5,
 			},
 			{
 				text: "MS. RICHET E. TAKAHASHI",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "SECRETARY",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 5,
 			},
 			{
 				text: "MS. JANE CAMILLE",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "RETIRADO",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "TREASURER",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 5,
 			},
 			{
 				text: "MR. JEFFREY BONITA",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 7,
 				marginBottom: 0,
 			},
 			{
 				text: "ADMIN",
-				font: "helvetica",
+				font: "arialBold",
 				fontSize: 6,
 				italic: true,
 				marginBottom: 0,
@@ -430,24 +498,64 @@ export const CERTIFICATE_LAYOUT: CertificateLayoutConfig = {
 		font: "times",
 		fontSize: 10,
 		lineHeight: 13,
-		paragraphSpacing: 13,
+		paragraphSpacing: 10,
 		contentMarginX: 15,
-		topSpacing: 125,
+		topSpacing: 50,
+		fontFamily: "'Times New Roman', serif",
+		color: "#000000",
+	},
+	title: {
+		fontSize: 22,
+		fontWeight: "bold",
+		letterSpacing: 4,
+		color: "#000000",
+		marginBottom: 30,
 	},
 	contentBox: {
 		horizontalPadding: 15,
+		paddingTop: 35,
+		paddingBottom: 30,
+		paddingLeft: 30,
+		paddingRight: 30,
 		borderWidth: 1.5,
-		topOffset: 127,
-		bottomOffset: 75,
+		borderColor: "#000000",
+		borderStyle: "solid",
+		backgroundColor: "#FFFFFF",
+		topOffset: 200,
+		bottomOffset: 160,
 		leftGap: 8,
 		rightGap: 0,
-		titleOffset: 193,
+		titleOffset: 266,
+		titleSection: {
+			marginTop: 30,
+			marginBottom: 50,
+			textAlign: "center",
+			fontSize: 22,
+			fontWeight: "bold",
+			fontFamily: "Arial Black, Arial, sans-serif",
+			letterSpacing: 0,
+			color: "#000000",
+		},
+		bodySection: {
+			marginTop: 0,
+			marginBottom: 10,
+			textAlign: "justify",
+			fontSize: 11,
+			fontFamily: "'Times New Roman', serif",
+			lineHeight: 1.6,
+			color: "#000000",
+		},
+		signatureSection: {
+			marginTop: 80,
+			textAlign: "center",
+			alignment: "center",
+		},
 	},
 	signature: {
 		boxWidth: 180,
 		boxHeight: 50,
 		lineOffsetY: 18,
-		offsetFromBody: 50,
+		offsetFromBody: 30,
 		horizontalOffset: 30,
 		nameFont: "timesBold",
 		nameFontSize: 10,
@@ -455,6 +563,10 @@ export const CERTIFICATE_LAYOUT: CertificateLayoutConfig = {
 		positionFont: "times",
 		positionFontSize: 8,
 		positionOffsetY: 5,
+		boxBorderColor: "#000000",
+		boxBorderStyle: "solid",
+		nameColor: "#000000",
+		positionColor: "#000000",
 	},
 	footer: {
 		lines: [
@@ -474,7 +586,7 @@ export const CERTIFICATE_LAYOUT: CertificateLayoutConfig = {
 				fontSize: 7,
 			},
 		],
-		lineSpacing: 8,
+		lineSpacing: 2,
 		bottomOffset: 15,
 	},
 };
