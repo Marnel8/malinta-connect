@@ -594,25 +594,147 @@ export async function generateCertificatePDF(
 		const bodyMaxWidth = contentWidth - bodyConfig.contentMarginX * 2;
 
 		bodyParagraphs.forEach((paragraph) => {
-			const lines = splitParagraphIntoLines(
-				paragraph,
-				bodyFont,
-				bodyConfig.fontSize,
-				bodyMaxWidth
-			);
+			// Parse paragraph for bold markers (**text**)
+			const parseBoldText = (text: string): Array<{ text: string; bold: boolean }> => {
+				const parts: Array<{ text: string; bold: boolean }> = [];
+				const regex = /\*\*(.*?)\*\*/g;
+				let lastIndex = 0;
+				let match;
 
-			lines.forEach((line, lineIndex) => {
-				page.drawText(line, {
-					x: contentX + bodyConfig.contentMarginX,
-					y: bodyY - lineIndex * bodyConfig.lineHeight,
-					size: bodyConfig.fontSize,
-					font: bodyFont,
-					color: black,
+				while ((match = regex.exec(text)) !== null) {
+					// Add text before bold
+					if (match.index > lastIndex) {
+						parts.push({ text: text.substring(lastIndex, match.index), bold: false });
+					}
+					// Add bold text
+					parts.push({ text: match[1], bold: true });
+					lastIndex = regex.lastIndex;
+				}
+				// Add remaining text
+				if (lastIndex < text.length) {
+					parts.push({ text: text.substring(lastIndex), bold: false });
+				}
+
+				// If no bold markers found, return entire text as normal
+				if (parts.length === 0) {
+					parts.push({ text, bold: false });
+				}
+
+				return parts;
+			};
+
+			const parts = parseBoldText(paragraph);
+			const bodyBoldFont = fontMap["timesBold"];
+			const firstLineIndent = 36;
+			
+			// Build a combined text with markers for rendering
+			let currentX = contentX + bodyConfig.contentMarginX + firstLineIndent;
+			let currentY = bodyY;
+			let lineIndex = 0;
+
+			parts.forEach((part, partIndex) => {
+				const font = part.bold ? bodyBoldFont : bodyFont;
+				const words = part.text.split(" ").filter(w => w.length > 0);
+
+				words.forEach((word, wordIndex) => {
+					const needsSpace = (partIndex > 0 || wordIndex > 0) && 
+						!(partIndex === 0 && wordIndex === 0 && lineIndex === 0);
+					const textToAdd = needsSpace ? ` ${word}` : word;
+					const textWidth = font.widthOfTextAtSize(textToAdd, bodyConfig.fontSize);
+					
+					// Calculate line start position
+					const lineStartX = lineIndex === 0 
+						? contentX + bodyConfig.contentMarginX + firstLineIndent
+						: contentX + bodyConfig.contentMarginX;
+					
+					// Check if text fits on current line
+					const availableWidth = bodyMaxWidth - (currentX - lineStartX);
+					
+					if (textWidth <= availableWidth && currentX >= lineStartX) {
+						// Add to current line
+						page.drawText(textToAdd, {
+							x: currentX,
+							y: currentY,
+							size: bodyConfig.fontSize,
+							font: font,
+							color: black,
+						});
+						currentX += textWidth;
+					} else {
+						// Move to next line
+						lineIndex++;
+						currentY = bodyY - lineIndex * bodyConfig.lineHeight;
+						currentX = contentX + bodyConfig.contentMarginX;
+						
+						// Draw word on new line
+						const wordWidth = font.widthOfTextAtSize(word, bodyConfig.fontSize);
+						page.drawText(word, {
+							x: currentX,
+							y: currentY,
+							size: bodyConfig.fontSize,
+							font: font,
+							color: black,
+						});
+						currentX += wordWidth;
+					}
 				});
 			});
 
-			bodyY -= lines.length * bodyConfig.lineHeight + bodyConfig.paragraphSpacing;
+			bodyY = currentY - bodyConfig.paragraphSpacing;
 		});
+
+		// Add photo if available (1x1 picture) - positioned in top right corner of content box
+		if (certificateData.photoUrl) {
+			try {
+				const photoResponse = await fetch(certificateData.photoUrl);
+				if (photoResponse.ok) {
+					const photoImageBytes = await photoResponse.arrayBuffer();
+					const contentType = photoResponse.headers.get("content-type") || "";
+					
+					// Try to embed the image based on content type
+					let photoImage;
+					if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+						photoImage = await pdfDoc.embedJpg(photoImageBytes);
+					} else if (contentType.includes("png")) {
+						photoImage = await pdfDoc.embedPng(photoImageBytes);
+					} else {
+						// Try JPG first, then PNG as fallback
+						try {
+							photoImage = await pdfDoc.embedJpg(photoImageBytes);
+						} catch {
+							photoImage = await pdfDoc.embedPng(photoImageBytes);
+						}
+					}
+					
+					// Size for 1x1 photo (approximately 1 inch square)
+					const photoSize = 72; // 1 inch = 72 points
+					const photoPadding = 10; // Padding from edges
+					// Position in top right corner of content box
+					const photoX = contentX + contentWidth - photoSize - photoPadding - contentBox.horizontalPadding;
+					const photoY = contentBorderTop - photoSize - photoPadding;
+					
+					page.drawImage(photoImage, {
+						x: photoX,
+						y: photoY,
+						width: photoSize,
+						height: photoSize,
+					});
+					
+					// Draw border around photo
+					page.drawRectangle({
+						x: photoX,
+						y: photoY,
+						width: photoSize,
+						height: photoSize,
+						borderColor: black,
+						borderWidth: 1,
+					});
+				}
+			} catch (photoError) {
+				console.error("Failed to load photo:", photoError);
+				// Continue without photo if it fails to load
+			}
+		}
 
 		// Signature area
 		const signatureConfig = layout.signature;
@@ -787,7 +909,7 @@ export function createCertificatePreview(
 						letter-spacing: ${titleSection?.letterSpacing !== undefined ? titleSection.letterSpacing : (titleConfig.letterSpacing ?? 4)}px;
 						margin: 0;
 						margin-bottom: ${marginBottom}px;
-						line-height: 1.4;
+						line-height: 1.0;
 						font-family: ${titleSection?.fontFamily ?? "'Times New Roman', serif"};
 						color: ${titleSection?.color ?? titleConfig.color ?? "#000000"};
 					">
@@ -802,11 +924,34 @@ export function createCertificatePreview(
 				index === paragraphs.length - 1
 					? layout.body.paragraphSpacing + 15
 					: layout.body.paragraphSpacing;
-			return `<p style="margin-bottom: ${marginBottom}px;">
-						${paragraph}
+			// Convert **text** to <strong>text</strong>
+			const htmlParagraph = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+			return `<p style="margin-bottom: ${marginBottom}px; text-indent: 0.5in;">
+						${htmlParagraph}
 					</p>`;
 		})
 		.join("");
+
+	// Add photo HTML if available (1x1 picture) - positioned in top right corner of content box
+	const photoPaddingIn = `${pointsToInches(10)}in`;
+	const photoHtml = certificateData.photoUrl
+		? `<div style="
+				position: absolute;
+				top: ${photoPaddingIn};
+				right: ${photoPaddingIn};
+				width: 1in;
+				height: 1in;
+				page-break-inside: avoid;
+			">
+				<img src="${certificateData.photoUrl}" alt="1x1 Photo" style="
+					width: 100%;
+					height: 100%;
+					border: 1px solid #000;
+					object-fit: cover;
+					display: block;
+				" onerror="console.error('Failed to load photo:', this.src); this.style.display='none';" />
+			</div>`
+		: "";
 
 	const footerHtml = layout.footer.lines
 		.map(
@@ -937,8 +1082,12 @@ export function createCertificatePreview(
 				margin-right: ${contentMarginRightIn};
 				margin-top: calc(${marginIn} + 5px);
 				min-height: 6.5in;
+				position: relative;
 				${buildContentBoxStyles(layout)}
 			">
+				<!-- Photo (positioned in top right corner) -->
+				${photoHtml}
+
 				<div class="title-section" style="${buildTitleSectionStyles(layout)}">
 					${titleHtml}
 				</div>
@@ -1124,7 +1273,7 @@ function buildPrintableCertificateHtmlLegacy(
 				letter-spacing: ${pointsToInches(titleSection?.letterSpacing !== undefined ? titleSection.letterSpacing : (titleConfig.letterSpacing ?? 4))}in;
 				margin: 0;
 				margin-bottom: ${pointsToInches(marginBottom)}in;
-				line-height: 1.4;
+				line-height: 1.0;
 				font-family: ${titleSection?.fontFamily ?? "'Times New Roman', Times, serif"};
 				text-align: center;
 				color: ${titleSection?.color ?? titleConfig.color ?? "#000000"};
@@ -1144,17 +1293,41 @@ function buildPrintableCertificateHtmlLegacy(
 				bodyMaxWidthPx
 			);
 			const spacing = index === bodyParagraphs.length - 1 ? "0" : paragraphSpacingIn;
+			// Convert **text** to <strong>text</strong> in each line
+			const htmlLines = lines.map((line) => line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
 			return `<p style="
 				margin: 0 0 ${spacing} 0;
 				font-size: ${layout.body.fontSize}pt;
 				line-height: ${layout.body.lineHeight / layout.body.fontSize};
 				font-family: 'Times New Roman', Times, serif;
 				text-align: justify;
+				text-indent: 0.5in;
 			">
-				${lines.map((line) => line).join(" ")}
+				${htmlLines.join(" ")}
 			</p>`;
 		})
 		.join("");
+
+	// Add photo HTML if available (1x1 picture) - positioned in top right corner of content box
+	const photoPaddingIn = `${pointsToInches(10)}in`;
+	const photoHtml = certificateData.photoUrl
+		? `<div style="
+				position: absolute;
+				top: ${photoPaddingIn};
+				right: ${photoPaddingIn};
+				width: 1in;
+				height: 1in;
+				page-break-inside: avoid;
+			">
+				<img src="${certificateData.photoUrl}" alt="1x1 Photo" style="
+					width: 100%;
+					height: 100%;
+					border: 1px solid #000;
+					object-fit: cover;
+					display: block;
+				" onerror="console.error('Failed to load photo:', this.src); this.style.display='none';" />
+			</div>`
+		: "";
 
 	// Build signature HTML
 	const signatureHtml = (() => {
@@ -1253,11 +1426,17 @@ function buildPrintableCertificateHtmlLegacy(
 						height: 11in; 
 						margin: 0; 
 						padding: 0;
+						overflow: hidden;
 					}
 					body { 
 						margin: 0; 
 						-webkit-print-color-adjust: exact; 
-						print-color-adjust: exact; 
+						print-color-adjust: exact;
+						page-break-after: avoid;
+					}
+					body > div {
+						page-break-after: avoid;
+						page-break-inside: avoid;
 					}
 					* { 
 						page-break-inside: avoid;
@@ -1391,6 +1570,9 @@ function buildPrintableCertificateHtmlLegacy(
 					${titleHtml}
 				</div>
 
+				<!-- Photo (positioned in top right corner) -->
+				${photoHtml}
+
 				<!-- Body Paragraphs -->
 				<div class="body-section" style="
 					position: absolute;
@@ -1508,7 +1690,7 @@ export function buildPrintableCertificateHtml(
 			font-size:${line.fontSize}pt;
 			font-weight:${titleSection?.fontWeight ?? titleConfig.fontWeight ?? "bold"};
 			letter-spacing:${pointsToInches(titleSection?.letterSpacing !== undefined ? titleSection.letterSpacing : (titleConfig.letterSpacing ?? 4))}in;
-			line-height:1.4;
+			line-height:1.0;
 			text-align:center;
 			font-family:${titleSection?.fontFamily ?? "'Times New Roman', Times, serif"};
 			color:${titleSection?.color ?? titleConfig.color ?? "#000000"};
@@ -1524,6 +1706,8 @@ export function buildPrintableCertificateHtml(
 			const spacing = index === bodyParagraphs.length - 1 ? "0" : paragraphSpacingIn;
 			const bodySection = layout.contentBox.bodySection;
 			const body = layout.body;
+			// Convert **text** to <strong>text</strong>
+			const htmlParagraph = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 			return `<p style="
 				margin:0 0 ${spacing} 0;
 				font-size:${bodySection?.fontSize ?? body.fontSize}pt;
@@ -1531,11 +1715,33 @@ export function buildPrintableCertificateHtml(
 				font-family:${bodySection?.fontFamily ?? body.fontFamily ?? "'Times New Roman', Times, serif"};
 				text-align:${bodySection?.textAlign ?? "justify"};
 				color:${bodySection?.color ?? body.color ?? "#000000"};
+				text-indent:0.5in;
 			">
-				${paragraph}
+				${htmlParagraph}
 			</p>`;
 		})
 		.join("");
+
+	// Add photo HTML if available (1x1 picture) - positioned in top right corner of content box
+	const photoPaddingIn = `${pointsToInches(10)}in`;
+	const photoHtml = certificateData.photoUrl
+		? `<div style="
+				position: absolute;
+				top: ${photoPaddingIn};
+				right: ${photoPaddingIn};
+				width: 1in;
+				height: 1in;
+				page-break-inside: avoid;
+			">
+				<img src="${certificateData.photoUrl}" alt="1x1 Photo" style="
+					width: 100%;
+					height: 100%;
+					border: 1px solid #000;
+					object-fit: cover;
+					display: block;
+				" onerror="console.error('Failed to load photo:', this.src); this.style.display='none';" />
+			</div>`
+		: "";
 
 	const signatureImg =
 		certificateData.hasSignature && certificateData.signatureUrl
@@ -1607,10 +1813,18 @@ export function buildPrintableCertificateHtml(
 				html, body {
 					margin: 0;
 					padding: 0;
+					width: 100%;
+					height: 100%;
+					overflow: hidden;
 				}
 				body {
 					-webkit-print-color-adjust: exact;
 					print-color-adjust: exact;
+					page-break-after: avoid;
+				}
+				body > div {
+					page-break-after: avoid;
+					page-break-inside: avoid;
 				}
 			}
 			* {
@@ -1732,8 +1946,12 @@ export function buildPrintableCertificateHtml(
 					margin: 10px 0;
 					flex-direction:column;
 					gap:0.35in;
+					position: relative;
 					${buildContentBoxStylesInches(layout)}
 				">
+					<!-- Photo (positioned in top right corner) -->
+					${photoHtml}
+
 					<div class="title-section" style="
 						text-align:${layout.contentBox.titleSection?.textAlign ?? "center"};
 					">

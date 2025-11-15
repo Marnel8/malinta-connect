@@ -231,7 +231,56 @@ export async function sendNotificationAction(
 		};
 
 		// Send the notification
-		const response = await messaging.sendEachForMulticast(message);
+		let response;
+		try {
+			response = await messaging.sendEachForMulticast(message);
+		} catch (error: any) {
+			console.error("Error sending multicast notification:", error);
+			// If it's a complete failure, try sending individually to identify bad tokens
+			if (tokens.length > 0) {
+				console.log("Attempting to send notifications individually to identify invalid tokens...");
+				const results = await Promise.allSettled(
+					tokens.map((token) =>
+						messaging.send({
+							notification: message.notification,
+							data: message.data,
+							token,
+						})
+					)
+				);
+
+				const invalidTokens: string[] = [];
+				results.forEach((result, idx) => {
+					if (result.status === "rejected") {
+						const error = result.reason;
+						// Check for specific error codes that indicate invalid tokens
+						if (
+							error?.code === "messaging/registration-token-not-registered" ||
+							error?.code === "messaging/invalid-registration-token" ||
+							error?.message?.includes("Requested entity was not found") ||
+							error?.message?.includes("not found")
+						) {
+							console.warn(`Invalid token detected: ${tokens[idx]}`);
+							invalidTokens.push(tokens[idx]);
+						} else {
+							console.error(`Failed to send to token ${tokens[idx]}:`, error);
+						}
+					}
+				});
+
+				if (invalidTokens.length > 0) {
+					console.log(`Cleaning up ${invalidTokens.length} invalid tokens...`);
+					await cleanupInvalidTokensAction(invalidTokens);
+				}
+
+				// Count successes
+				const successCount = results.filter((r) => r.status === "fulfilled").length;
+				console.log(
+					`Notification sent: ${successCount} success, ${invalidTokens.length} invalid tokens cleaned up`
+				);
+			}
+			return { success: true }; // Return success even if some tokens failed
+		}
 
 		// Log results
 		console.log(
@@ -243,8 +292,19 @@ export async function sendNotificationAction(
 			const invalidTokens: string[] = [];
 			response.responses.forEach((resp, idx) => {
 				if (!resp.success && tokens[idx]) {
-					console.error(`Failed to send to token ${tokens[idx]}:`, resp.error);
-					invalidTokens.push(tokens[idx]);
+					const error = resp.error;
+					// Only log as warning for known invalid token errors
+					if (
+						error?.code === "messaging/registration-token-not-registered" ||
+						error?.code === "messaging/invalid-registration-token" ||
+						error?.message?.includes("Requested entity was not found") ||
+						error?.message?.includes("not found")
+					) {
+						console.warn(`Invalid token detected: ${tokens[idx]} - ${error.message || error.code}`);
+						invalidTokens.push(tokens[idx]);
+					} else {
+						console.error(`Failed to send to token ${tokens[idx]}:`, error);
+					}
 				}
 			});
 

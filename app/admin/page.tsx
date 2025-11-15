@@ -50,8 +50,12 @@ import {
   type BlotterItem,
 } from "@/app/actions/admin-dashboard";
 import { getAllAnalytics, type AnalyticsData } from "@/app/actions/analytics";
+import { updateCertificateStatusAction } from "@/app/actions/certificates";
+import { updateAppointmentStatusAction } from "@/app/actions/appointments";
+import { updateBlotterStatusAction } from "@/app/actions/blotter";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 import {
   PieChart,
   Pie,
@@ -164,6 +168,23 @@ export default function AdminDashboardPage() {
     })
   );
   const [exporting, setExporting] = useState(false);
+  const [selectedCertificate, setSelectedCertificate] =
+    useState<CertificateRequest | null>(null);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<AppointmentItem | null>(null);
+  const [selectedBlotter, setSelectedBlotter] = useState<BlotterItem | null>(
+    null
+  );
+  const [viewCertificateDialogOpen, setViewCertificateDialogOpen] =
+    useState(false);
+  const [viewAppointmentDialogOpen, setViewAppointmentDialogOpen] =
+    useState(false);
+  const [viewBlotterDialogOpen, setViewBlotterDialogOpen] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const [certificateSearchQuery, setCertificateSearchQuery] = useState("");
+  const [appointmentSearchQuery, setAppointmentSearchQuery] = useState("");
+  const [blotterSearchQuery, setBlotterSearchQuery] = useState("");
+  const router = useRouter();
 
   // Check if user has any admin permissions
   const hasAdminAccess =
@@ -224,25 +245,76 @@ export default function AdminDashboardPage() {
 
   const filteredCertificateRequests = useMemo(() => {
     return certificateRequests.filter((cert) => {
-      return isWithinDateRange(cert.requestedOn, activeDateFrom, activeDateTo);
+      const matchesDateRange = isWithinDateRange(
+        cert.requestedOn,
+        activeDateFrom,
+        activeDateTo
+      );
+      if (!matchesDateRange) return false;
+
+      if (!certificateSearchQuery.trim()) return true;
+
+      const query = certificateSearchQuery.toLowerCase();
+      return (
+        cert.type.toLowerCase().includes(query) ||
+        cert.requestedBy.toLowerCase().includes(query) ||
+        cert.referenceNumber?.toLowerCase().includes(query) ||
+        cert.id.toLowerCase().includes(query) ||
+        formatStatus(cert.status).toLowerCase().includes(query)
+      );
     });
-  }, [certificateRequests, activeDateFrom, activeDateTo]);
+  }, [
+    certificateRequests,
+    activeDateFrom,
+    activeDateTo,
+    certificateSearchQuery,
+  ]);
 
   const filteredAppointments = useMemo(() => {
     return appointments.filter((apt) => {
-      return isWithinDateRange(apt.scheduledDate, activeDateFrom, activeDateTo);
+      const matchesDateRange = isWithinDateRange(
+        apt.scheduledDate,
+        activeDateFrom,
+        activeDateTo
+      );
+      if (!matchesDateRange) return false;
+
+      if (!appointmentSearchQuery.trim()) return true;
+
+      const query = appointmentSearchQuery.toLowerCase();
+      return (
+        apt.type.toLowerCase().includes(query) ||
+        apt.residentName.toLowerCase().includes(query) ||
+        apt.id.toLowerCase().includes(query) ||
+        formatStatus(apt.status).toLowerCase().includes(query) ||
+        apt.timeSlot?.toLowerCase().includes(query) ||
+        formatDateTime(apt.scheduledDate).toLowerCase().includes(query)
+      );
     });
-  }, [appointments, activeDateFrom, activeDateTo]);
+  }, [appointments, activeDateFrom, activeDateTo, appointmentSearchQuery]);
 
   const filteredBlotterCases = useMemo(() => {
     return blotterCases.filter((blotter) => {
-      return isWithinDateRange(
+      const matchesDateRange = isWithinDateRange(
         blotter.incidentDate,
         activeDateFrom,
         activeDateTo
       );
+      if (!matchesDateRange) return false;
+
+      if (!blotterSearchQuery.trim()) return true;
+
+      const query = blotterSearchQuery.toLowerCase();
+      return (
+        blotter.caseType.toLowerCase().includes(query) ||
+        blotter.complainant.toLowerCase().includes(query) ||
+        blotter.respondent?.toLowerCase().includes(query) ||
+        blotter.caseNumber.toLowerCase().includes(query) ||
+        blotter.id.toLowerCase().includes(query) ||
+        formatStatus(blotter.status).toLowerCase().includes(query)
+      );
     });
-  }, [blotterCases, activeDateFrom, activeDateTo]);
+  }, [blotterCases, activeDateFrom, activeDateTo, blotterSearchQuery]);
 
   const handleExportData = useCallback(async () => {
     setExporting(true);
@@ -350,32 +422,32 @@ export default function AdminDashboardPage() {
   ]);
 
   // Fetch dashboard data
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!hasAdminAccess) return;
+  const fetchDashboardData = useCallback(async () => {
+    if (!hasAdminAccess) return;
 
-      try {
-        setLoading(true);
-        const [stats, certs, apts, blotter] = await Promise.all([
-          getDashboardStats(),
-          getAllCertificateRequests(),
-          getAllAppointments(),
-          getAllBlotterCases(),
-        ]);
+    try {
+      setLoading(true);
+      const [stats, certs, apts, blotter] = await Promise.all([
+        getDashboardStats(),
+        getAllCertificateRequests(),
+        getAllAppointments(),
+        getAllBlotterCases(),
+      ]);
 
-        setDashboardStats(stats);
-        setCertificateRequests(certs);
-        setAppointments(apts);
-        setBlotterCases(blotter);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
+      setDashboardStats(stats);
+      setCertificateRequests(certs);
+      setAppointments(apts);
+      setBlotterCases(blotter);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
   }, [hasAdminAccess]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Fetch analytics data
   useEffect(() => {
@@ -396,6 +468,245 @@ export default function AdminDashboardPage() {
 
     fetchAnalyticsData();
   }, [hasAdminAccess, userProfile?.permissions?.canViewAnalytics]);
+
+  // Certificate handlers
+  const handleCertificateProcess = useCallback(
+    async (cert: CertificateRequest) => {
+      setProcessingIds((prev) => new Set(prev).add(cert.id));
+      try {
+        const result = await updateCertificateStatusAction(
+          cert.id,
+          "processing"
+        );
+        if (result.success) {
+          toast({
+            title: "Success",
+            description: "Certificate status updated to processing",
+          });
+          await fetchDashboardData();
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to update certificate status",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error processing certificate:", error);
+        toast({
+          title: "Error",
+          description: "Failed to process certificate",
+          variant: "destructive",
+        });
+      } finally {
+        setProcessingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cert.id);
+          return next;
+        });
+      }
+    },
+    [toast, fetchDashboardData]
+  );
+
+  const handleCertificateComplete = useCallback(
+    async (cert: CertificateRequest) => {
+      setProcessingIds((prev) => new Set(prev).add(cert.id));
+      try {
+        const result = await updateCertificateStatusAction(
+          cert.id,
+          "completed",
+          {
+            completedOn: new Date().toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+          }
+        );
+        if (result.success) {
+          toast({
+            title: "Success",
+            description: "Certificate marked as completed",
+          });
+          await fetchDashboardData();
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to complete certificate",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error completing certificate:", error);
+        toast({
+          title: "Error",
+          description: "Failed to complete certificate",
+          variant: "destructive",
+        });
+      } finally {
+        setProcessingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cert.id);
+          return next;
+        });
+      }
+    },
+    [toast, fetchDashboardData]
+  );
+
+  const handleCertificateRequestInfo = useCallback(
+    async (cert: CertificateRequest) => {
+      setProcessingIds((prev) => new Set(prev).add(cert.id));
+      try {
+        const result = await updateCertificateStatusAction(
+          cert.id,
+          "additionalInfo",
+          {
+            notes:
+              "Additional information required. Please contact the barangay office.",
+          }
+        );
+        if (result.success) {
+          toast({
+            title: "Success",
+            description:
+              "Certificate status updated - additional info requested",
+          });
+          await fetchDashboardData();
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to update certificate status",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error requesting info:", error);
+        toast({
+          title: "Error",
+          description: "Failed to request additional information",
+          variant: "destructive",
+        });
+      } finally {
+        setProcessingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cert.id);
+          return next;
+        });
+      }
+    },
+    [toast, fetchDashboardData]
+  );
+
+  const handleViewCertificateDetails = useCallback(
+    (cert: CertificateRequest) => {
+      setSelectedCertificate(cert);
+      setViewCertificateDialogOpen(true);
+    },
+    []
+  );
+
+  // Appointment handlers
+  const handleAppointmentComplete = useCallback(
+    async (apt: AppointmentItem) => {
+      setProcessingIds((prev) => new Set(prev).add(apt.id));
+      try {
+        const result = await updateAppointmentStatusAction(apt.id, "completed");
+        if (result.success) {
+          toast({
+            title: "Success",
+            description: "Appointment marked as completed",
+          });
+          await fetchDashboardData();
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to complete appointment",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error completing appointment:", error);
+        toast({
+          title: "Error",
+          description: "Failed to complete appointment",
+          variant: "destructive",
+        });
+      } finally {
+        setProcessingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(apt.id);
+          return next;
+        });
+      }
+    },
+    [toast, fetchDashboardData]
+  );
+
+  const handleAppointmentReschedule = useCallback(
+    (apt: AppointmentItem) => {
+      router.push(`/admin/appointments?reschedule=${apt.id}`);
+    },
+    [router]
+  );
+
+  const handleViewAppointmentDetails = useCallback((apt: AppointmentItem) => {
+    setSelectedAppointment(apt);
+    setViewAppointmentDialogOpen(true);
+  }, []);
+
+  // Blotter handlers
+  const handleBlotterStartInvestigation = useCallback(
+    async (blotter: BlotterItem) => {
+      setProcessingIds((prev) => new Set(prev).add(blotter.id));
+      try {
+        const result = await updateBlotterStatusAction(
+          blotter.id,
+          "investigating"
+        );
+        if (result.success) {
+          toast({
+            title: "Success",
+            description: "Investigation started for this case",
+          });
+          await fetchDashboardData();
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to start investigation",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error starting investigation:", error);
+        toast({
+          title: "Error",
+          description: "Failed to start investigation",
+          variant: "destructive",
+        });
+      } finally {
+        setProcessingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(blotter.id);
+          return next;
+        });
+      }
+    },
+    [toast, fetchDashboardData]
+  );
+
+  const handleBlotterUpdateStatus = useCallback(
+    (blotter: BlotterItem) => {
+      router.push(`/admin/blotter?update=${blotter.id}`);
+    },
+    [router]
+  );
+
+  const handleViewBlotterDetails = useCallback((blotter: BlotterItem) => {
+    setSelectedBlotter(blotter);
+    setViewBlotterDialogOpen(true);
+  }, []);
 
   // If no admin access, show access denied
   if (!hasAdminAccess) {
@@ -728,6 +1039,10 @@ export default function AdminDashboardPage() {
                         <input
                           type="search"
                           placeholder="Search requests..."
+                          value={certificateSearchQuery}
+                          onChange={(e) =>
+                            setCertificateSearchQuery(e.target.value)
+                          }
                           className="pl-8 h-9 w-[250px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                         />
                       </div>
@@ -735,7 +1050,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                     {loading ? (
                       <div className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -747,8 +1062,8 @@ export default function AdminDashboardPage() {
                       <div className="text-center py-8">
                         <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">
-                          {filtersActive
-                            ? "No certificate requests match the current filters."
+                          {filtersActive || certificateSearchQuery.trim()
+                            ? "No certificate requests match the current filters or search query."
                             : "No certificate requests found"}
                         </p>
                       </div>
@@ -807,17 +1122,67 @@ export default function AdminDashboardPage() {
                               </span>
                               <div className="flex gap-2">
                                 {cert.status === "pending" && (
-                                  <Button size="sm">Process</Button>
-                                )}
-                                {cert.status === "processing" && (
-                                  <Button size="sm">Complete</Button>
-                                )}
-                                {cert.status === "additional_info_required" && (
-                                  <Button size="sm" variant="outline">
-                                    Request Info
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleCertificateProcess(cert)
+                                    }
+                                    disabled={processingIds.has(cert.id)}
+                                  >
+                                    {processingIds.has(cert.id) ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                        Processing...
+                                      </>
+                                    ) : (
+                                      "Process"
+                                    )}
                                   </Button>
                                 )}
-                                <Button size="sm" variant="outline">
+                                {cert.status === "processing" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleCertificateComplete(cert)
+                                    }
+                                    disabled={processingIds.has(cert.id)}
+                                  >
+                                    {processingIds.has(cert.id) ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                        Completing...
+                                      </>
+                                    ) : (
+                                      "Complete"
+                                    )}
+                                  </Button>
+                                )}
+                                {cert.status === "additional_info_required" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      handleCertificateRequestInfo(cert)
+                                    }
+                                    disabled={processingIds.has(cert.id)}
+                                  >
+                                    {processingIds.has(cert.id) ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      "Request Info"
+                                    )}
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleViewCertificateDetails(cert)
+                                  }
+                                >
                                   View Details
                                 </Button>
                               </div>
@@ -850,6 +1215,10 @@ export default function AdminDashboardPage() {
                         <input
                           type="search"
                           placeholder="Search appointments..."
+                          value={appointmentSearchQuery}
+                          onChange={(e) =>
+                            setAppointmentSearchQuery(e.target.value)
+                          }
                           className="pl-8 h-9 w-[250px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                         />
                       </div>
@@ -857,7 +1226,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                     {loading ? (
                       <div className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -869,8 +1238,8 @@ export default function AdminDashboardPage() {
                       <div className="text-center py-8">
                         <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">
-                          {filtersActive
-                            ? "No appointments match the current filters."
+                          {filtersActive || appointmentSearchQuery.trim()
+                            ? "No appointments match the current filters or search query."
                             : "No appointments found"}
                         </p>
                       </div>
@@ -926,13 +1295,40 @@ export default function AdminDashboardPage() {
                               <div className="flex gap-2">
                                 {apt.status === "scheduled" && (
                                   <>
-                                    <Button size="sm">Complete</Button>
-                                    <Button size="sm" variant="outline">
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        handleAppointmentComplete(apt)
+                                      }
+                                      disabled={processingIds.has(apt.id)}
+                                    >
+                                      {processingIds.has(apt.id) ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                          Completing...
+                                        </>
+                                      ) : (
+                                        "Complete"
+                                      )}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        handleAppointmentReschedule(apt)
+                                      }
+                                    >
                                       Reschedule
                                     </Button>
                                   </>
                                 )}
-                                <Button size="sm" variant="outline">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleViewAppointmentDetails(apt)
+                                  }
+                                >
                                   View Details
                                 </Button>
                               </div>
@@ -965,6 +1361,10 @@ export default function AdminDashboardPage() {
                         <input
                           type="search"
                           placeholder="Search reports..."
+                          value={blotterSearchQuery}
+                          onChange={(e) =>
+                            setBlotterSearchQuery(e.target.value)
+                          }
                           className="pl-8 h-9 w-[250px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                         />
                       </div>
@@ -972,7 +1372,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                     {loading ? (
                       <div className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -984,8 +1384,8 @@ export default function AdminDashboardPage() {
                       <div className="text-center py-8">
                         <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">
-                          {filtersActive
-                            ? "No blotter cases match the current filters."
+                          {filtersActive || blotterSearchQuery.trim()
+                            ? "No blotter cases match the current filters or search query."
                             : "No blotter cases found"}
                         </p>
                       </div>
@@ -1039,13 +1439,41 @@ export default function AdminDashboardPage() {
                                 {formatStatus(blotter.status)}
                               </span>
                               <div className="flex gap-2">
-                                {blotter.status === "active" && (
-                                  <Button size="sm">Start Investigation</Button>
-                                )}
                                 {blotter.status === "pending" && (
-                                  <Button size="sm">Update Status</Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleBlotterStartInvestigation(blotter)
+                                    }
+                                    disabled={processingIds.has(blotter.id)}
+                                  >
+                                    {processingIds.has(blotter.id) ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      "Start Investigation"
+                                    )}
+                                  </Button>
                                 )}
-                                <Button size="sm" variant="outline">
+                                {blotter.status === "active" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleBlotterUpdateStatus(blotter)
+                                    }
+                                  >
+                                    Update Status
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleViewBlotterDetails(blotter)
+                                  }
+                                >
                                   View Details
                                 </Button>
                               </div>
@@ -1230,6 +1658,284 @@ export default function AdminDashboardPage() {
           )}
         </div>
       )}
+
+      {/* Certificate Details Dialog */}
+      <Dialog
+        open={viewCertificateDialogOpen}
+        onOpenChange={setViewCertificateDialogOpen}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Certificate Request Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about the certificate request
+            </DialogDescription>
+          </DialogHeader>
+          {selectedCertificate && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Reference No.</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedCertificate.referenceNumber ||
+                      selectedCertificate.id}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <div className="mt-1">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        selectedCertificate.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                          : selectedCertificate.status === "processing"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                          : selectedCertificate.status ===
+                            "additional_info_required"
+                          ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                      }`}
+                    >
+                      {formatStatus(selectedCertificate.status)}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">
+                    Certificate Type
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedCertificate.type}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Requested By</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedCertificate.requestedBy}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Requested On</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {formatDateTime(selectedCertificate.requestedOn)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setViewCertificateDialogOpen(false);
+                setSelectedCertificate(null);
+              }}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setViewCertificateDialogOpen(false);
+                router.push(`/admin/certificates`);
+              }}
+            >
+              View Full Details
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Appointment Details Dialog */}
+      <Dialog
+        open={viewAppointmentDialogOpen}
+        onOpenChange={setViewAppointmentDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Appointment Details</DialogTitle>
+            <DialogDescription>
+              View complete information about this appointment
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Appointment ID
+                  </Label>
+                  <p className="text-sm">{selectedAppointment.id}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Status
+                  </Label>
+                  <div className="mt-1">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        selectedAppointment.status === "scheduled"
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                          : selectedAppointment.status === "completed"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : selectedAppointment.status === "cancelled"
+                          ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                      }`}
+                    >
+                      {formatStatus(selectedAppointment.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Type
+                </Label>
+                <p className="text-sm font-medium">
+                  {selectedAppointment.type}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Resident Name
+                </Label>
+                <p className="text-sm">{selectedAppointment.residentName}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Scheduled Date
+                  </Label>
+                  <p className="text-sm">
+                    {formatDateTime(selectedAppointment.scheduledDate)}
+                  </p>
+                </div>
+                {selectedAppointment.timeSlot && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      Time Slot
+                    </Label>
+                    <p className="text-sm">{selectedAppointment.timeSlot}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setViewAppointmentDialogOpen(false);
+                setSelectedAppointment(null);
+              }}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setViewAppointmentDialogOpen(false);
+                router.push(`/admin/appointments`);
+              }}
+            >
+              View Full Details
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Blotter Details Dialog */}
+      <Dialog
+        open={viewBlotterDialogOpen}
+        onOpenChange={setViewBlotterDialogOpen}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Blotter Report Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about the blotter case
+            </DialogDescription>
+          </DialogHeader>
+          {selectedBlotter && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Case Number
+                  </Label>
+                  <p className="font-medium">{selectedBlotter.caseNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Status
+                  </Label>
+                  <div className="mt-1">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        selectedBlotter.status === "active"
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                          : selectedBlotter.status === "pending"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                          : selectedBlotter.status === "resolved"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                      }`}
+                    >
+                      {formatStatus(selectedBlotter.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Case Type
+                  </Label>
+                  <p>{selectedBlotter.caseType}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Incident Date
+                  </Label>
+                  <p>{formatDateTime(selectedBlotter.incidentDate)}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Complainant
+                  </Label>
+                  <p>{selectedBlotter.complainant}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Respondent
+                  </Label>
+                  <p>{selectedBlotter.respondent}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setViewBlotterDialogOpen(false);
+                setSelectedBlotter(null);
+              }}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setViewBlotterDialogOpen(false);
+                router.push(`/admin/blotter`);
+              }}
+            >
+              View Full Details
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

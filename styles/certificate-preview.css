@@ -28,7 +28,7 @@
 		width: 8.5in;
 		height: 11in;
 		margin: 0;
-		page-break-after: always;
+		page-break-after: avoid;
 	}
 
 	/* Hide preview elements when printing */

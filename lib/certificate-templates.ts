@@ -23,6 +23,7 @@ export interface CertificateContentData {
 	allowanceAmount?: string;
 	signatureUrl?: string;
 	hasSignature?: boolean;
+	photoUrl?: string;
 }
 
 export type PdfFontKey = "helvetica" | "helveticaBold" | "times" | "timesBold" | "arial" | "arialBold";
@@ -509,7 +510,7 @@ export const CERTIFICATE_LAYOUT: CertificateLayoutConfig = {
 		fontWeight: "bold",
 		letterSpacing: 4,
 		color: "#000000",
-		marginBottom: 30,
+		marginBottom: 15,
 	},
 	contentBox: {
 		horizontalPadding: 15,
@@ -528,7 +529,7 @@ export const CERTIFICATE_LAYOUT: CertificateLayoutConfig = {
 		titleOffset: 266,
 		titleSection: {
 			marginTop: 30,
-			marginBottom: 50,
+			marginBottom: 25,
 			textAlign: "center",
 			fontSize: 22,
 			fontWeight: "bold",
@@ -606,18 +607,24 @@ function buildPurposeParagraph(
 ): string {
 	const base = data.purpose?.trim();
 	if (!base) {
-		return defaultText.replace(/\s+/g, " ");
+		return defaultText.replace(/\s+/g, " ").replace(
+			data.requestedBy,
+			`**${data.requestedBy}**`
+		);
 	}
 
-	return `This certification is being issued upon the request of ${data.requestedBy} for ${base}.`;
+	return `This certification is being issued upon the request of **${data.requestedBy}** for ${base}.`;
 }
 
 function buildResidenceLine(data: CertificateContentData): string {
 	const upper = data.requestedBy.toUpperCase();
+	const ageSegment = data.age
+		? ` **${upper}** **${data.age} years old**`
+		: ` **${upper}**, of legal age`;
 	const addressSegment = data.address
-		? ` and residing at ${data.address}`
+		? ` and residing at **${data.address}**`
 		: "";
-	return `${upper}, of legal age${addressSegment}, is a resident of Brgy. Malinta, Los Baños, Laguna.`;
+	return `${ageSegment}${addressSegment}, is a resident of Brgy. Malinta, Los Baños, Laguna.`;
 }
 
 export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
@@ -625,9 +632,9 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "indigency",
 		match: (type) => type.toLowerCase().includes("indigency"),
 		titleLines: [
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
-			{ text: "O F", fontSize: 20, marginBottom: 25 },
-			{ text: "I N D I G E N C Y", fontSize: 22, marginBottom: 30 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
+			{ text: "O F", fontSize: 20, marginBottom: 8 },
+			{ text: "I N D I G E N C Y", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => [
 			`This is to certify that ${buildResidenceLine(
@@ -644,9 +651,9 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "residency",
 		match: (type) => type.toLowerCase().includes("residency"),
 		titleLines: [
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
-			{ text: "O F", fontSize: 20, marginBottom: 25 },
-			{ text: "R E S I D E N C Y", fontSize: 22, marginBottom: 30 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
+			{ text: "O F", fontSize: 20, marginBottom: 8 },
+			{ text: "R E S I D E N C Y", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => [
 			`This is to certify that ${buildResidenceLine(
@@ -663,10 +670,10 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "good-moral",
 		match: (type) => type.toLowerCase().includes("good moral"),
 		titleLines: [
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
-			{ text: "O F", fontSize: 20, marginBottom: 25 },
-			{ text: "G O O D   M O R A L", fontSize: 22, marginBottom: 30 },
-			{ text: "C H A R A C T E R", fontSize: 22, marginBottom: 30 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
+			{ text: "O F", fontSize: 20, marginBottom: 8 },
+			{ text: "G O O D   M O R A L", fontSize: 22, marginBottom: 8 },
+			{ text: "C H A R A C T E R", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => [
 			`This is to certify that ${buildResidenceLine(
@@ -683,9 +690,9 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "employment",
 		match: (type) => type.toLowerCase().includes("employment"),
 		titleLines: [
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
-			{ text: "O F", fontSize: 20, marginBottom: 25 },
-			{ text: "E M P L O Y M E N T", fontSize: 22, marginBottom: 30 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
+			{ text: "O F", fontSize: 20, marginBottom: 8 },
+			{ text: "E M P L O Y M E N T", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => {
 			const jobSentence = data.jobTitle
@@ -710,10 +717,10 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "no-pending-case",
 		match: (type) => type.toLowerCase().includes("no pending case"),
 		titleLines: [
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
-			{ text: "O F", fontSize: 20, marginBottom: 25 },
-			{ text: "N O   P E N D I N G", fontSize: 22, marginBottom: 30 },
-			{ text: "C A S E", fontSize: 22, marginBottom: 30 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
+			{ text: "O F", fontSize: 20, marginBottom: 8 },
+			{ text: "N O   P E N D I N G", fontSize: 22, marginBottom: 8 },
+			{ text: "C A S E", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => [
 			`This is to certify that ${buildResidenceLine(
@@ -732,8 +739,8 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 			type.toLowerCase().includes("barangay clearance") ||
 			type.toLowerCase().includes("clearance"),
 		titleLines: [
-			{ text: "B A R A N G A Y", fontSize: 22, marginBottom: 30 },
-			{ text: "C L E A R A N C E", fontSize: 22, marginBottom: 30 },
+			{ text: "B A R A N G A Y", fontSize: 22, marginBottom: 8 },
+			{ text: "C L E A R A N C E", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => [
 			`This is to certify that ${buildResidenceLine(
@@ -750,9 +757,9 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "income",
 		match: (type) => type.toLowerCase().includes("income"),
 		titleLines: [
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
-			{ text: "O F", fontSize: 20, marginBottom: 25 },
-			{ text: "I N C O M E", fontSize: 22, marginBottom: 30 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
+			{ text: "O F", fontSize: 20, marginBottom: 8 },
+			{ text: "I N C O M E", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => {
 			const income =
@@ -779,9 +786,9 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "business-closure",
 		match: (type) => type.toLowerCase().includes("business closure"),
 		titleLines: [
-			{ text: "B U S I N E S S", fontSize: 22, marginBottom: 30 },
-			{ text: "C L O S U R E", fontSize: 22, marginBottom: 30 },
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
+			{ text: "B U S I N E S S", fontSize: 22, marginBottom: 8 },
+			{ text: "C L O S U R E", fontSize: 22, marginBottom: 8 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => {
 			const businessName = data.businessName
@@ -810,9 +817,9 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "non-residence",
 		match: (type) => type.toLowerCase().includes("non-residence"),
 		titleLines: [
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
-			{ text: "O F", fontSize: 20, marginBottom: 25 },
-			{ text: "N O N - R E S I D E N C E", fontSize: 22, marginBottom: 30 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
+			{ text: "O F", fontSize: 20, marginBottom: 8 },
+			{ text: "N O N - R E S I D E N C E", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => {
 			const duration = data.nonResidenceDuration
@@ -834,9 +841,9 @@ export const CERTIFICATE_TEMPLATES: CertificateTemplateConfig[] = [
 		id: "no-income",
 		match: (type) => type.toLowerCase().includes("no income"),
 		titleLines: [
-			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 30 },
-			{ text: "O F", fontSize: 20, marginBottom: 25 },
-			{ text: "N O   I N C O M E", fontSize: 22, marginBottom: 30 },
+			{ text: "C E R T I F I C A T E", fontSize: 22, marginBottom: 8 },
+			{ text: "O F", fontSize: 20, marginBottom: 8 },
+			{ text: "N O   I N C O M E", fontSize: 22, marginBottom: 8 },
 		],
 		buildBody: (data) => {
 			const support = data.supportDetails
@@ -876,7 +883,7 @@ export function getCertificateTemplateConfig(
 			{
 				text: spacedUppercase(type || "Certificate"),
 				fontSize: 22,
-				marginBottom: 30,
+				marginBottom: 8,
 			},
 		],
 		buildBody: (data) => [

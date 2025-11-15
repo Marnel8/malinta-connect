@@ -277,15 +277,41 @@ export async function getAllAppointments(): Promise<AppointmentItem[]> {
 
 		const appointments = appointmentsSnapshot.val()
 		return Object.entries(appointments)
-			.map(([id, apt]: [string, any]) => ({
-				id,
-				type: apt.type || "Unknown",
-				status: apt.status || "scheduled",
-				residentName: apt.residentName || "Unknown",
-				scheduledDate: Number(apt.scheduledDate) || 0,
-				timeSlot: apt.timeSlot || "",
-				userId: apt.userId || "",
-			}))
+			.map(([id, apt]: [string, any]) => {
+				// Convert date string to timestamp
+				let scheduledDate = 0;
+				if (apt.date) {
+					const dateStr = apt.date;
+					const timeStr = apt.time || "00:00";
+					const dateTimeStr = `${dateStr}T${timeStr}`;
+					const dateObj = new Date(dateTimeStr);
+					scheduledDate = isNaN(dateObj.getTime()) ? 0 : dateObj.getTime();
+				} else if (apt.scheduledDate) {
+					scheduledDate = Number(apt.scheduledDate) || 0;
+				}
+
+				// Map status: confirmed/pending -> scheduled, others stay the same
+				let status: "scheduled" | "completed" | "cancelled" | "no_show" = "scheduled";
+				if (apt.status === "confirmed" || apt.status === "pending") {
+					status = "scheduled";
+				} else if (apt.status === "completed") {
+					status = "completed";
+				} else if (apt.status === "cancelled") {
+					status = "cancelled";
+				} else if (apt.status === "no_show") {
+					status = "no_show";
+				}
+
+				return {
+					id,
+					type: apt.title || apt.type || "Unknown",
+					status,
+					residentName: apt.requestedBy || apt.residentName || "Unknown",
+					scheduledDate,
+					timeSlot: apt.time || apt.timeSlot || "",
+					userId: apt.userId || "",
+				};
+			})
 			.sort((a, b) => (a.scheduledDate || 0) - (b.scheduledDate || 0))
 	} catch (error) {
 		console.error("Error fetching all appointments:", error)
@@ -303,16 +329,50 @@ export async function getAllBlotterCases(): Promise<BlotterItem[]> {
 
 		const blotterCases = blotterSnapshot.val()
 		return Object.entries(blotterCases)
-			.map(([id, blot]: [string, any]) => ({
-				id,
-				caseNumber: blot.caseNumber || "",
-				status: blot.status || "active",
-				complainant: blot.complainant || "Unknown",
-				respondent: blot.respondent || "Unknown",
-				incidentDate: blot.incidentDate || 0,
-				caseType: blot.caseType || "Unknown",
-				userId: blot.userId || "",
-			}))
+			.map(([id, blot]: [string, any]) => {
+				// Convert incidentDate to timestamp
+				let incidentDate = 0;
+				if (blot.incidentDate) {
+					if (typeof blot.incidentDate === "string") {
+						const dateObj = new Date(blot.incidentDate);
+						incidentDate = isNaN(dateObj.getTime()) ? 0 : dateObj.getTime();
+					} else {
+						incidentDate = Number(blot.incidentDate) || 0;
+					}
+				} else if (blot.incidentDateTime) {
+					const dateObj = new Date(blot.incidentDateTime);
+					incidentDate = isNaN(dateObj.getTime()) ? 0 : dateObj.getTime();
+				} else if (blot.createdAt) {
+					incidentDate = Number(blot.createdAt) || 0;
+				}
+
+				// Map status: investigating -> active, others map appropriately
+				// Default to "pending" for new cases without status
+				let status: "active" | "resolved" | "pending" | "closed" = "pending";
+				if (blot.status === "investigating" || blot.status === "readyForAppointment") {
+					status = "active";
+				} else if (blot.status === "resolved") {
+					status = "resolved";
+				} else if (blot.status === "pending") {
+					status = "pending";
+				} else if (blot.status === "closed") {
+					status = "closed";
+				} else if (!blot.status) {
+					// If no status, default to pending
+					status = "pending";
+				}
+
+				return {
+					id,
+					caseNumber: blot.referenceNumber || blot.caseNumber || id,
+					status,
+					complainant: blot.reportedBy || blot.complainant || "Unknown",
+					respondent: blot.respondent || "N/A",
+					incidentDate,
+					caseType: blot.type || blot.caseType || "Unknown",
+					userId: blot.userId || "",
+				};
+			})
 			.sort((a, b) => (b.incidentDate || 0) - (a.incidentDate || 0))
 	} catch (error) {
 		console.error("Error fetching all blotter cases:", error)

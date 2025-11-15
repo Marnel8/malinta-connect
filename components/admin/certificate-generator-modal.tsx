@@ -113,7 +113,16 @@ export function CertificateGeneratorModal({
     allowanceAmount: certificate.allowanceAmount,
     signatureUrl: includeSignature ? settingsSignatureUrl : undefined,
     hasSignature: includeSignature && !!settingsSignatureUrl,
+    photoUrl: certificate.photoUrl,
   };
+
+  // Debug: Log photoUrl to console
+  useEffect(() => {
+    if (isOpen && certificate.photoUrl) {
+      console.log("Certificate photoUrl:", certificate.photoUrl);
+      console.log("Certificate type:", certificate.type);
+    }
+  }, [isOpen, certificate.photoUrl, certificate.type]);
 
   const templateConfig = getCertificateTemplateConfig(certificate.type || "");
   const certificateTypeLabel =
@@ -172,7 +181,7 @@ export function CertificateGeneratorModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Generate Certificate</DialogTitle>
           <DialogDescription>
@@ -180,7 +189,7 @@ export function CertificateGeneratorModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 overflow-y-auto flex-1 min-h-0">
           {/* Certificate Info */}
           <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50">
             <div>
@@ -205,6 +214,24 @@ export function CertificateGeneratorModal({
                 {certificate.purpose}
               </p>
             </div>
+            {certificate.photoUrl && (
+              <div className="col-span-2">
+                <Label className="text-sm font-medium">1x1 Photo</Label>
+                <div className="mt-2">
+                  <img
+                    src={certificate.photoUrl}
+                    alt="Certificate photo"
+                    className="w-24 h-24 rounded border object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Photo will be included in the certificate
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Signature Options */}
@@ -298,7 +325,7 @@ export function CertificateGeneratorModal({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-4 flex-shrink-0">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
