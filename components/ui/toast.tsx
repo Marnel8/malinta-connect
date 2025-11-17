@@ -16,7 +16,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed inset-x-4 top-6 z-[100] flex max-h-screen flex-col-reverse gap-4 sm:inset-x-auto sm:right-6 sm:top-6 sm:flex-col md:max-w-sm",
       className
     )}
     {...props}
@@ -24,20 +24,18 @@ const ToastViewport = React.forwardRef<
 ))
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
+const baseGradient =
+  "bg-[linear-gradient(135deg,#e1fff4_0%,#d8fdf0_35%,#c1f7e8_100%)] border-[#8be0ca] text-[#0f2d2f]"
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-xl border p-5 pr-8 shadow-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-start gap-4 overflow-hidden rounded-[36px] border px-7 py-5 pr-14 text-base shadow-[0_14px_30px_rgba(4,40,34,0.15)] transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
-        default:
-          "border border-border/80 bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/70",
-        success:
-          "border border-emerald-200/80 bg-emerald-50 text-emerald-900 shadow-emerald-100/60 dark:border-emerald-500/40 dark:bg-emerald-950 dark:text-emerald-50",
-        info: "border border-sky-200/80 bg-sky-50 text-sky-900 shadow-sky-100/60 dark:border-sky-500/40 dark:bg-sky-950 dark:text-sky-50",
-        warning:
-          "border border-amber-200/80 bg-amber-50 text-amber-900 shadow-amber-100/60 dark:border-amber-500/40 dark:bg-amber-950 dark:text-amber-50",
-        destructive:
-          "destructive border border-destructive/50 bg-destructive text-destructive-foreground shadow-destructive/40",
+        default: baseGradient,
+        success: baseGradient,
+        info: baseGradient,
+        warning: baseGradient,
+        destructive: baseGradient,
       },
     },
     defaultVariants: {
@@ -65,11 +63,11 @@ Toast.displayName = ToastPrimitives.Root.displayName
 type ToastVariant = VariantProps<typeof toastVariants>["variant"]
 
 const variantIconMap: Record<NonNullable<ToastVariant>, LucideIcon | null> = {
-  default: Info,
+  default: CheckCircle2,
   success: CheckCircle2,
-  info: Info,
-  warning: AlertTriangle,
-  destructive: XCircle,
+  info: CheckCircle2,
+  warning: CheckCircle2,
+  destructive: CheckCircle2,
 }
 
 const ToastIcon = ({
@@ -86,7 +84,7 @@ const ToastIcon = ({
     <span
       data-variant={variant}
       className={cn(
-        "mr-3 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-foreground group-data-[variant=success]:bg-emerald-100 group-data-[variant=success]:text-emerald-900 group-data-[variant=info]:bg-sky-100 group-data-[variant=info]:text-sky-900 group-data-[variant=warning]:bg-amber-100 group-data-[variant=warning]:text-amber-900 group-data-[variant=destructive]:bg-destructive/40 group-data-[variant=destructive]:text-destructive-foreground",
+        "mt-0.5 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-[#45c1a8] text-white shadow-[0_8px_16px_rgba(69,193,168,0.35)]",
         className
       )}
       {...props}
@@ -103,7 +101,7 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-full border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-data-[variant=destructive]:border-white/50 group-data-[variant=destructive]:text-destructive-foreground group-data-[variant=destructive]:hover:border-white group-data-[variant=destructive]:hover:bg-destructive/80 group-data-[variant=success]:border-emerald-200/80 group-data-[variant=success]:text-emerald-900 group-data-[variant=success]:hover:bg-emerald-100/80 group-data-[variant=info]:border-sky-200/80 group-data-[variant=info]:text-sky-900 group-data-[variant=info]:hover:bg-sky-100/80 group-data-[variant=warning]:border-amber-200/80 group-data-[variant=warning]:text-amber-900 group-data-[variant=warning]:hover:bg-amber-100/80",
+      "inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-black/5 bg-white/70 px-4 text-sm font-medium text-slate-800 shadow-sm transition-all hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-black/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 group-data-[variant=success]:text-emerald-800 group-data-[variant=info]:text-sky-800 group-data-[variant=warning]:text-amber-800 group-data-[variant=destructive]:text-rose-800",
       className
     )}
     {...props}
@@ -118,7 +116,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-full p-1 text-foreground/60 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring group-hover:opacity-100 group-data-[variant=destructive]:text-white/70 group-data-[variant=destructive]:hover:text-white group-data-[variant=success]:text-emerald-900 group-data-[variant=success]:hover:text-emerald-950 group-data-[variant=info]:text-sky-900 group-data-[variant=warning]:text-amber-900",
+      "absolute right-4 top-4 rounded-full p-1.5 text-slate-400 opacity-0 transition hover:bg-black/5 hover:text-slate-600 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 group-hover:opacity-100",
       className
     )}
     toast-close=""
