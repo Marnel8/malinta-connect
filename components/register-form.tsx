@@ -15,7 +15,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth"
 import { auth } from "@/app/firebase/firebase"
 import { createUserProfile } from "@/lib/user-management"
 import { useRouter } from "next/navigation"
-import { useToast } from "@/hooks/use-toast"
+import { toastError, toastSuccess } from "@/lib/toast-presets"
 
 const formSchema = z.object({
   firstName: z.string().min(2, {
@@ -43,7 +43,6 @@ export function RegisterForm() {
   const [activeTab, setActiveTab] = useState("resident")
   const { t } = useLanguage()
   const router = useRouter()
-  const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,8 +81,8 @@ export function RegisterForm() {
         }
       )
 
-      toast({
-        title: "Registration Successful",
+      toastSuccess({
+        title: "Registration successful",
         description: "Your account has been created successfully!",
       })
 
@@ -106,10 +105,9 @@ export function RegisterForm() {
         errorMessage = "Invalid email address."
       }
       
-      toast({
-        title: "Registration Failed",
+      toastError({
+        title: "Registration failed",
         description: errorMessage,
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)

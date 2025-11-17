@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,17 +111,18 @@ export default function AdminAppointmentsPage() {
       if (result.success && result.appointments) {
         setAppointments(result.appointments);
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Unable to load appointments",
           description: result.error || "Failed to load appointments",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Unable to load appointments",
         description: "Failed to load appointments",
-        variant: "destructive",
+        error,
       });
     } finally {
       setLoading(false);
@@ -132,8 +134,8 @@ export default function AdminAppointmentsPage() {
     try {
       const result = await createAppointmentAction(formData);
       if (result.success) {
-        toast({
-          title: "Success",
+        toastSuccess({
+          toast,
           description: "Appointment created successfully",
         });
         setCreateDialogOpen(false);
@@ -149,17 +151,18 @@ export default function AdminAppointmentsPage() {
         });
         await loadAppointments();
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Creation failed",
           description: result.error || "Failed to create appointment",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Creation failed",
         description: "Failed to create appointment",
-        variant: "destructive",
+        error,
       });
     } finally {
       setCreateLoading(false);
@@ -177,24 +180,25 @@ export default function AdminAppointmentsPage() {
         newStatus
       );
       if (result.success) {
-        toast({
-          title: "Success",
+        toastSuccess({
+          toast,
           description: `Appointment ${newStatus} successfully`,
         });
         // Reload appointments to get updated data
         await loadAppointments();
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Update failed",
           description: result.error || "Failed to update appointment status",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Update failed",
         description: "Failed to update appointment status",
-        variant: "destructive",
+        error,
       });
     } finally {
       setActionLoading(null);
@@ -206,24 +210,25 @@ export default function AdminAppointmentsPage() {
     try {
       const result = await deleteAppointmentAction(appointmentId);
       if (result.success) {
-        toast({
-          title: "Success",
+        toastSuccess({
+          toast,
           description: "Appointment deleted successfully",
         });
         // Reload appointments to get updated data
         await loadAppointments();
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Delete failed",
           description: result.error || "Failed to delete appointment",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Delete failed",
         description: "Failed to delete appointment",
-        variant: "destructive",
+        error,
       });
     } finally {
       setActionLoading(null);
@@ -248,18 +253,19 @@ export default function AdminAppointmentsPage() {
         if (result.success && result.appointments) {
           setAppointments(result.appointments);
         } else {
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Filter failed",
             description: result.error || "Failed to filter appointments",
-            variant: "destructive",
           });
         }
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Filter failed",
         description: "Failed to filter appointments",
-        variant: "destructive",
+        error,
       });
     } finally {
       setLoading(false);

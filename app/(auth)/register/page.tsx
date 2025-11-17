@@ -48,6 +48,11 @@ import {
   FlipHorizontal,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  toastError,
+  toastSuccess,
+  toastWarning,
+} from "@/lib/toast-presets";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { registerResidentAction } from "@/app/actions/auth";
 import { uploadResidentImagesAction } from "@/app/actions/uploads";
@@ -590,11 +595,11 @@ export default function RegisterPage() {
       // Special validation for photo step
       if (currentStep === 4) {
         if (!idFrontPhoto || !idBackPhoto || !selfiePhoto) {
-          toast({
-            title: "Photo Verification Required",
+          toastWarning({
+            toast,
+            title: "Photo verification required",
             description:
               "Please provide front & back ID photos plus a selfie before proceeding to account setup.",
-            variant: "destructive",
           });
           return;
         }
@@ -620,10 +625,10 @@ export default function RegisterPage() {
             ? stepErrors[0]
             : "Please complete all required fields before proceeding.";
 
-        toast({
-          title: "Incomplete Information",
+        toastWarning({
+          toast,
+          title: "Incomplete information",
           description: errorMessage,
-          variant: "destructive",
         });
         return;
       }
@@ -714,10 +719,10 @@ export default function RegisterPage() {
         firstError?.message ||
         "Please check all required fields and try again.";
 
-      toast({
-        title: "Form Validation Failed",
+      toastWarning({
+        toast,
+        title: "Form validation failed",
         description: errorMessage,
-        variant: "destructive",
       });
       return;
     }
@@ -728,12 +733,12 @@ export default function RegisterPage() {
       if (!idBackPhoto) missingPhotos.push("back ID photo");
       if (!selfiePhoto) missingPhotos.push("selfie photo");
 
-      toast({
-        title: "Photo Verification Required",
+      toastWarning({
+        toast,
+        title: "Photo verification required",
         description: `Please provide ${missingPhotos.join(
           " and "
         )} to complete your registration.`,
-        variant: "destructive",
       });
       return;
     }
@@ -756,12 +761,12 @@ export default function RegisterPage() {
       });
 
       if (!imageUploadResult.success) {
-        toast({
+        toastError({
+          toast,
           title: "Image upload failed",
           description:
             imageUploadResult.error ||
             "Image upload service is not configured. Please contact support.",
-          variant: "destructive",
         });
         setIsLoading(false);
         return;
@@ -782,12 +787,12 @@ export default function RegisterPage() {
       });
 
       if (!registrationResult.success) {
-        toast({
+        toastError({
+          toast,
           title: "Registration failed",
           description:
             registrationResult.error ||
             "An error occurred during registration.",
-          variant: "destructive",
         });
         setIsLoading(false);
         return;
@@ -796,8 +801,9 @@ export default function RegisterPage() {
       console.log("User registered successfully");
 
       console.log("Registration successful");
-      toast({
-        title: "Account Created Successfully!",
+      toastSuccess({
+        toast,
+        title: "Account created successfully",
         description: `Welcome ${data.firstName}! Your account has been created and is pending verification. You can now sign in.`,
       });
 
@@ -824,10 +830,11 @@ export default function RegisterPage() {
         }
       }
 
-      toast({
-        title: "Registration Failed",
+      toastError({
+        toast,
+        title: "Registration failed",
         description: errorMessage,
-        variant: "destructive",
+        error,
       });
     } finally {
       setIsLoading(false);

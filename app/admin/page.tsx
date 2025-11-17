@@ -55,6 +55,11 @@ import { updateAppointmentStatusAction } from "@/app/actions/appointments";
 import { updateBlotterStatusAction } from "@/app/actions/blotter";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  toastError,
+  toastSuccess,
+  toastWarning,
+} from "@/lib/toast-presets";
 import { useRouter } from "next/navigation";
 import {
   PieChart,
@@ -379,7 +384,8 @@ export default function AdminDashboardPage() {
       }
 
       if (sheetCount === 0) {
-        toast({
+        toastWarning({
+          toast,
           title: "No data to export",
           description:
             "Adjust your filters or add new records before exporting.",
@@ -400,16 +406,19 @@ export default function AdminDashboardPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast({
+      toastSuccess({
+        toast,
         title: "Export complete",
-        description: "The dashboard data has been downloaded as an Excel file.",
+        description:
+          "The dashboard data has been downloaded as an Excel file.",
       });
     } catch (error) {
       console.error("Error exporting dashboard data:", error);
-      toast({
+      toastError({
+        toast,
         title: "Export failed",
         description: "Something went wrong while exporting. Please try again.",
-        variant: "destructive",
+        error,
       });
     } finally {
       setExporting(false);
@@ -479,24 +488,25 @@ export default function AdminDashboardPage() {
           "processing"
         );
         if (result.success) {
-          toast({
-            title: "Success",
+          toastSuccess({
+            toast,
             description: "Certificate status updated to processing",
           });
           await fetchDashboardData();
         } else {
-          toast({
-            title: "Error",
-            description: result.error || "Failed to update certificate status",
-            variant: "destructive",
+          toastError({
+            toast,
+            title: "Update failed",
+            description:
+              result.error || "Failed to update certificate status",
           });
         }
       } catch (error) {
         console.error("Error processing certificate:", error);
-        toast({
-          title: "Error",
-          description: "Failed to process certificate",
-          variant: "destructive",
+        toastError({
+          toast,
+          title: "Error processing certificate",
+          error,
         });
       } finally {
         setProcessingIds((prev) => {
@@ -525,24 +535,24 @@ export default function AdminDashboardPage() {
           }
         );
         if (result.success) {
-          toast({
-            title: "Success",
+          toastSuccess({
+            toast,
             description: "Certificate marked as completed",
           });
           await fetchDashboardData();
         } else {
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Completion failed",
             description: result.error || "Failed to complete certificate",
-            variant: "destructive",
           });
         }
       } catch (error) {
         console.error("Error completing certificate:", error);
-        toast({
-          title: "Error",
-          description: "Failed to complete certificate",
-          variant: "destructive",
+        toastError({
+          toast,
+          title: "Error completing certificate",
+          error,
         });
       } finally {
         setProcessingIds((prev) => {
@@ -568,25 +578,26 @@ export default function AdminDashboardPage() {
           }
         );
         if (result.success) {
-          toast({
-            title: "Success",
+          toastSuccess({
+            toast,
             description:
               "Certificate status updated - additional info requested",
           });
           await fetchDashboardData();
         } else {
-          toast({
-            title: "Error",
-            description: result.error || "Failed to update certificate status",
-            variant: "destructive",
+          toastError({
+            toast,
+            title: "Update failed",
+            description:
+              result.error || "Failed to update certificate status",
           });
         }
       } catch (error) {
         console.error("Error requesting info:", error);
-        toast({
-          title: "Error",
-          description: "Failed to request additional information",
-          variant: "destructive",
+        toastError({
+          toast,
+          title: "Error requesting info",
+          error,
         });
       } finally {
         setProcessingIds((prev) => {
@@ -614,24 +625,24 @@ export default function AdminDashboardPage() {
       try {
         const result = await updateAppointmentStatusAction(apt.id, "completed");
         if (result.success) {
-          toast({
-            title: "Success",
+          toastSuccess({
+            toast,
             description: "Appointment marked as completed",
           });
           await fetchDashboardData();
         } else {
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Completion failed",
             description: result.error || "Failed to complete appointment",
-            variant: "destructive",
           });
         }
       } catch (error) {
         console.error("Error completing appointment:", error);
-        toast({
-          title: "Error",
-          description: "Failed to complete appointment",
-          variant: "destructive",
+        toastError({
+          toast,
+          title: "Error completing appointment",
+          error,
         });
       } finally {
         setProcessingIds((prev) => {
@@ -666,24 +677,24 @@ export default function AdminDashboardPage() {
           "investigating"
         );
         if (result.success) {
-          toast({
-            title: "Success",
+          toastSuccess({
+            toast,
             description: "Investigation started for this case",
           });
           await fetchDashboardData();
         } else {
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Update failed",
             description: result.error || "Failed to start investigation",
-            variant: "destructive",
           });
         }
       } catch (error) {
         console.error("Error starting investigation:", error);
-        toast({
-          title: "Error",
-          description: "Failed to start investigation",
-          variant: "destructive",
+        toastError({
+          toast,
+          title: "Error starting investigation",
+          error,
         });
       } finally {
         setProcessingIds((prev) => {

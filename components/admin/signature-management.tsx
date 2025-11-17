@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastInfo, toastSuccess } from "@/lib/toast-presets";
 import { Loader2, Upload, Trash2, Plus } from "lucide-react";
 import { uploadSignatureAction } from "@/app/actions/certificates";
 
@@ -32,7 +32,6 @@ export function SignatureManagement({
 	certificateId,
 	onSignatureUploaded,
 }: SignatureManagementProps) {
-	const { toast } = useToast();
 	const [isUploading, setIsUploading] = useState(false);
 	const [signatures, setSignatures] = useState<SignatureItem[]>([
 		{
@@ -53,20 +52,18 @@ export function SignatureManagement({
 
 		// Validate file type
 		if (!file.type.startsWith("image/")) {
-			toast({
-				title: "Error",
-				description: "Please select an image file",
-				variant: "destructive",
+			toastError({
+				title: "Invalid file",
+				description: "Please select an image file.",
 			});
 			return;
 		}
 
 		// Validate file size (max 5MB)
 		if (file.size > 5 * 1024 * 1024) {
-			toast({
-				title: "Error",
-				description: "File size must be less than 5MB",
-				variant: "destructive",
+			toastError({
+				title: "File too large",
+				description: "Signature files must be smaller than 5MB.",
 			});
 			return;
 		}
@@ -78,35 +75,33 @@ export function SignatureManagement({
 				const result = await uploadSignatureAction(certificateId, file);
 
 				if (result.success && result.signatureUrl) {
-					toast({
-						title: "Success",
-						description: "Signature uploaded successfully",
+					toastSuccess({
+						title: "Signature uploaded",
+						description: "The signature is ready to use.",
 					});
 
 					if (onSignatureUploaded) {
 						onSignatureUploaded(result.signatureUrl);
 					}
 				} else {
-					toast({
-						title: "Error",
-						description: result.error || "Failed to upload signature",
-						variant: "destructive",
+					toastError({
+						title: "Upload failed",
+						description: result.error || "Failed to upload signature.",
 					});
 				}
 			} else {
 				// General signature upload for signature library
 				// This would require additional implementation for storing signatures
-				toast({
-					title: "Info",
-					description: "General signature management coming soon",
+				toastInfo({
+					title: "Coming soon",
+					description: "General signature management is coming soon.",
 				});
 			}
 		} catch (error) {
 			console.error("Error uploading signature:", error);
-			toast({
-				title: "Error",
-				description: "Failed to upload signature",
-				variant: "destructive",
+			toastError({
+				title: "Upload failed",
+				description: "We couldn't upload that signature. Please try again.",
 			});
 		} finally {
 			setIsUploading(false);

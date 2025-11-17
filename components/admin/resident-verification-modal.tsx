@@ -28,6 +28,7 @@ import {
 import { ResidentData } from "@/app/actions/residents";
 import { updateResidentVerificationAction } from "@/app/actions/residents";
 import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 
 interface ResidentVerificationModalProps {
   isOpen: boolean;
@@ -71,8 +72,9 @@ export function ResidentVerificationModal({
         throw new Error(result.error || "Failed to update verification");
       }
 
-      toast({
-        title: "Verification Updated",
+      toastSuccess({
+        toast,
+        title: "Verification updated",
         description: `Resident has been ${status}.`,
       });
 
@@ -81,10 +83,12 @@ export function ResidentVerificationModal({
       setNotes("");
     } catch (error: any) {
       console.error("Verification error:", error);
-      toast({
-        title: "Verification Failed",
-        description: error.message || "Failed to update verification status.",
-        variant: "destructive",
+      toastError({
+        toast,
+        title: "Verification failed",
+        description:
+          error?.message || "Failed to update verification status.",
+        error,
       });
     } finally {
       setIsLoading(false);

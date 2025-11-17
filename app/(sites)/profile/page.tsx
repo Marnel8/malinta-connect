@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguage } from "@/contexts/language-context";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,6 @@ import { useRouter } from "next/navigation";
 export default function ProfilePage() {
 	const { user, userProfile, refreshUserProfile } = useAuth();
 	const { t } = useLanguage();
-	const { toast } = useToast();
 	const router = useRouter();
 
 	const [isEditing, setIsEditing] = useState(false);
@@ -88,27 +87,24 @@ export default function ProfilePage() {
 			const result = await updateUserProfileAction(user.uid, formData);
 
 			if (result.success) {
-				toast({
-					title: "Profile Updated",
+				toastSuccess({
+					title: "Profile updated",
 					description: "Your profile has been updated successfully.",
-					variant: "default",
 				});
 				setIsEditing(false);
 				await refreshUserProfile();
 			} else {
-				toast({
-					title: "Update Failed",
+				toastError({
+					title: "Update failed",
 					description:
 						result.error || "Failed to update profile. Please try again.",
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
 			console.error("Profile update error:", error);
-			toast({
-				title: "Update Failed",
+			toastError({
+				title: "Update failed",
 				description: "An unexpected error occurred. Please try again.",
-				variant: "destructive",
 			});
 		} finally {
 			setIsLoading(false);
@@ -148,28 +144,25 @@ export default function ProfilePage() {
 				);
 
 				if (result.success) {
-					toast({
-						title: "Avatar Updated",
+					toastSuccess({
+						title: "Avatar updated",
 						description: "Your profile picture has been updated successfully.",
-						variant: "default",
 					});
 					await refreshUserProfile();
 				} else {
-					toast({
-						title: "Upload Failed",
+					toastError({
+						title: "Upload failed",
 						description:
 							result.error || "Failed to upload avatar. Please try again.",
-						variant: "destructive",
 					});
 				}
 			};
 			reader.readAsDataURL(file);
 		} catch (error) {
 			console.error("Avatar upload error:", error);
-			toast({
-				title: "Upload Failed",
+			toastError({
+				title: "Upload failed",
 				description: "An unexpected error occurred. Please try again.",
-				variant: "destructive",
 			});
 		} finally {
 			setIsUploading(false);

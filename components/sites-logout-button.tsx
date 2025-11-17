@@ -4,14 +4,13 @@ import { useAuth } from "@/contexts/auth-context";
 import { signOut } from "firebase/auth";
 import { auth } from "@/app/firebase/firebase";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
 export function SitesLogoutButton() {
 	const { user, logout } = useAuth();
 	const router = useRouter();
-	const { toast } = useToast();
 
 	const handleLogout = async () => {
 		try {
@@ -21,17 +20,15 @@ export function SitesLogoutButton() {
 			// Clear local auth state
 			logout();
 			router.push("/");
-			toast({
-				title: "Logged Out",
+			toastSuccess({
+				title: "Logged out",
 				description: "You have been successfully logged out.",
-				variant: "default",
 			});
 		} catch (error) {
 			console.error("Logout error:", error);
-			toast({
-				title: "Logout Failed",
+			toastError({
+				title: "Logout failed",
 				description: "An error occurred during logout. Please try again.",
-				variant: "destructive",
 			});
 		}
 	};

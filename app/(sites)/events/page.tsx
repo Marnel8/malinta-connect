@@ -29,6 +29,7 @@ import {
   type Announcement,
 } from "@/app/actions/announcements";
 import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,11 +139,12 @@ export default function EventsPage() {
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Error sharing event:", error);
-          toast({
+          toastError({
+            toast,
             title: "Unable to share",
             description:
               "We couldn't open the share dialog. Please try another option.",
-            variant: "destructive",
+            error,
           });
         }
       }
@@ -184,7 +186,8 @@ export default function EventsPage() {
         );
         try {
           await navigator.clipboard.writeText(shareMessage);
-          toast({
+          toastSuccess({
+            toast,
             title: "Message copied",
             description:
               "We copied the event details. Paste them into your Facebook post.",
@@ -210,16 +213,18 @@ export default function EventsPage() {
       case "copy":
         try {
           await navigator.clipboard.writeText(shareUrl);
-          toast({
+          toastSuccess({
+            toast,
             title: "Link copied",
             description: "The event link has been copied to your clipboard.",
           });
         } catch (error) {
           console.error("Error copying event link:", error);
-          toast({
+          toastError({
+            toast,
             title: "Copy failed",
             description: "We couldn't copy the link. Please try again.",
-            variant: "destructive",
+            error,
           });
         }
         break;

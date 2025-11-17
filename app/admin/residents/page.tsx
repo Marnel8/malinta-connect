@@ -40,6 +40,7 @@ import { Search, Users, UserPlus, Mail, Phone, MapPin, CheckCircle, AlertCircle,
 import { useLanguage } from "@/contexts/language-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
+import { toastError, toastSuccess } from "@/lib/toast-presets"
 import { ResidentVerificationModal } from "@/components/admin/resident-verification-modal"
 import { 
   getResidentsAction, 
@@ -82,18 +83,19 @@ export default function AdminResidentsPage() {
       if (result.success && result.residents) {
         setResidents(result.residents)
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Unable to load residents",
           description: result.error || "Failed to load residents",
-          variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Error loading residents:", error)
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Unable to load residents",
         description: "An unexpected error occurred while loading residents",
-        variant: "destructive",
+        error,
       })
     } finally {
       setIsLoading(false)
@@ -107,18 +109,19 @@ export default function AdminResidentsPage() {
       if (result.success && result.residents) {
         setResidents(result.residents)
       } else {
-        toast({
-          title: "Search Failed",
+        toastError({
+          toast,
+          title: "Search failed",
           description: result.error || "Failed to search residents",
-          variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Search error:", error)
-      toast({
-        title: "Search Failed",
+      toastError({
+        toast,
+        title: "Search failed",
         description: "An unexpected error occurred during search",
-        variant: "destructive",
+        error,
       })
     } finally {
       setIsSearching(false)
@@ -135,18 +138,19 @@ export default function AdminResidentsPage() {
           resident: result.resident,
         })
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Unable to load resident",
           description: result.error || "Failed to load resident details",
-          variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Error loading resident details:", error)
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Unable to load resident",
         description: "Failed to load resident details",
-        variant: "destructive",
+        error,
       })
     } finally {
       setIsLoadingResident(false)
@@ -172,24 +176,25 @@ export default function AdminResidentsPage() {
     try {
       const result = await deleteResidentAction(deleteDialog.resident.uid)
       if (result.success) {
-        toast({
-          title: "Success",
+        toastSuccess({
+          toast,
           description: "Resident deleted successfully",
         })
         loadResidents() // Reload the residents list
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Delete failed",
           description: result.error || "Failed to delete resident",
-          variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Error deleting resident:", error)
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Delete failed",
         description: "An unexpected error occurred while deleting resident",
-        variant: "destructive",
+        error,
       })
     } finally {
       setIsDeleting(false)
@@ -201,24 +206,25 @@ export default function AdminResidentsPage() {
     try {
       const result = await updateResidentStatusAction(uid, status)
       if (result.success) {
-        toast({
-          title: "Success",
+        toastSuccess({
+          toast,
           description: `Resident status updated to ${status}`,
         })
         loadResidents() // Reload the residents list
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Update failed",
           description: result.error || "Failed to update resident status",
-          variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Error updating resident status:", error)
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Update failed",
         description: "An unexpected error occurred while updating status",
-        variant: "destructive",
+        error,
       })
     }
   }

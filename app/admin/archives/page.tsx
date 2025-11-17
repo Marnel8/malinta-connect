@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/archives";
 import type { ArchivePath } from "@/lib/archive-manager";
 import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -162,18 +163,19 @@ export default function AdminArchivesPage() {
           }))
         );
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Unable to load archives",
           description: result.error || "Failed to load archives.",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Failed to load archives:", error);
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Unable to load archives",
         description: "Failed to load archives.",
-        variant: "destructive",
+        error,
       });
     } finally {
       setIsLoading(false);
@@ -232,7 +234,8 @@ export default function AdminArchivesPage() {
     try {
       const result = await restoreArchivedItemAction(item.entity, item.id);
       if (result.success) {
-        toast({
+        toastSuccess({
+          toast,
           title: "Restored",
           description: `${getEntityLabel(
             item.entity
@@ -240,18 +243,19 @@ export default function AdminArchivesPage() {
         });
         loadArchives();
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Restore failed",
           description: result.error || "Failed to restore the archived item.",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Failed to restore archived item:", error);
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Restore failed",
         description: "Failed to restore the archived item.",
-        variant: "destructive",
+        error,
       });
     } finally {
       setActionState((state) =>
@@ -266,7 +270,8 @@ export default function AdminArchivesPage() {
     try {
       const result = await deleteArchivedItemAction(item.entity, item.id);
       if (result.success) {
-        toast({
+        toastSuccess({
+          toast,
           title: "Deleted",
           description: `${getEntityLabel(
             item.entity
@@ -274,18 +279,19 @@ export default function AdminArchivesPage() {
         });
         loadArchives();
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Delete failed",
           description: result.error || "Failed to delete the archived item.",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Failed to delete archived item:", error);
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Delete failed",
         description: "Failed to delete the archived item.",
-        variant: "destructive",
+        error,
       });
     } finally {
       setActionState((state) =>

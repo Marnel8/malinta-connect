@@ -42,6 +42,11 @@ import { useLanguage } from "@/contexts/language-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
+  toastError,
+  toastSuccess,
+  toastWarning,
+} from "@/lib/toast-presets";
+import {
   getBlotterEntriesForUserAction,
   createBlotterEntryAction,
   type BlotterEntry,
@@ -134,20 +139,20 @@ export default function BlotterPage() {
   const handleProofImageUpload = async (file: File) => {
     // Check file type
     if (!file.type.startsWith("image/")) {
-      toast({
+      toastWarning({
+        toast,
         title: "Invalid file type",
         description: "Please upload an image file (JPG, PNG, or WebP)",
-        variant: "destructive",
       });
       return;
     }
 
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast({
+      toastWarning({
+        toast,
         title: "File too large",
         description: "Please upload an image smaller than 10MB",
-        variant: "destructive",
       });
       return;
     }
@@ -164,25 +169,26 @@ export default function BlotterPage() {
             ...prev,
             proofImageUrl: res.url,
           }));
-          toast({
-            title: "Image uploaded successfully",
+          toastSuccess({
+            toast,
             description: "Proof image has been uploaded",
           });
         } else {
           console.error("Image upload failed:", res.error);
-          toast({
+          toastError({
+            toast,
             title: "Upload failed",
             description: res.error || "Failed to upload image",
-            variant: "destructive",
           });
           setProofImagePreview(null);
         }
       } catch (error) {
         console.error("Image upload error:", error);
-        toast({
+        toastError({
+          toast,
           title: "Upload failed",
           description: "Failed to upload image",
-          variant: "destructive",
+          error,
         });
         setProofImagePreview(null);
       } finally {
@@ -219,18 +225,19 @@ export default function BlotterPage() {
         setBlotterEntries(result.entries);
       } else {
         console.error("Failed to load blotter entries:", result.error);
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Unable to load entries",
           description: result.error || "Failed to load blotter entries",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error loading blotter entries:", error);
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Unable to load entries",
         description: "Failed to load blotter entries",
-        variant: "destructive",
+        error,
       });
     } finally {
       setLoading(false);
@@ -254,10 +261,10 @@ export default function BlotterPage() {
     // Check if user is authenticated
     if (!user || !userProfile) {
       console.error("Blotter report failed: User not authenticated");
-      toast({
-        title: "Authentication Required",
+      toastWarning({
+        toast,
+        title: "Authentication required",
         description: "Please log in to file a blotter report",
-        variant: "destructive",
       });
       return;
     }
@@ -273,8 +280,8 @@ export default function BlotterPage() {
             "Blotter report created successfully with ID:",
             result.entryId
           );
-          toast({
-            title: "Success",
+          toastSuccess({
+            toast,
             description: `New blotter report created with ID: ${result.entryId}`,
           });
           // Reset form but keep user info
@@ -302,18 +309,19 @@ export default function BlotterPage() {
           await loadBlotterEntries(user.uid);
         } else {
           console.error("Failed to create blotter report:", result.error);
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Submission failed",
             description: result.error || "Failed to create blotter report",
-            variant: "destructive",
           });
         }
       } catch (error) {
         console.error("Error creating blotter report:", error);
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Submission failed",
           description: "Failed to create blotter report",
-          variant: "destructive",
+          error,
         });
       }
     });

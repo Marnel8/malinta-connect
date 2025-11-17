@@ -58,6 +58,11 @@ import {
 import { useLanguage } from "@/contexts/language-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import {
+  toastError,
+  toastSuccess,
+  toastWarning,
+} from "@/lib/toast-presets";
 import { requestForToken } from "@/app/firebase/firebase";
 import { useFCMToken } from "@/hooks/use-fcm-token";
 import {
@@ -113,19 +118,20 @@ export default function AppointmentsPage() {
           setUserAppointments(result.appointments);
         } else {
           console.error("Failed to load appointments:", result.error);
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Unable to load appointments",
             description: result.error || "Failed to load appointments",
-            variant: "destructive",
           });
           setUserAppointments([]);
         }
       } catch (error) {
         console.error("Error loading appointments:", error);
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Unable to load appointments",
           description: "Failed to load appointments",
-          variant: "destructive",
+          error,
         });
         setUserAppointments([]);
       } finally {
@@ -185,10 +191,10 @@ export default function AppointmentsPage() {
     // Check if user is authenticated
     if (!user || !userProfile) {
       console.error("Appointment scheduling failed: User not authenticated");
-      toast({
-        title: "Authentication Required",
+      toastWarning({
+        toast,
+        title: "Authentication required",
         description: "Please log in to schedule an appointment",
-        variant: "destructive",
       });
       return;
     }
@@ -203,10 +209,10 @@ export default function AppointmentsPage() {
       !email
     ) {
       console.error("Appointment scheduling failed: Missing required fields");
-      toast({
-        title: "Error",
+      toastWarning({
+        toast,
+        title: "Missing information",
         description: "Please fill in all required fields",
-        variant: "destructive",
       });
       return;
     }
@@ -231,11 +237,9 @@ export default function AppointmentsPage() {
           "Appointment scheduled successfully with ID:",
           result.appointmentId
         );
-        toast({
-          title: "Success",
-          description:
-            "Appointment scheduled successfully! Reference: " +
-            result.appointmentId,
+        toastSuccess({
+          toast,
+          description: `Appointment scheduled successfully! Reference: ${result.appointmentId}`,
         });
         // Reset form but keep user info
         setDate(undefined);
@@ -257,18 +261,19 @@ export default function AppointmentsPage() {
         await loadAppointments(user.uid);
       } else {
         console.error("Appointment scheduling failed:", result.error);
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Scheduling failed",
           description: result.error || "Failed to schedule appointment",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Appointment scheduling error:", error);
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Scheduling failed",
         description: "Failed to schedule appointment",
-        variant: "destructive",
+        error,
       });
     } finally {
       setLoading(false);
@@ -329,10 +334,10 @@ export default function AppointmentsPage() {
 
   const handleCancelAppointment = async (appointmentId: string) => {
     if (!user?.uid) {
-      toast({
-        title: "Error",
+      toastWarning({
+        toast,
+        title: "Authentication required",
         description: "You must be logged in to cancel appointments",
-        variant: "destructive",
       });
       return;
     }
@@ -344,24 +349,25 @@ export default function AppointmentsPage() {
         "cancelled"
       );
       if (result.success) {
-        toast({
-          title: "Success",
+        toastSuccess({
+          toast,
           description: "Appointment cancelled successfully",
         });
         await loadAppointments(user.uid);
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Cancellation failed",
           description: result.error || "Failed to cancel appointment",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error cancelling appointment:", error);
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Cancellation failed",
         description: "Failed to cancel appointment",
-        variant: "destructive",
+        error,
       });
     } finally {
       setCancelLoading(null);
@@ -379,19 +385,19 @@ export default function AppointmentsPage() {
 
   const handleRescheduleAppointment = async () => {
     if (!user?.uid || !selectedAppointment) {
-      toast({
-        title: "Error",
+      toastWarning({
+        toast,
+        title: "Authentication required",
         description: "You must be logged in to reschedule appointments",
-        variant: "destructive",
       });
       return;
     }
 
     if (!rescheduleDate || !rescheduleTime) {
-      toast({
-        title: "Error",
+      toastWarning({
+        toast,
+        title: "Missing information",
         description: "Please select both date and time",
-        variant: "destructive",
       });
       return;
     }
@@ -403,10 +409,10 @@ export default function AppointmentsPage() {
     selectedDate.setHours(0, 0, 0, 0);
 
     if (selectedDate < today) {
-      toast({
-        title: "Error",
+      toastWarning({
+        toast,
+        title: "Invalid date",
         description: "Please select a future date",
-        variant: "destructive",
       });
       return;
     }
@@ -420,8 +426,8 @@ export default function AppointmentsPage() {
         status: "pending",
       });
       if (result.success) {
-        toast({
-          title: "Success",
+        toastSuccess({
+          toast,
           description: "Appointment rescheduled successfully",
         });
         setRescheduleDialogOpen(false);
@@ -430,18 +436,19 @@ export default function AppointmentsPage() {
         setRescheduleTime("");
         await loadAppointments(user.uid);
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Reschedule failed",
           description: result.error || "Failed to reschedule appointment",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error rescheduling appointment:", error);
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Reschedule failed",
         description: "Failed to reschedule appointment",
-        variant: "destructive",
+        error,
       });
     } finally {
       setRescheduleLoading(false);

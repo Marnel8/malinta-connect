@@ -1,6 +1,7 @@
 "use server";
 
-import { adminDatabase } from "@/app/firebase/admin";
+import { adminDatabase, adminAuth } from "@/app/firebase/admin";
+import { sendPasswordResetEmail } from "@/mails";
 
 export interface UserProfile {
 	uid: string;
@@ -298,6 +299,79 @@ export async function getCurrentUserProfileAction(
 		return {
 			success: false,
 			error: "Failed to get current user profile. Please try again.",
+		};
+	}
+}
+
+export async function requestPasswordResetAction(
+	email: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
+	try {
+		const normalizedEmail = email?.trim().toLowerCase();
+
+		if (!normalizedEmail) {
+			return { success: false, error: "Email address is required." };
+		}
+
+		let userRecord;
+		try {
+			userRecord = await adminAuth.getUserByEmail(normalizedEmail);
+		} catch (error: any) {
+			if (error?.code === "auth/user-not-found") {
+				return {
+					success: false,
+					error: "No account found with this email address.",
+				};
+			}
+			throw error;
+		}
+
+		const redirectBase =
+			process.env.NEXT_PUBLIC_APP_URL ||
+			process.env.APP_URL ||
+			"https://malinta-connect.vercel.app";
+
+		const resetLink = await adminAuth.generatePasswordResetLink(
+			normalizedEmail,
+			{
+				url: `${redirectBase.replace(/\/$/, "")}/login`,
+			}
+		);
+
+		const profile = await getUserProfileAction(userRecord.uid);
+		const fullName =
+			profile &&
+			[profile.firstName, profile.middleName, profile.lastName, profile.suffix]
+				.filter(Boolean)
+				.join(" ");
+
+		const emailSent = await sendPasswordResetEmail(normalizedEmail, {
+			residentName: fullName || userRecord.displayName || undefined,
+			email: normalizedEmail,
+			resetLink,
+			expiresInHours: process.env.PASSWORD_RESET_LINK_EXPIRY_HOURS || "1",
+			supportEmail:
+				process.env.SUPPORT_EMAIL ||
+				process.env.CONTACT_EMAIL ||
+				"support@barangay.gov",
+		});
+
+		if (!emailSent) {
+			return {
+				success: false,
+				error: "Failed to send reset email. Please try again later.",
+			};
+		}
+
+		return {
+			success: true,
+			message: "Password reset link sent. Please check your inbox.",
+		};
+	} catch (error) {
+		console.error("requestPasswordResetAction error:", error);
+		return {
+			success: false,
+			error: "Unable to process the request right now. Please try again later.",
 		};
 	}
 }

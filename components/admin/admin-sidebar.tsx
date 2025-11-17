@@ -48,6 +48,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 
 export function AdminSidebar() {
 	const pathname = usePathname();
@@ -135,23 +136,21 @@ export function AdminSidebar() {
 
 	const handleLogout = async () => {
 		try {
-			// Sign out from Firebase
 			await signOut(auth);
-
-			// Clear local auth state
 			logout();
 			router.push("/login");
-			toast({
-				title: "Logged Out",
+			toastSuccess({
+				toast,
+				title: "Logged out",
 				description: "You have been successfully logged out.",
-				variant: "default",
 			});
 		} catch (error) {
 			console.error("Logout error:", error);
-			toast({
-				title: "Logout Failed",
+			toastError({
+				toast,
+				title: "Logout failed",
 				description: "An error occurred during logout. Please try again.",
-				variant: "destructive",
+				error,
 			});
 		}
 	};

@@ -12,6 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import {
+  toastError,
+  toastSuccess,
+  toastWarning,
+} from "@/lib/toast-presets";
 import { Loader2, FileText } from "lucide-react";
 import {
   type Certificate,
@@ -74,10 +79,10 @@ export function CertificateGeneratorModal({
       }
     } catch (error) {
       console.error("Error loading certificate settings:", error);
-      toast({
-        title: "Warning",
+      toastWarning({
+        toast,
+        title: "Using default settings",
         description: "Could not load certificate settings. Using defaults.",
-        variant: "default",
       });
     } finally {
       setLoadingSettings(false);
@@ -137,17 +142,17 @@ export function CertificateGeneratorModal({
       // Mark as ready
       setCertificateReady(true);
 
-      toast({
-        title: "Success",
+      toastSuccess({
+        toast,
         description:
           "Certificate ready for printing. Click Print Certificate to open the print dialog.",
       });
     } catch (error) {
       console.error("Error generating certificate:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate certificate",
-        variant: "destructive",
+      toastError({
+        toast,
+        title: "Generation failed",
+        error,
       });
     } finally {
       setIsGenerating(false);
@@ -156,10 +161,10 @@ export function CertificateGeneratorModal({
 
   const handlePrint = () => {
     if (!certificateReady) {
-      toast({
-        title: "Error",
-        description: "Please generate the certificate first",
-        variant: "destructive",
+      toastWarning({
+        toast,
+        title: "Generate first",
+        description: "Please generate the certificate before printing.",
       });
       return;
     }
@@ -170,10 +175,10 @@ export function CertificateGeneratorModal({
       openCertificatePrintWindow(html);
     } catch (error) {
       console.error("Error printing certificate:", error);
-      toast({
-        title: "Error",
-        description: "Failed to open print dialog",
-        variant: "destructive",
+      toastError({
+        toast,
+        title: "Print failed",
+        error,
       });
     }
   };

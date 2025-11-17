@@ -22,7 +22,7 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import { createCertificateAction } from "@/app/actions/certificates";
 
 const certificateTypes = [
@@ -122,7 +122,6 @@ interface CertificateFormData {
 }
 
 export function CertificateForm() {
-	const { toast } = useToast();
 	const [open, setOpen] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [formData, setFormData] = useState<CertificateFormData>({
@@ -160,11 +159,10 @@ export function CertificateForm() {
 			!formData.emailToNotify ||
 			!formData.purpose
 		) {
-			toast({
-				title: "Error",
+			toastError({
+				title: "Missing information",
 				description:
-					"Please fill in all required fields (type, requested by, email, and purpose)",
-				variant: "destructive",
+					"Please complete the type, requested by, email, and purpose fields.",
 			});
 			return;
 		}
@@ -199,9 +197,9 @@ export function CertificateForm() {
 			});
 
 			if (result.success) {
-				toast({
-					title: "Success",
-					description: "Certificate request created successfully",
+				toastSuccess({
+					title: "Certificate queued",
+					description: "Certificate request created successfully.",
 				});
 
 				// Reset form and close dialog
@@ -235,17 +233,15 @@ export function CertificateForm() {
 				// Trigger a page refresh or callback to update the list
 				window.location.reload();
 			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to create certificate request",
-					variant: "destructive",
+				toastError({
+					title: "Unable to create request",
+					description: result.error || "Failed to create certificate request.",
 				});
 			}
 		} catch (error) {
-			toast({
-				title: "Error",
-				description: "Failed to create certificate request",
-				variant: "destructive",
+			toastError({
+				title: "Unable to create request",
+				description: "Something went wrong while saving the certificate.",
 			});
 		} finally {
 			setLoading(false);

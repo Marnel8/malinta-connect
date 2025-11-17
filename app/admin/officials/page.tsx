@@ -36,6 +36,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess, toastWarning } from "@/lib/toast-presets";
 import Image from "next/image";
 import { 
 	getAllOfficialsAction, 
@@ -80,17 +81,18 @@ export default function OfficialsManagementPage() {
 			if (result.success && result.officials) {
 				setOfficials(result.officials);
 			} else {
-				toast({
+				toastError({
+					toast,
 					title: t("admin.error"),
 					description: result.error || "Failed to load officials",
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
-			toast({
+			toastError({
+				toast,
 				title: t("admin.error"),
 				description: "Failed to load officials",
-				variant: "destructive",
+				error,
 			});
 		} finally {
 			setIsLoading(false);
@@ -105,17 +107,18 @@ export default function OfficialsManagementPage() {
 			if (result.success && result.officials) {
 				setOfficials(result.officials);
 			} else {
-				toast({
+				toastError({
+					toast,
 					title: t("admin.error"),
 					description: result.error || "Failed to search officials",
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
-			toast({
+			toastError({
+				toast,
 				title: t("admin.error"),
 				description: "Failed to search officials",
-				variant: "destructive",
+				error,
 			});
 		} finally {
 			setIsLoading(false);
@@ -128,20 +131,20 @@ export default function OfficialsManagementPage() {
 		if (file) {
 			// Validate file type
 			if (!file.type.startsWith("image/")) {
-				toast({
+				toastWarning({
+					toast,
 					title: "Invalid file type",
 					description: "Please select an image file (JPG, PNG, GIF, WebP)",
-					variant: "destructive",
 				});
 				return;
 			}
 
 			// Validate file size (10MB limit)
 			if (file.size > 10 * 1024 * 1024) {
-				toast({
+				toastWarning({
+					toast,
 					title: "File too large",
 					description: "Please select an image smaller than 10MB",
-					variant: "destructive",
 				});
 				return;
 			}
@@ -185,7 +188,8 @@ export default function OfficialsManagementPage() {
 			}
 
 			if (result.success) {
-				toast({
+				toastSuccess({
+					toast,
 					title: t("admin.success"),
 					description: currentOfficial 
 						? t("admin.officials.updateSuccess") 
@@ -201,17 +205,18 @@ export default function OfficialsManagementPage() {
 				setSelectedPosition("councilor");
 				await loadOfficials();
 			} else {
-				toast({
+				toastError({
+					toast,
 					title: t("admin.error"),
 					description: result.error || "Failed to save official",
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
-			toast({
+			toastError({
+				toast,
 				title: t("admin.error"),
 				description: "Failed to save official",
-				variant: "destructive",
+				error,
 			});
 		} finally {
 			setIsSubmitting(false);
@@ -226,7 +231,8 @@ export default function OfficialsManagementPage() {
 		try {
 			const result = await deleteOfficialAction(currentOfficial.id);
 			if (result.success) {
-				toast({
+				toastSuccess({
+					toast,
 					title: t("admin.success"),
 					description: t("admin.officials.deleteSuccess"),
 				});
@@ -235,17 +241,18 @@ export default function OfficialsManagementPage() {
 				setCurrentOfficial(null);
 				await loadOfficials();
 			} else {
-				toast({
+				toastError({
+					toast,
 					title: t("admin.error"),
 					description: result.error || "Failed to delete official",
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
-			toast({
+			toastError({
+				toast,
 				title: t("admin.error"),
 				description: "Failed to delete official",
-				variant: "destructive",
+				error,
 			});
 		} finally {
 			setIsDeleting(false);

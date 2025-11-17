@@ -18,6 +18,11 @@ import { Switch } from "@/components/ui/switch"
 import { useLanguage } from "@/contexts/language-context"
 import { useToast } from "@/hooks/use-toast"
 import {
+  toastError,
+  toastSuccess,
+  toastWarning,
+} from "@/lib/toast-presets"
+import {
   getSettings,
   updateBarangayInfo,
   updateOfficeHours,
@@ -123,10 +128,11 @@ export default function AdminSettingsPage() {
         }
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Settings unavailable",
         description: "Failed to load settings",
-        variant: "destructive"
+        error,
       })
     } finally {
       setLoading(false)
@@ -138,15 +144,16 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true)
       await updateBarangayInfo(barangayForm)
-      toast({
-        title: "Success",
-        description: "Barangay information updated successfully"
+      toastSuccess({
+        toast,
+        description: "Barangay information updated successfully",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Update failed",
         description: "Failed to update barangay information",
-        variant: "destructive"
+        error,
       })
     } finally {
       setSaving(false)
@@ -158,15 +165,16 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true)
       await updateOfficeHours(officeHoursForm)
-      toast({
-        title: "Success",
-        description: "Office hours updated successfully"
+      toastSuccess({
+        toast,
+        description: "Office hours updated successfully",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Update failed",
         description: "Failed to update office hours",
-        variant: "destructive"
+        error,
       })
     } finally {
       setSaving(false)
@@ -178,15 +186,16 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true)
       await updateNotificationSettings(notificationForm)
-      toast({
-        title: "Success",
-        description: "Notification settings updated successfully"
+      toastSuccess({
+        toast,
+        description: "Notification settings updated successfully",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Update failed",
         description: "Failed to update notification settings",
-        variant: "destructive"
+        error,
       })
     } finally {
       setSaving(false)
@@ -198,15 +207,16 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true)
       await updateUserRoleSettings(userRolesForm)
-      toast({
-        title: "Success",
-        description: "User role settings updated successfully"
+      toastSuccess({
+        toast,
+        description: "User role settings updated successfully",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Update failed",
         description: "Failed to update user role settings",
-        variant: "destructive"
+        error,
       })
     } finally {
       setSaving(false)
@@ -218,17 +228,17 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true)
       await updateCertificateSettings(certificateForm)
-      toast({
-        title: "Success",
-        description: "Certificate settings updated successfully"
+      toastSuccess({
+        toast,
+        description: "Certificate settings updated successfully",
       })
-      // Reload settings to get updated data
       await loadSettings()
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Update failed",
         description: "Failed to update certificate settings",
-        variant: "destructive"
+        error,
       })
     } finally {
       setSaving(false)
@@ -243,20 +253,20 @@ export default function AdminSettingsPage() {
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Error",
+      toastWarning({
+        toast,
+        title: "Invalid file",
         description: "Please select an image file for the signature",
-        variant: "destructive"
       })
       return
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Error",
+      toastWarning({
+        toast,
+        title: "File too large",
         description: "File size must be less than 5MB",
-        variant: "destructive"
       })
       return
     }
@@ -270,22 +280,23 @@ export default function AdminSettingsPage() {
           ...prev,
           signatureUrl: result.signatureUrl
         }))
-        toast({
-          title: "Success",
-          description: "Signature uploaded successfully"
+        toastSuccess({
+          toast,
+          description: "Signature uploaded successfully",
         })
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Upload failed",
           description: result.error || "Failed to upload signature",
-          variant: "destructive"
         })
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Upload failed",
         description: "Failed to upload signature",
-        variant: "destructive"
+        error,
       })
     } finally {
       setIsUploadingSignature(false)
@@ -311,15 +322,16 @@ export default function AdminSettingsPage() {
       
       await updateAllSettings(updatedSettings)
       setSettings(updatedSettings)
-      toast({
-        title: "Success",
-        description: "All settings saved successfully"
+      toastSuccess({
+        toast,
+        description: "All settings saved successfully",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Save failed",
         description: "Failed to save all settings",
-        variant: "destructive"
+        error,
       })
     } finally {
       setSaving(false)

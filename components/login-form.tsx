@@ -19,7 +19,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/contexts/language-context";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
+import { toastError } from "@/lib/toast-presets";
 import { useAuth } from "@/contexts/auth-context";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/app/firebase/firebase";
@@ -46,7 +46,6 @@ export function LoginForm({
 	const [showPassword, setShowPassword] = useState(false);
 	const { t } = useLanguage();
 	const router = useRouter();
-	const { toast } = useToast();
 	const { updateUserProfile } = useAuth();
 
 	const form = useForm<z.infer<typeof formSchema>>({
@@ -91,11 +90,10 @@ export function LoginForm({
 					} else {
 						// User tried to login as resident but is an official
 					
-						toast({
-							title: "Access Denied",
+						toastError({
+							title: "Access denied",
 							description:
 								"This account is for officials only. Please use the official login tab.",
-							variant: "destructive",
 						});
 						setIsLoading(false);
 						return;
@@ -108,11 +106,10 @@ export function LoginForm({
 					} else {
 						// User tried to login as official but is a resident
 					
-						toast({
-							title: "Access Denied",
+						toastError({
+							title: "Access denied",
 							description:
 								"This account is for residents only. Please use the resident login tab.",
-							variant: "destructive",
 						});
 						setIsLoading(false);
 						return;
@@ -123,12 +120,11 @@ export function LoginForm({
 				onLogin();
 			} else {
 		
-				toast({
-					title: "Login Failed",
+				toastError({
+					title: "Login failed",
 					description:
 						profileResult.error ||
-						"Failed to get user profile. Please try again.",
-					variant: "destructive",
+						"Failed to get your profile. Please try again.",
 				});
 
 				// Sign out the user if verification failed
@@ -150,10 +146,9 @@ export function LoginForm({
 				errorMessage = "Too many failed attempts. Please try again later.";
 			}
 
-			toast({
-				title: "Login Failed",
+			toastError({
+				title: "Login failed",
 				description: errorMessage,
-				variant: "destructive",
 			});
 		} finally {
 			setIsLoading(false);

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/contexts/language-context"
-import { useToast } from "@/hooks/use-toast"
+import { toastError, toastSuccess } from "@/lib/toast-presets"
 import {
   getAllAnalytics,
   type OverviewStats,
@@ -51,7 +51,6 @@ import {
 
 export default function AdminAnalyticsPage() {
   const { t } = useLanguage()
-  const { toast } = useToast()
   
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -80,10 +79,9 @@ export default function AdminAnalyticsPage() {
     } catch (error) {
       console.error("Error loading analytics:", error)
       setError("Failed to load analytics data")
-      toast({
+      toastError({
         title: "Error",
-        description: "Failed to load analytics data",
-        variant: "destructive"
+        description: "Failed to load analytics data"
       })
     } finally {
       setLoading(false)
@@ -94,15 +92,14 @@ export default function AdminAnalyticsPage() {
     try {
       setRefreshing(true)
       await loadAnalytics()
-      toast({
+      toastSuccess({
         title: "Success",
         description: "Analytics data refreshed successfully"
       })
     } catch (error) {
-      toast({
+      toastError({
         title: "Error",
-        description: "Failed to refresh analytics data",
-        variant: "destructive"
+        description: "Failed to refresh analytics data"
       })
     } finally {
       setRefreshing(false)

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguage } from "@/contexts/language-context";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastInfo, toastSuccess, toastWarning } from "@/lib/toast-presets";
 import { useTheme } from "next-themes";
 import { useNotificationSettingsListener } from "@/hooks/use-notification-settings-listener";
 import { useFCMToken } from "@/hooks/use-fcm-token";
@@ -57,7 +57,6 @@ import { auth } from "@/app/firebase/firebase";
 export default function SettingsPage() {
 	const { user, userProfile } = useAuth();
 	const { t, language, setLanguage } = useLanguage();
-	const { toast } = useToast();
 	const { theme, setTheme } = useTheme();
 	const router = useRouter();
 	const { systemNotificationsEnabled, loading: settingsLoading } = useNotificationSettingsListener();
@@ -152,19 +151,17 @@ export default function SettingsPage() {
 
 		// Validate passwords
 		if (passwordData.newPassword !== passwordData.confirmPassword) {
-			toast({
-				title: "Password Mismatch",
+			toastError({
+				title: "Password mismatch",
 				description: "New password and confirm password do not match.",
-				variant: "destructive",
 			});
 			return;
 		}
 
 		if (passwordData.newPassword.length < 6) {
-			toast({
-				title: "Weak Password",
+			toastError({
+				title: "Weak password",
 				description: "Password must be at least 6 characters long.",
-				variant: "destructive",
 			});
 			return;
 		}
@@ -182,10 +179,9 @@ export default function SettingsPage() {
 			// Update password
 			await updatePassword(user, passwordData.newPassword);
 
-			toast({
-				title: "Password Updated",
+			toastSuccess({
+				title: "Password updated",
 				description: "Your password has been updated successfully.",
-				variant: "default",
 			});
 
 			// Clear form
@@ -208,10 +204,9 @@ export default function SettingsPage() {
 				errorMessage = "Please log in again to change your password.";
 			}
 
-			toast({
-				title: "Password Update Failed",
+			toastError({
+				title: "Password update failed",
 				description: errorMessage,
-				variant: "destructive",
 			});
 		} finally {
 			setIsLoading(false);
@@ -230,10 +225,9 @@ export default function SettingsPage() {
 			// Handle push notification changes
 			if (!preferences.pushNotifications && hasToken) {
 				clearToken();
-				toast({
-					title: "Push Notifications Disabled",
-					description: "You will no longer receive push notifications",
-					variant: "default",
+				toastInfo({
+					title: "Push notifications disabled",
+					description: "You will no longer receive push notifications.",
 				});
 			}
 
@@ -243,20 +237,18 @@ export default function SettingsPage() {
 			// Reset unsaved changes flag
 			setHasUnsavedChanges(false);
 
-			toast({
+			toastSuccess({
 				title: t("settings.success") || "Success",
 				description:
 					t("settings.preferencesUpdated") ||
 					"Your preferences have been updated successfully.",
-				variant: "default",
 			});
 		} catch (error) {
-			toast({
+			toastError({
 				title: t("settings.error") || "Error",
 				description:
 					t("settings.preferencesUpdateFailed") ||
 					"Failed to update preferences. Please try again.",
-				variant: "destructive",
 			});
 		} finally {
 			setIsLoading(false);
@@ -281,12 +273,11 @@ export default function SettingsPage() {
 			clearToken();
 		}
 		
-		toast({
-			title: t("settings.preferencesReset") || "Preferences Reset",
+		toastInfo({
+			title: t("settings.preferencesReset") || "Preferences reset",
 			description:
 				t("settings.preferencesResetDesc") ||
 				"Preferences have been reset to default values.",
-			variant: "default",
 		});
 	};
 
@@ -579,20 +570,18 @@ export default function SettingsPage() {
 										checked={preferences.pushNotifications && systemNotificationsEnabled}
 										onCheckedChange={(checked) => {
 											if (!systemNotificationsEnabled) {
-												toast({
-													title: "Push Notifications Disabled",
-													description: "Push notifications are disabled system-wide by administrators",
-													variant: "destructive"
+												toastWarning({
+													title: "Push notifications disabled",
+													description: "Notifications are disabled system-wide by administrators.",
 												});
 												return;
 											}
 											handlePreferenceChange("pushNotifications", checked);
 											if (!checked && hasToken) {
 												clearToken();
-												toast({
-													title: "Push Notifications Disabled",
-													description: "You will no longer receive push notifications",
-													variant: "default"
+												toastInfo({
+													title: "Push notifications disabled",
+													description: "You will no longer receive push notifications.",
 												});
 											}
 										}}

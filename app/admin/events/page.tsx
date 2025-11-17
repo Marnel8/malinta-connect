@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import Image from "next/image";
 import {
 	getAllEventsAction,
@@ -62,7 +62,6 @@ const formatEventDate = (dateString: string): string => {
 
 export default function EventsManagementPage() {
 	const { t } = useLanguage();
-	const { toast } = useToast();
 	const [events, setEvents] = useState<Event[]>([]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [categoryFilter, setCategoryFilter] = useState("all");
@@ -101,17 +100,15 @@ export default function EventsManagementPage() {
 			if (result.success && result.events) {
 				setEvents(result.events);
 			} else {
-				toast({
+				toastError({
 					title: t("admin.error"),
 					description: result.error || t("admin.events.loadError"),
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
-			toast({
+			toastError({
 				title: t("admin.error"),
 				description: t("admin.events.loadError"),
-				variant: "destructive",
 			});
 		} finally {
 			setIsLoading(false);
@@ -135,24 +132,22 @@ export default function EventsManagementPage() {
 		try {
 			const result = await createEventAction(eventData);
 			if (result.success) {
-				toast({
+				toastSuccess({
 					title: t("admin.success"),
 					description: t("admin.events.saveSuccess"),
 				});
 				setIsAddEventOpen(false);
 				loadEvents(); // Reload events to show the new one
 			} else {
-				toast({
+				toastError({
 					title: t("admin.error"),
 					description: result.error || t("admin.events.saveError"),
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
-			toast({
+			toastError({
 				title: t("admin.error"),
 				description: t("admin.events.saveError"),
-				variant: "destructive",
 			});
 		} finally {
 			setIsSubmitting(false);
@@ -164,24 +159,22 @@ export default function EventsManagementPage() {
 		try {
 			const result = await updateEventAction(eventData);
 			if (result.success) {
-				toast({
+				toastSuccess({
 					title: t("admin.success"),
 					description: t("admin.events.updateSuccess"),
 				});
 				setIsAddEventOpen(false);
 				loadEvents(); // Reload events to show the updated one
 			} else {
-				toast({
+				toastError({
 					title: t("admin.error"),
 					description: result.error || t("admin.events.updateError"),
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
-			toast({
+			toastError({
 				title: t("admin.error"),
 				description: t("admin.events.updateError"),
-				variant: "destructive",
 			});
 		} finally {
 			setIsSubmitting(false);
@@ -196,7 +189,7 @@ export default function EventsManagementPage() {
 		try {
 			const result = await deleteEventAction(currentEvent.id);
 			if (result.success) {
-				toast({
+				toastSuccess({
 					title: t("admin.success"),
 					description: t("admin.events.deleteSuccess"),
 				});
@@ -204,17 +197,15 @@ export default function EventsManagementPage() {
 				setCurrentEvent(null);
 				loadEvents(); // Reload events to remove the deleted one
 			} else {
-				toast({
+				toastError({
 					title: t("admin.error"),
 					description: result.error || t("admin.events.deleteError"),
-					variant: "destructive",
 				});
 			}
 		} catch (error) {
-			toast({
+			toastError({
 				title: t("admin.error"),
 				description: t("admin.events.deleteError"),
-				variant: "destructive",
 			});
 		} finally {
 			setIsDeleting(false);

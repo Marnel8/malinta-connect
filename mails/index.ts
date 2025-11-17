@@ -49,6 +49,14 @@ interface CertificateReadyData extends CertificateRequestData {
 	pickupHours: string;
 }
 
+export interface PasswordResetEmailData {
+	residentName?: string;
+	email: string;
+	resetLink: string;
+	expiresInHours?: string;
+	supportEmail?: string;
+}
+
 // Create transporter using environment variables
 const createTransporter = (): nodemailer.Transporter => {
 	const config: EmailConfig = {
@@ -658,6 +666,39 @@ export const sendAccountRejectedEmail = async (
 		return await sendEmail({ to, subject, html });
 	} catch (error) {
 		console.error("Error sending account rejected email:", error);
+		return false;
+	}
+};
+
+export const sendPasswordResetEmail = async (
+	to: string,
+	data: PasswordResetEmailData
+): Promise<boolean> => {
+	try {
+		const template = readTemplate("password-reset");
+		const html = renderTemplate(template, {
+			residentName: data.residentName || data.email,
+			email: data.email,
+			resetLink: data.resetLink,
+			expiresInHours: data.expiresInHours || "1",
+			supportEmail:
+				data.supportEmail ||
+				process.env.SUPPORT_EMAIL ||
+				process.env.CONTACT_EMAIL ||
+				"support@barangay.gov",
+			appUrl:
+				process.env.NEXT_PUBLIC_APP_URL ||
+				process.env.APP_URL ||
+				"https://malinta-connect.vercel.app",
+		});
+
+		return await sendEmail({
+			to,
+			subject: "Reset your Malinta Connect password",
+			html,
+		});
+	} catch (error) {
+		console.error("Error sending password reset email:", error);
 		return false;
 	}
 };

@@ -12,7 +12,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Loader2, Crown, AlertTriangle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/app/firebase/firebase";
 import { createUserProfileAction } from "@/app/actions/auth";
@@ -21,14 +21,12 @@ export function QuickAdminCreation() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [email, setEmail] = useState("admin@barangay.gov");
 	const [password, setPassword] = useState("admin123456");
-	const { toast } = useToast();
 
 	const handleCreateAdmin = async () => {
 		if (!email || !password) {
-			toast({
-				title: "Missing Information",
+			toastError({
+				title: "Missing information",
 				description: "Please provide both email and password.",
-				variant: "destructive",
 			});
 			return;
 		}
@@ -57,20 +55,18 @@ export function QuickAdminCreation() {
 			);
 
 			if (profileResult.success) {
-				toast({
-					title: "Admin Account Created! 🎉",
-					description: `Admin account created successfully for ${email}. You can now log in with these credentials.`,
-					variant: "default",
+				toastSuccess({
+					title: "Admin account created",
+					description: `Admin account created successfully for ${email}.`,
 				});
 
 				// Clear form
 				setEmail("admin@barangay.gov");
 				setPassword("admin123456");
 			} else {
-				toast({
-					title: "Profile Creation Failed",
+				toastError({
+					title: "Profile creation failed",
 					description: profileResult.error || "Failed to create admin profile.",
-					variant: "destructive",
 				});
 			}
 		} catch (error: any) {
@@ -87,10 +83,9 @@ export function QuickAdminCreation() {
 				errorMessage = "Invalid email address.";
 			}
 
-			toast({
-				title: "Admin Creation Failed",
+			toastError({
+				title: "Admin creation failed",
 				description: errorMessage,
-				variant: "destructive",
 			});
 		} finally {
 			setIsLoading(false);

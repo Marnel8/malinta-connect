@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, UserPlus, CheckCircle, AlertCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ref, set } from "firebase/database";
 import { auth, database } from "@/app/firebase/firebase";
@@ -12,7 +12,6 @@ export function QuickRegister() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isSuccess, setIsSuccess] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const { toast } = useToast();
 
 	const handleQuickRegister = async () => {
 		setIsLoading(true);
@@ -57,8 +56,8 @@ export function QuickRegister() {
 			console.log("✅ User profile saved to database");
 
 			setIsSuccess(true);
-			toast({
-				title: "Registration Successful!",
+			toastSuccess({
+				title: "Registration successful",
 				description:
 					"Official user created with email: official@gmail.com, password: official123456",
 			});
@@ -77,10 +76,9 @@ export function QuickRegister() {
 			}
 
 			setError(errorMessage);
-			toast({
-				title: "Registration Failed",
+			toastError({
+				title: "Registration failed",
 				description: errorMessage,
-				variant: "destructive",
 			});
 		} finally {
 			setIsLoading(false);

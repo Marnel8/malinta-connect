@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -52,7 +52,6 @@ import {
 
 export default function AdminAnnouncementsPage() {
 	const { t } = useLanguage();
-	const { toast } = useToast();
 	const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [categoryFilter, setCategoryFilter] = useState("all");
@@ -82,17 +81,15 @@ export default function AdminAnnouncementsPage() {
 			if (result.success && result.announcements) {
 				setAnnouncements(result.announcements);
 			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to load announcements",
-					variant: "destructive",
+				toastError({
+					title: "Unable to load announcements",
+					description: result.error || "Please refresh and try again.",
 				});
 			}
 		} catch (error) {
-			toast({
-				title: "Error",
-				description: "Failed to load announcements",
-				variant: "destructive",
+			toastError({
+				title: "Unable to load announcements",
+				description: "We couldn't load announcements. Please try again.",
 			});
 		} finally {
 			setIsLoading(false);
@@ -127,27 +124,25 @@ export default function AdminAnnouncementsPage() {
 			}
 
 			if (result.success) {
-				toast({
-					title: "Success",
+				toastSuccess({
+					title: "Announcement saved",
 					description: currentAnnouncement
-						? "Announcement updated successfully"
-						: "Announcement created successfully",
+						? "Announcement updated successfully."
+						: "Announcement created successfully.",
 				});
 				setIsAddAnnouncementOpen(false);
 				setCurrentAnnouncement(null);
 				loadAnnouncements();
 			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to save announcement",
-					variant: "destructive",
+				toastError({
+					title: "Unable to save announcement",
+					description: result.error || "Failed to save announcement.",
 				});
 			}
 		} catch (error) {
-			toast({
-				title: "Error",
-				description: "Failed to save announcement",
-				variant: "destructive",
+			toastError({
+				title: "Unable to save announcement",
+				description: "Something went wrong while saving the announcement.",
 			});
 		} finally {
 			setIsSubmitting(false);
@@ -161,25 +156,23 @@ export default function AdminAnnouncementsPage() {
 		try {
 			const result = await deleteAnnouncementAction(currentAnnouncement.id);
 			if (result.success) {
-				toast({
-					title: "Success",
-					description: "Announcement deleted successfully",
+				toastSuccess({
+					title: "Announcement deleted",
+					description: "The announcement was removed successfully.",
 				});
 				setIsDeleteDialogOpen(false);
 				setCurrentAnnouncement(null);
 				loadAnnouncements();
 			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to delete announcement",
-					variant: "destructive",
+				toastError({
+					title: "Unable to delete announcement",
+					description: result.error || "Failed to delete announcement.",
 				});
 			}
 		} catch (error) {
-			toast({
-				title: "Error",
-				description: "Failed to delete announcement",
-				variant: "destructive",
+			toastError({
+				title: "Unable to delete announcement",
+				description: "Something went wrong while deleting the announcement.",
 			});
 		} finally {
 			setIsDeleting(false);
@@ -192,23 +185,21 @@ export default function AdminAnnouncementsPage() {
 		try {
 			const result = await publishAnnouncementAction(id);
 			if (result.success) {
-				toast({
-					title: "Success",
-					description: "Announcement published successfully",
+				toastSuccess({
+					title: "Announcement published",
+					description: "Residents can now see this announcement.",
 				});
 				loadAnnouncements();
 			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to publish announcement",
-					variant: "destructive",
+				toastError({
+					title: "Unable to publish announcement",
+					description: result.error || "Failed to publish announcement.",
 				});
 			}
 		} catch (error) {
-			toast({
-				title: "Error",
-				description: "Failed to publish announcement",
-				variant: "destructive",
+			toastError({
+				title: "Unable to publish announcement",
+				description: "Something went wrong while publishing.",
 			});
 		} finally {
 			setIsPublishing(false);
@@ -222,23 +213,21 @@ export default function AdminAnnouncementsPage() {
 		try {
 			const result = await unpublishAnnouncementAction(id);
 			if (result.success) {
-				toast({
-					title: "Success",
-					description: "Announcement unpublished successfully",
+				toastSuccess({
+					title: "Announcement unpublished",
+					description: "The announcement is now hidden from residents.",
 				});
 				loadAnnouncements();
 			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to unpublish announcement",
-					variant: "destructive",
+				toastError({
+					title: "Unable to unpublish announcement",
+					description: result.error || "Failed to unpublish announcement.",
 				});
 			}
 		} catch (error) {
-			toast({
-				title: "Error",
-				description: "Failed to unpublish announcement",
-				variant: "destructive",
+			toastError({
+				title: "Unable to unpublish announcement",
+				description: "Something went wrong while unpublishing.",
 			});
 		} finally {
 			setIsUnpublishing(false);

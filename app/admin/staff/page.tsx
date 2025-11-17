@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +57,6 @@ import {
 	UserPlus,
 	Loader2,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { CanManageUsers } from "@/components/admin/permission-guard";
 import {
 	getAllStaffAction,
@@ -71,7 +71,6 @@ import {
 
 export default function StaffManagementPage() {
 	const { userProfile } = useAuth();
-	const { toast } = useToast();
 
 	const [staff, setStaff] = useState<StaffMember[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -137,20 +136,19 @@ export default function StaffManagementPage() {
 			if (result.success && result.staff) {
 				setStaff(result.staff);
 			} else {
-				toast({
-					title: "Error",
-					description: result.error || "Failed to load staff members",
-					variant: "destructive",
+				toastError({
+					title: "Unable to load staff",
+					description:
+						result.error ||
+						"Please refresh the page or try again in a few moments.",
 				});
 			}
 		} catch (error: any) {
 			console.error("Error loading staff members:", error);
-			toast({
-				title: "❌ Loading Failed",
+			toastError({
+				title: "Unable to load staff",
 				description:
-					error?.message ||
-					"Failed to load staff members. Please refresh the page.",
-				variant: "destructive",
+					"We couldn't load the staff list right now. Please refresh and try again.",
 			});
 		} finally {
 			setLoading(false);
@@ -251,28 +249,27 @@ export default function StaffManagementPage() {
 			);
 
 			if (result.success) {
-				toast({
-					title: "✅ Staff Member Created",
-					description: `${formData.firstName} ${formData.lastName} has been added successfully`,
+				toastSuccess({
+					title: "Staff member created",
+					description: `${formData.firstName} ${formData.lastName} has been added successfully.`,
 				});
 				setCreateDialogOpen(false);
 				resetForm();
 				loadStaff();
 			} else {
-				toast({
-					title: "❌ Creation Failed",
+				toastError({
+					title: "Unable to create staff",
 					description:
-						result.error || "Failed to create staff member. Please try again.",
-					variant: "destructive",
+						result.error ||
+						"We couldn't add that staff member. Please review the details and try again.",
 				});
 			}
 		} catch (error: any) {
 			console.error("Error creating staff member:", error);
-			toast({
-				title: "❌ Creation Failed",
+			toastError({
+				title: "Unable to create staff",
 				description:
-					error?.message || "An unexpected error occurred. Please try again.",
-				variant: "destructive",
+					"An unexpected error occurred while saving the staff member. Please try again.",
 			});
 		} finally {
 			setIsCreating(false);
@@ -295,29 +292,27 @@ export default function StaffManagementPage() {
 			});
 
 			if (result.success) {
-				toast({
-					title: "✅ Staff Member Updated",
-					description: `${formData.firstName} ${formData.lastName}'s information has been updated successfully`,
+				toastSuccess({
+					title: "Staff details updated",
+					description: `${formData.firstName} ${formData.lastName}'s information is now up to date.`,
 				});
 				setEditDialogOpen(false);
 				setSelectedStaff(null);
 				resetForm();
 				loadStaff();
 			} else {
-				toast({
-					title: "❌ Update Failed",
+				toastError({
+					title: "Unable to update staff",
 					description:
-						result.error || "Failed to update staff member. Please try again.",
-					variant: "destructive",
+						result.error ||
+						"We couldn't save the latest changes. Please review and try again.",
 				});
 			}
 		} catch (error: any) {
 			console.error("Error updating staff member:", error);
-			toast({
-				title: "❌ Update Failed",
-				description:
-					error?.message || "An unexpected error occurred. Please try again.",
-				variant: "destructive",
+			toastError({
+				title: "Unable to update staff",
+				description: "An unexpected error occurred. Please try again.",
 			});
 		} finally {
 			setIsUpdating(false);
@@ -330,27 +325,24 @@ export default function StaffManagementPage() {
 			const result = await deleteStaffMemberAction(uid);
 
 			if (result.success) {
-				toast({
-					title: "🗑️ Staff Member Deleted",
-					description:
-						"Staff member has been removed from the system successfully",
+				toastSuccess({
+					title: "Staff member removed",
+					description: "The staff record has been deleted successfully.",
 				});
 				loadStaff();
 			} else {
-				toast({
-					title: "❌ Deletion Failed",
+				toastError({
+					title: "Unable to delete staff",
 					description:
-						result.error || "Failed to delete staff member. Please try again.",
-					variant: "destructive",
+						result.error ||
+						"We couldn't remove that staff member. Please try again.",
 				});
 			}
 		} catch (error: any) {
 			console.error("Error deleting staff member:", error);
-			toast({
-				title: "❌ Deletion Failed",
-				description:
-					error?.message || "An unexpected error occurred. Please try again.",
-				variant: "destructive",
+			toastError({
+				title: "Unable to delete staff",
+				description: "An unexpected error occurred. Please try again.",
 			});
 		} finally {
 			setIsDeleting(null);
@@ -366,26 +358,24 @@ export default function StaffManagementPage() {
 			const result = await toggleStaffStatusAction(uid, newStatus);
 
 			if (result.success) {
-				toast({
-					title: "🔄 Status Updated",
-					description: `Staff member status has been changed to ${newStatus} successfully`,
+				toastSuccess({
+					title: "Status updated",
+					description: `This staff member is now marked as ${newStatus}.`,
 				});
 				loadStaff();
 			} else {
-				toast({
-					title: "❌ Status Update Failed",
+				toastError({
+					title: "Unable to update status",
 					description:
-						result.error || "Failed to update staff status. Please try again.",
-					variant: "destructive",
+						result.error ||
+						"We couldn't change that status right now. Please try again.",
 				});
 			}
 		} catch (error: any) {
 			console.error("Error updating staff status:", error);
-			toast({
-				title: "❌ Status Update Failed",
-				description:
-					error?.message || "An unexpected error occurred. Please try again.",
-				variant: "destructive",
+			toastError({
+				title: "Unable to update status",
+				description: "An unexpected error occurred. Please try again.",
 			});
 		} finally {
 			setIsTogglingStatus(null);
@@ -402,28 +392,26 @@ export default function StaffManagementPage() {
 			});
 
 			if (result.success) {
-				toast({
-					title: "🔐 Permissions Updated",
-					description: `${selectedStaff?.firstName} ${selectedStaff?.lastName}'s permissions have been updated successfully`,
+				toastSuccess({
+					title: "Permissions updated",
+					description: `${selectedStaff?.firstName} ${selectedStaff?.lastName}'s access has been updated.`,
 				});
 				setPermissionsDialogOpen(false);
 				setSelectedStaff(null);
 				loadStaff();
 			} else {
-				toast({
-					title: "❌ Permissions Update Failed",
+				toastError({
+					title: "Unable to update permissions",
 					description:
-						result.error || "Failed to update permissions. Please try again.",
-					variant: "destructive",
+						result.error ||
+						"We couldn't save the new permissions. Please try again.",
 				});
 			}
 		} catch (error: any) {
 			console.error("Error updating permissions:", error);
-			toast({
-				title: "❌ Permissions Update Failed",
-				description:
-					error?.message || "An unexpected error occurred. Please try again.",
-				variant: "destructive",
+			toastError({
+				title: "Unable to update permissions",
+				description: "An unexpected error occurred. Please try again.",
 			});
 		} finally {
 			setIsUpdatingPermissions(false);

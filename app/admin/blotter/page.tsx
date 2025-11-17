@@ -43,6 +43,11 @@ import {
 import { useLanguage } from "@/contexts/language-context";
 import { useToast } from "@/hooks/use-toast";
 import {
+  toastError,
+  toastSuccess,
+  toastWarning,
+} from "@/lib/toast-presets";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -131,17 +136,18 @@ export default function AdminBlotterPage() {
       if (result.success && result.entries) {
         setBlotterEntries(result.entries);
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Unable to load entries",
           description: result.error || "Failed to load blotter entries",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Unable to load entries",
         description: "Failed to load blotter entries",
-        variant: "destructive",
+        error,
       });
     } finally {
       setLoading(false);
@@ -162,17 +168,18 @@ export default function AdminBlotterPage() {
       if (result.success && result.entries) {
         setBlotterEntries(result.entries);
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Search failed",
           description: result.error || "Failed to search blotter entries",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Search failed",
         description: "Failed to search blotter entries",
-        variant: "destructive",
+        error,
       });
     } finally {
       setLoading(false);
@@ -195,17 +202,18 @@ export default function AdminBlotterPage() {
       if (result.success && result.entries) {
         setBlotterEntries(result.entries);
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Filter failed",
           description: result.error || "Failed to filter blotter entries",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Filter failed",
         description: "Failed to filter blotter entries",
-        variant: "destructive",
+        error,
       });
     } finally {
       setLoading(false);
@@ -216,20 +224,20 @@ export default function AdminBlotterPage() {
   const handleProofImageUpload = async (file: File) => {
     // Check file type
     if (!file.type.startsWith("image/")) {
-      toast({
+      toastWarning({
+        toast,
         title: "Invalid file type",
         description: "Please upload an image file (JPG, PNG, or WebP)",
-        variant: "destructive",
       });
       return;
     }
 
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast({
+      toastWarning({
+        toast,
         title: "File too large",
         description: "Please upload an image smaller than 10MB",
-        variant: "destructive",
       });
       return;
     }
@@ -246,25 +254,26 @@ export default function AdminBlotterPage() {
             ...prev,
             proofImageUrl: res.url,
           }));
-          toast({
-            title: "Image uploaded successfully",
+          toastSuccess({
+            toast,
             description: "Proof image has been uploaded",
           });
         } else {
           console.error("Image upload failed:", res.error);
-          toast({
+          toastError({
+            toast,
             title: "Upload failed",
             description: res.error || "Failed to upload image",
-            variant: "destructive",
           });
           setProofImagePreview(null);
         }
       } catch (error) {
         console.error("Image upload error:", error);
-        toast({
+        toastError({
+          toast,
           title: "Upload failed",
           description: "Failed to upload image",
-          variant: "destructive",
+          error,
         });
         setProofImagePreview(null);
       } finally {
@@ -291,8 +300,8 @@ export default function AdminBlotterPage() {
       try {
         const result = await createBlotterEntryAction(newReportForm);
         if (result.success) {
-          toast({
-            title: "Success",
+          toastSuccess({
+            toast,
             description: `New blotter report created with ID: ${result.entryId}`,
           });
           setIsNewReportDialogOpen(false);
@@ -313,17 +322,18 @@ export default function AdminBlotterPage() {
           setProofImagePreview(null);
           loadBlotterEntries();
         } else {
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Creation failed",
             description: result.error || "Failed to create blotter report",
-            variant: "destructive",
           });
         }
       } catch (error) {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Creation failed",
           description: "Failed to create blotter report",
-          variant: "destructive",
+          error,
         });
       }
     });
@@ -338,20 +348,24 @@ export default function AdminBlotterPage() {
       try {
         const result = await updateBlotterStatusAction(entry.id, status);
         if (result.success) {
-          toast({ title: "Success", description: "Status updated" });
+          toastSuccess({
+            toast,
+            description: "Status updated",
+          });
           loadBlotterEntries();
         } else {
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Update failed",
             description: result.error || "Failed to update status",
-            variant: "destructive",
           });
         }
       } catch (error) {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Update failed",
           description: "Failed to update status",
-          variant: "destructive",
+          error,
         });
       }
     });
@@ -370,8 +384,8 @@ export default function AdminBlotterPage() {
           statusUpdateForm.notes
         );
         if (result.success) {
-          toast({
-            title: "Success",
+          toastSuccess({
+            toast,
             description: "Blotter status updated successfully",
           });
           setIsStatusUpdateDialogOpen(false);
@@ -379,17 +393,18 @@ export default function AdminBlotterPage() {
           setSelectedEntry(null);
           loadBlotterEntries();
         } else {
-          toast({
-            title: "Error",
+          toastError({
+            toast,
+            title: "Update failed",
             description: result.error || "Failed to update blotter status",
-            variant: "destructive",
           });
         }
       } catch (error) {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Update failed",
           description: "Failed to update blotter status",
-          variant: "destructive",
+          error,
         });
       }
     });
@@ -401,23 +416,24 @@ export default function AdminBlotterPage() {
     try {
       const result = await deleteBlotterEntryAction(entryId);
       if (result.success) {
-        toast({
-          title: "Success",
+        toastSuccess({
+          toast,
           description: "Blotter report deleted and archived successfully",
         });
         await loadBlotterEntries();
       } else {
-        toast({
-          title: "Error",
+        toastError({
+          toast,
+          title: "Delete failed",
           description: result.error || "Failed to delete blotter report",
-          variant: "destructive",
         });
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toastError({
+        toast,
+        title: "Delete failed",
         description: "Failed to delete blotter report",
-        variant: "destructive",
+        error,
       });
     } finally {
       setActionLoading(null);
