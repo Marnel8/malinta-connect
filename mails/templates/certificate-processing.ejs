@@ -1,216 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Certificate Processing</title>
-		<style>
-			body {
-				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-				line-height: 1.6;
-				color: #333;
-				max-width: 600px;
-				margin: 0 auto;
-				padding: 20px;
-				background-color: #f4f4f4;
-			}
-			.container {
-				background-color: #ffffff;
-				padding: 30px;
-				border-radius: 10px;
-				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-			}
-			.header {
-				text-align: center;
-				border-bottom: 3px solid #7c3aed;
-				padding-bottom: 20px;
-				margin-bottom: 30px;
-			}
-			.logo {
-				max-width: 150px;
-				height: auto;
-				margin-bottom: 15px;
-			}
-			.status-badge {
-				display: inline-block;
-				background-color: #a78bfa;
-				color: #581c87;
-				padding: 8px 16px;
-				border-radius: 20px;
-				font-weight: bold;
-				font-size: 14px;
-				margin: 20px 0;
-			}
-			.details {
-				background-color: #f8fafc;
-				padding: 20px;
-				border-radius: 8px;
-				margin: 20px 0;
-			}
-			.detail-row {
-				display: flex;
-				justify-content: space-between;
-				margin-bottom: 10px;
-				padding: 8px 0;
-				border-bottom: 1px solid #e2e8f0;
-			}
-			.detail-row:last-child {
-				border-bottom: none;
-			}
-			.label {
-				font-weight: 600;
-				color: #475569;
-			}
-			.value {
-				color: #1e293b;
-			}
-			.footer {
-				text-align: center;
-				margin-top: 30px;
-				padding-top: 20px;
-				border-top: 1px solid #e2e8f0;
-				color: #64748b;
-				font-size: 14px;
-			}
-			.cta-button {
-				display: inline-block;
-				background-color: #7c3aed;
-				color: white;
-				padding: 12px 24px;
-				text-decoration: none;
-				border-radius: 6px;
-				margin: 20px 0;
-				font-weight: 600;
-			}
-			.note {
-				background-color: #e0e7ff;
-				border-left: 4px solid #6366f1;
-				padding: 15px;
-				margin: 20px 0;
-				border-radius: 4px;
-			}
-			.progress-bar {
-				background-color: #e2e8f0;
-				border-radius: 10px;
-				height: 20px;
-				margin: 20px 0;
-				overflow: hidden;
-			}
-			.progress-fill {
-				background: linear-gradient(90deg, #7c3aed, #a78bfa);
-				height: 100%;
-				width: 60%;
-				border-radius: 10px;
-				transition: width 0.3s ease;
-			}
-		</style>
-	</head>
-	<body>
-		<div class="container">
-			<div class="header">
-				<img
-					src="<%= process.env.NEXT_PUBLIC_APP_URL %>/images/malinta_logo.jpg"
-					alt="Malinta Connect Logo"
-					class="logo"
-				/>
-				<h1 style="color: #1e293b; margin: 0">Certificate Processing</h1>
-				<div class="status-badge">PROCESSING</div>
-			</div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Processing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            max-width: 120px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .status-badge {
+            display: inline-block;
+            background-color: #3b82f6;
+            color: #ffffff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 15px 0;
+        }
+        .details {
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #1e40af;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .value {
+            color: #1f2937;
+        }
+        .info-note {
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://malinta-connect.vercel.app/images/malinta_logo.jpg" alt="Malinta Connect Logo" class="logo">
+            <h1 style="color: #1e40af; margin: 0; font-size: 24px;">Certificate Processing</h1>
+            <div class="status-badge">PROCESSING</div>
+        </div>
 
-			<p>Dear <strong><%= userName %></strong>,</p>
+        <p>Dear <strong><%= userName %></strong>,</p>
 
-			<p>
-				Great news! Your certificate request is now being processed by our
-				staff. We're carefully examining your documents and information to
-				ensure everything meets our requirements.
-			</p>
+        <p>Good news! Your certificate request is now being processed. Our team is reviewing your application and preparing your certificate.</p>
 
-			<div class="progress-bar">
-				<div class="progress-fill"></div>
-			</div>
+        <div class="details">
+            <h3 style="margin-top: 0; color: #1e40af;">Request Details</h3>
+            
+            <div class="detail-row">
+                <span class="label">Reference Number:</span>
+                <span class="value"><strong><%= referenceNumber %></strong></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Certificate Type:</span>
+                <span class="value"><%= certificateType %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Processing Started:</span>
+                <span class="value"><%= processingStartDate %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Purpose:</span>
+                <span class="value"><%= purpose %></span>
+            </div>
+        </div>
 
-			<div class="details">
-				<h3 style="margin-top: 0; color: #1e293b">Request Details</h3>
+        <div class="info-note">
+            <strong>Processing Status:</strong><br>
+            • Your request is currently under review<br>
+            • Estimated processing time: <strong>3-5 business days</strong><br>
+            • You will be notified when your certificate is ready for pickup<br>
+            • No action is required from you at this time
+        </div>
 
-				<div class="detail-row">
-					<span class="label">Reference Number:</span>
-					<span class="value"><strong><%= referenceNumber %></strong></span>
-				</div>
+        <p>We will notify you via email once your certificate is approved and ready for pickup.</p>
 
-				<div class="detail-row">
-					<span class="label">Certificate Type:</span>
-					<span class="value"><%= certificateType %></span>
-				</div>
+        <p>If you have any questions about the review process, please contact us:</p>
 
-				<div class="detail-row">
-					<span class="label">Request Date:</span>
-					<span class="value"><%= requestDate %></span>
-				</div>
+        <ul style="color: #6b7280;">
+            <li><strong>Phone:</strong> +63 912 345 6789</li>
+            <li><strong>Email:</strong> barangaymalintalosbanos@gmail.com</li>
+            <li><strong>Office Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</li>
+        </ul>
 
-				<div class="detail-row">
-					<span class="label">Processing Started:</span>
-					<span class="value"><%= processingStartDate %></span>
-				</div>
-
-				<div class="detail-row">
-					<span class="label">Estimated Completion:</span>
-					<span class="value"><%= estimatedCompletionDate %></span>
-				</div>
-			</div>
-
-			<div class="note">
-				<strong>What happens during processing?</strong><br />
-				• Document verification and validation<br />
-				• Background checks (if required)<br />
-				• Compliance with local regulations<br />
-				• Final approval process
-			</div>
-
-			<p>
-				Our team is working diligently to process your request. The processing
-				typically takes <strong><%= estimatedDays %> business days</strong>, but
-				this may vary depending on the complexity of your request.
-			</p>
-
-			<p>You can track the progress of your request by visiting our website:</p>
-
-			<div style="text-align: center">
-				<a
-					href="<%= process.env.NEXT_PUBLIC_APP_URL %>/certificates"
-					class="cta-button"
-					>Track Request Progress</a
-				>
-			</div>
-
-			<p><strong>Next Steps:</strong></p>
-			<ol style="color: #475569">
-				<li>We'll notify you if additional documents are required</li>
-				<li>You'll receive an update once the review is complete</li>
-				<li>
-					Upon approval, you'll be notified when your certificate is ready for
-					pickup
-				</li>
-			</ol>
-
-			<p>
-				If you have any questions about the review process, please contact us:
-			</p>
-
-			<ul style="color: #475569">
-				<li><strong>Phone:</strong> <%= contactPhone || 'N/A' %></li>
-				<li><strong>Email:</strong> <%= contactEmail || 'N/A' %></li>
-				<li>
-					<strong>Office Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM
-				</li>
-			</ul>
-
-			<div class="footer">
-				<p>
-					Thank you for your patience. We appreciate you choosing Malinta
-					Connect.
-				</p>
-				<p>This is an automated message. Please do not reply to this email.</p>
-			</div>
-		</div>
-	</body>
+        <div class="footer">
+            <p>Thank you for your patience. We appreciate you choosing Malinta Connect.</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
 </html>

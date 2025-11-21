@@ -97,21 +97,26 @@ export async function createAppointmentAction(
 		await newAppointmentRef.set(appointmentToSave);
 
 		// Send email notification to requester
-		const emailPayload: AppointmentEmailData = {
-			userName: appointmentData.requestedBy,
-			referenceNumber,
-			appointmentTitle: appointmentData.title,
-			appointmentDate: appointmentData.date,
-			appointmentTime: appointmentData.time,
-			purpose: appointmentData.description,
-			contactPhone: appointmentData.contactNumber,
-			contactEmail: appointmentData.email,
-			notes: appointmentData.notes,
-		};
-		await sendAppointmentRequestReceivedEmail(
-			appointmentData.email,
-			emailPayload
-		);
+		try {
+			const emailPayload: AppointmentEmailData = {
+				userName: appointmentData.requestedBy,
+				referenceNumber,
+				appointmentTitle: appointmentData.title,
+				appointmentDate: appointmentData.date,
+				appointmentTime: appointmentData.time,
+				purpose: appointmentData.description,
+				contactPhone: appointmentData.contactNumber,
+				contactEmail: appointmentData.email,
+				notes: appointmentData.notes,
+			};
+			await sendAppointmentRequestReceivedEmail(
+				appointmentData.email,
+				emailPayload
+			);
+		} catch (emailError) {
+			console.error("Failed to send appointment request email:", emailError);
+			// Don't fail the entire operation if email fails
+		}
 
 		// Send push notification to admins about new appointment
 		try {

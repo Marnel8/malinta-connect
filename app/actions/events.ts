@@ -201,8 +201,8 @@ export async function getAllEventsAction(): Promise<{
 
 		Object.entries(events).forEach(([id, event]: [string, any]) => {
 			eventsList.push({
-				id,
 				...event,
+				id, // Use Firebase key as ID (overwrites reference number from event data)
 				status: event.status || "active",
 				featured: event.featured || false,
 				createdAt: event.createdAt || 0,
@@ -250,8 +250,8 @@ export async function getEventAction(
 		return {
 			success: true,
 			event: {
-				id,
 				...event,
+				id, // Use Firebase key as ID (overwrites reference number from event data)
 				status: event.status || "active",
 				featured: event.featured || false,
 				createdAt: event.createdAt || 0,
@@ -343,8 +343,8 @@ export async function deleteEventAction(
 				[`events/${id}`]: event,
 			},
 			preview: {
-				title: event.title,
-				status: event.status || "draft",
+				title: event.name,
+				status: event.status || "active",
 				category: event.category,
 				date: event.date,
 			},
@@ -467,8 +467,8 @@ export async function getEventsByCategoryAction(
 
 		Object.entries(events).forEach(([id, event]: [string, any]) => {
 			eventsList.push({
-				id,
 				...event,
+				id, // Use Firebase key as ID (overwrites reference number from event data)
 				status: event.status || "active",
 				featured: event.featured || false,
 				createdAt: event.createdAt || 0,
@@ -511,8 +511,8 @@ export async function getFeaturedEventsAction(): Promise<{
 
 		Object.entries(events).forEach(([id, event]: [string, any]) => {
 			eventsList.push({
-				id,
 				...event,
+				id, // Use Firebase key as ID (overwrites reference number from event data)
 				status: event.status || "active",
 				featured: event.featured || false,
 				createdAt: event.createdAt || 0,

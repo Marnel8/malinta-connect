@@ -59,13 +59,17 @@ export interface PasswordResetEmailData {
 
 // Create transporter using environment variables
 const createTransporter = (): nodemailer.Transporter => {
+	// Remove spaces from password (Gmail App Passwords should not have spaces)
+	const smtpPass = (process.env.SMTP_PASS || "").replace(/\s+/g, "");
+	const smtpUser = (process.env.SMTP_USER || "").trim();
+
 	const config: EmailConfig = {
 		host: process.env.SMTP_HOST || "smtp.gmail.com",
 		port: parseInt(process.env.SMTP_PORT || "587"),
 		secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
 		auth: {
-			user: process.env.SMTP_USER || "",
-			pass: process.env.SMTP_PASS || "",
+			user: smtpUser,
+			pass: smtpPass,
 		},
 	};
 
@@ -75,12 +79,20 @@ const createTransporter = (): nodemailer.Transporter => {
 		secure: config.secure,
 		user: config.auth.user ? "***configured***" : "***missing***",
 		pass: config.auth.pass ? "***configured***" : "***missing***",
+		passLength: config.auth.pass.length,
 	});
 
 	// Validate required environment variables
-	if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+	if (!smtpUser || !smtpPass) {
 		throw new Error(
 			"SMTP_USER and SMTP_PASS environment variables are required"
+		);
+	}
+
+	// Validate Gmail App Password format (should be 16 characters without spaces)
+	if (config.host.includes("gmail.com") && smtpPass.length !== 16) {
+		console.warn(
+			`Warning: Gmail App Password should be 16 characters. Current length: ${smtpPass.length}. Make sure you're using an App Password, not your regular Gmail password.`
 		);
 	}
 

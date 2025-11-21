@@ -6,122 +6,98 @@
     <title>Certificate Approved - Ready for Pickup</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             line-height: 1.6;
             color: #333;
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f4f4f4;
+            background-color: #f5f5f5;
         }
         .container {
             background-color: #ffffff;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .header {
             text-align: center;
-            border-bottom: 3px solid #059669;
+            border-bottom: 3px solid #1e40af;
             padding-bottom: 20px;
             margin-bottom: 30px;
         }
         .logo {
-            max-width: 150px;
+            max-width: 120px;
             height: auto;
             margin-bottom: 15px;
         }
         .status-badge {
             display: inline-block;
-            background-color: #10b981;
-            color: #064e3b;
+            background-color: #059669;
+            color: #ffffff;
             padding: 8px 16px;
-            border-radius: 20px;
+            border-radius: 4px;
             font-weight: bold;
             font-size: 14px;
-            margin: 20px 0;
+            margin: 15px 0;
         }
         .details {
             background-color: #f8fafc;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 6px;
             margin: 20px 0;
+            border-left: 4px solid #1e40af;
         }
         .detail-row {
             display: flex;
             justify-content: space-between;
             margin-bottom: 10px;
             padding: 8px 0;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e5e7eb;
         }
         .detail-row:last-child {
             border-bottom: none;
         }
         .label {
             font-weight: 600;
-            color: #475569;
+            color: #374151;
         }
         .value {
-            color: #1e293b;
+            color: #1f2937;
+        }
+        .success-note {
+            background-color: #ecfdf5;
+            border-left: 4px solid #059669;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
         }
         .footer {
             text-align: center;
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-            color: #64748b;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
             font-size: 14px;
-        }
-        .cta-button {
-            display: inline-block;
-            background-color: #059669;
-            color: white;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 6px;
-            margin: 20px 0;
-            font-weight: 600;
-        }
-        .success-note {
-            background-color: #d1fae5;
-            border-left: 4px solid #10b981;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .pickup-info {
-            background-color: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .checkmark {
-            color: #10b981;
-            font-size: 24px;
-            margin-right: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <img src="<%= process.env.NEXT_PUBLIC_APP_URL %>/images/malinta_logo.jpg" alt="Malinta Connect Logo" class="logo">
-            <h1 style="color: #1e293b; margin: 0;">Certificate Approved!</h1>
-            <div class="status-badge">APPROVED ✓</div>
+            <img src="https://malinta-connect.vercel.app/images/malinta_logo.jpg" alt="Malinta Connect Logo" class="logo">
+            <h1 style="color: #1e40af; margin: 0; font-size: 24px;">Certificate Ready for Pickup</h1>
+            <div class="status-badge">APPROVED</div>
         </div>
 
         <p>Dear <strong><%= userName %></strong>,</p>
 
         <div class="success-note">
-            <span class="checkmark">✓</span>
-            <strong>Congratulations!</strong> Your certificate request has been approved and is now ready for pickup.
+            <strong>✓ Great news!</strong> Your certificate has been approved and is now ready for pickup.
         </div>
 
-        <p>We're pleased to inform you that your certificate has been processed successfully and is ready for collection at our office.</p>
-
         <div class="details">
-            <h3 style="margin-top: 0; color: #1e293b;">Certificate Details</h3>
+            <h3 style="margin-top: 0; color: #1e40af;">Certificate Details</h3>
             
             <div class="detail-row">
                 <span class="label">Reference Number:</span>
@@ -134,44 +110,35 @@
             </div>
             
             <div class="detail-row">
-                <span class="label">Request Date:</span>
-                <span class="value"><%= requestDate %></span>
-            </div>
-            
-            <div class="detail-row">
                 <span class="label">Approval Date:</span>
                 <span class="value"><%= approvalDate %></span>
             </div>
             
             <div class="detail-row">
                 <span class="label">Processing Time:</span>
-                <span class="value"><%= processingTime %> days</span>
+                <span class="value"><%= processingTime %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Pickup Location:</span>
+                <span class="value"><%= pickupLocation %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Pickup Hours:</span>
+                <span class="value"><%= pickupHours %></span>
             </div>
         </div>
 
-        <div class="pickup-info">
-            <strong>📋 Pickup Instructions:</strong><br>
-            • Please bring a valid government-issued ID<br>
-            • Reference number: <strong><%= referenceNumber %></strong><br>
-            • Pickup location: <strong><%= pickupLocation %></strong><br>
-            • Available pickup hours: <strong><%= pickupHours %></strong>
-        </div>
-
         <p><strong>Required Documents for Pickup:</strong></p>
-        <ul style="color: #475569;">
+        <ul style="color: #6b7280;">
             <li>Valid government-issued ID (passport, driver's license, etc.)</li>
             <li>Reference number (you can show this email)</li>
             <li>Any additional documents specified in your original request</li>
         </ul>
 
-        <p>You can also download a digital copy of your certificate from our website:</p>
-
-        <div style="text-align: center;">
-            <a href="<%= process.env.NEXT_PUBLIC_APP_URL %>/certificates" class="cta-button">Download Certificate</a>
-        </div>
-
         <p><strong>Important Notes:</strong></p>
-        <ul style="color: #475569;">
+        <ul style="color: #6b7280;">
             <li>Certificates must be picked up within <strong>30 days</strong> of approval</li>
             <li>If you cannot pick up in person, you may authorize someone else with a written authorization letter</li>
             <li>For urgent requests or special arrangements, please contact our office directly</li>
@@ -179,9 +146,9 @@
 
         <p>If you have any questions about pickup or need to make special arrangements, please contact us:</p>
         
-        <ul style="color: #475569;">
-            <li><strong>Phone:</strong> <%= contactPhone || 'N/A' %></li>
-            <li><strong>Email:</strong> <%= contactEmail || 'N/A' %></li>
+        <ul style="color: #6b7280;">
+            <li><strong>Phone:</strong> +63 912 345 6789</li>
+            <li><strong>Email:</strong> barangaymalintalosbanos@gmail.com</li>
             <li><strong>Office Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</li>
         </ul>
 

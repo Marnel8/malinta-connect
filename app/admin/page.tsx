@@ -55,11 +55,7 @@ import { updateAppointmentStatusAction } from "@/app/actions/appointments";
 import { updateBlotterStatusAction } from "@/app/actions/blotter";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  toastError,
-  toastSuccess,
-  toastWarning,
-} from "@/lib/toast-presets";
+import { toastError, toastSuccess, toastWarning } from "@/lib/toast-presets";
 import { useRouter } from "next/navigation";
 import {
   PieChart,
@@ -409,8 +405,7 @@ export default function AdminDashboardPage() {
       toastSuccess({
         toast,
         title: "Export complete",
-        description:
-          "The dashboard data has been downloaded as an Excel file.",
+        description: "The dashboard data has been downloaded as an Excel file.",
       });
     } catch (error) {
       console.error("Error exporting dashboard data:", error);
@@ -497,8 +492,7 @@ export default function AdminDashboardPage() {
           toastError({
             toast,
             title: "Update failed",
-            description:
-              result.error || "Failed to update certificate status",
+            description: result.error || "Failed to update certificate status",
           });
         }
       } catch (error) {
@@ -588,8 +582,7 @@ export default function AdminDashboardPage() {
           toastError({
             toast,
             title: "Update failed",
-            description:
-              result.error || "Failed to update certificate status",
+            description: result.error || "Failed to update certificate status",
           });
         }
       } catch (error) {
@@ -1256,10 +1249,7 @@ export default function AdminDashboardPage() {
                       </div>
                     ) : (
                       filteredAppointments.map((apt) => (
-                        <div
-                          key={apt.id}
-                          className="rounded-lg border p-4 bg-yellow-50 dark:bg-yellow-950/20"
-                        >
+                        <div key={apt.id} className="rounded-lg border p-4">
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div>
                               <div className="flex items-center">

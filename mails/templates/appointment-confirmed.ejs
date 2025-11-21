@@ -1,20 +1,155 @@
-<div style="font-family: Arial, sans-serif;">
-  <h2>Appointment Confirmed</h2>
-  <p>Hi <%= userName %>,</p>
-  <p>Your appointment has been <strong>confirmed</strong>. Please see the details below:</p>
-  <ul>
-    <li><strong>Reference Number:</strong> <%= referenceNumber %></li>
-    <li><strong>Title:</strong> <%= appointmentTitle %></li>
-    <li><strong>Date:</strong> <%= appointmentDate %></li>
-    <li><strong>Time:</strong> <%= appointmentTime %></li>
-    <li><strong>Purpose:</strong> <%= purpose %></li>
-  </ul>
-  <p>Please arrive 10 minutes early. If you need to reschedule, reply to this email.</p>
-  <p>Thank you,<br/>Malinta Connect</p>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Confirmed</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            max-width: 120px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .status-badge {
+            display: inline-block;
+            background-color: #059669;
+            color: #ffffff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 15px 0;
+        }
+        .details {
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #1e40af;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .value {
+            color: #1f2937;
+        }
+        .success-note {
+            background-color: #ecfdf5;
+            border-left: 4px solid #059669;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://malinta-connect.vercel.app/images/malinta_logo.jpg" alt="Malinta Connect Logo" class="logo">
+            <h1 style="color: #1e40af; margin: 0; font-size: 24px;">Appointment Confirmed</h1>
+            <div class="status-badge">CONFIRMED</div>
+        </div>
 
+        <p>Dear <strong><%= userName %></strong>,</p>
 
+        <div class="success-note">
+            <strong>✓ Your appointment has been confirmed!</strong> Please see the details below and mark your calendar.
+        </div>
 
+        <div class="details">
+            <h3 style="margin-top: 0; color: #1e40af;">Appointment Details</h3>
+            
+            <div class="detail-row">
+                <span class="label">Reference Number:</span>
+                <span class="value"><strong><%= referenceNumber %></strong></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Title:</span>
+                <span class="value"><%= appointmentTitle %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Date:</span>
+                <span class="value"><%= appointmentDate %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Time:</span>
+                <span class="value"><%= appointmentTime %></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="label">Purpose:</span>
+                <span class="value"><%= purpose %></span>
+            </div>
+        </div>
 
+        <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <strong>Important Reminders:</strong><br>
+            • Please arrive 10 minutes early for your appointment<br>
+            • Bring any required documents or identification<br>
+            • If you need to reschedule, please contact us as soon as possible
+        </div>
 
+        <% if (notes && notes.trim() !== '') { %>
+        <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <strong>Additional Notes:</strong><br>
+            <%= notes %>
+        </div>
+        <% } %>
 
+        <p><strong>Contact Information:</strong></p>
+        <ul style="color: #6b7280;">
+            <li><strong>Phone:</strong> +63 912 345 6789</li>
+            <li><strong>Email:</strong> barangaymalintalosbanos@gmail.com</li>
+            <li><strong>Office Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</li>
+        </ul>
+
+        <div class="footer">
+            <p>Thank you for using Malinta Connect. We look forward to seeing you!</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
