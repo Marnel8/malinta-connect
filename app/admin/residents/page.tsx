@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -9,23 +9,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,266 +35,291 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Search, Users, UserPlus, Mail, Phone, MapPin, CheckCircle, AlertCircle, Eye, Loader2, MoreHorizontal, Trash2, UserCheck, UserX } from "lucide-react"
-import { useLanguage } from "@/contexts/language-context"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useToast } from "@/hooks/use-toast"
-import { toastError, toastSuccess } from "@/lib/toast-presets"
-import { ResidentVerificationModal } from "@/components/admin/resident-verification-modal"
-import { 
-  getResidentsAction, 
-  getResidentDetailsAction, 
+} from "@/components/ui/alert-dialog";
+import {
+  Search,
+  Users,
+  UserPlus,
+  Mail,
+  Phone,
+  MapPin,
+  CheckCircle,
+  AlertCircle,
+  Eye,
+  Loader2,
+  MoreHorizontal,
+  Trash2,
+  UserCheck,
+  UserX,
+} from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { toastError, toastSuccess } from "@/lib/toast-presets";
+import { ResidentVerificationModal } from "@/components/admin/resident-verification-modal";
+import {
+  getResidentsAction,
+  getResidentDetailsAction,
   searchResidentsAction,
   deleteResidentAction,
   updateResidentStatusAction,
   ResidentListItem,
-  ResidentData
-} from "@/app/actions/residents"
+  ResidentData,
+} from "@/app/actions/residents";
 
 export default function AdminResidentsPage() {
-  const { t } = useLanguage()
-  const { toast } = useToast()
-  
-  const [residents, setResidents] = useState<ResidentListItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [isSearching, setIsSearching] = useState(false)
-  
+  const { t } = useLanguage();
+  const { toast } = useToast();
+
+  const [residents, setResidents] = useState<ResidentListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isSearching, setIsSearching] = useState(false);
+
   // Verification modal state
   const [verificationModal, setVerificationModal] = useState<{
-    isOpen: boolean
-    resident: ResidentData | null
-  }>({ isOpen: false, resident: null })
-  const [isLoadingResident, setIsLoadingResident] = useState(false)
-  
+    isOpen: boolean;
+    resident: ResidentData | null;
+  }>({ isOpen: false, resident: null });
+  const [isLoadingResident, setIsLoadingResident] = useState(false);
+
   // Delete confirmation dialog state
   const [deleteDialog, setDeleteDialog] = useState<{
-    isOpen: boolean
-    resident: ResidentListItem | null
-  }>({ isOpen: false, resident: null })
-  const [isDeleting, setIsDeleting] = useState(false)
+    isOpen: boolean;
+    resident: ResidentListItem | null;
+  }>({ isOpen: false, resident: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadResidents = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const result = await getResidentsAction()
+      const result = await getResidentsAction();
       if (result.success && result.residents) {
-        setResidents(result.residents)
+        setResidents(result.residents);
       } else {
         toastError({
           toast,
           title: "Unable to load residents",
           description: result.error || "Failed to load residents",
-        })
+        });
       }
     } catch (error) {
-      console.error("Error loading residents:", error)
+      console.error("Error loading residents:", error);
       toastError({
         toast,
         title: "Unable to load residents",
         description: "An unexpected error occurred while loading residents",
         error,
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleSearch = async () => {
-    setIsSearching(true)
+    setIsSearching(true);
     try {
-      const result = await searchResidentsAction(searchQuery, statusFilter)
+      const result = await searchResidentsAction(searchQuery, statusFilter);
       if (result.success && result.residents) {
-        setResidents(result.residents)
+        setResidents(result.residents);
       } else {
         toastError({
           toast,
           title: "Search failed",
           description: result.error || "Failed to search residents",
-        })
+        });
       }
     } catch (error) {
-      console.error("Search error:", error)
+      console.error("Search error:", error);
       toastError({
         toast,
         title: "Search failed",
         description: "An unexpected error occurred during search",
         error,
-      })
+      });
     } finally {
-      setIsSearching(false)
+      setIsSearching(false);
     }
-  }
+  };
 
   const openVerificationModal = async (uid: string) => {
-    setIsLoadingResident(true)
+    setIsLoadingResident(true);
     try {
-      const result = await getResidentDetailsAction(uid)
+      const result = await getResidentDetailsAction(uid);
       if (result.success && result.resident) {
         setVerificationModal({
           isOpen: true,
           resident: result.resident,
-        })
+        });
       } else {
         toastError({
           toast,
           title: "Unable to load resident",
           description: result.error || "Failed to load resident details",
-        })
+        });
       }
     } catch (error) {
-      console.error("Error loading resident details:", error)
+      console.error("Error loading resident details:", error);
       toastError({
         toast,
         title: "Unable to load resident",
         description: "Failed to load resident details",
         error,
-      })
+      });
     } finally {
-      setIsLoadingResident(false)
+      setIsLoadingResident(false);
     }
-  }
+  };
 
   const closeVerificationModal = () => {
-    setVerificationModal({ isOpen: false, resident: null })
-  }
+    setVerificationModal({ isOpen: false, resident: null });
+  };
 
   const handleVerificationUpdate = () => {
-    loadResidents() // Reload the residents list
-  }
+    loadResidents(); // Reload the residents list
+  };
 
   const handleDeleteResident = async (resident: ResidentListItem) => {
-    setDeleteDialog({ isOpen: true, resident })
-  }
+    setDeleteDialog({ isOpen: true, resident });
+  };
 
   const confirmDeleteResident = async () => {
-    if (!deleteDialog.resident) return
+    if (!deleteDialog.resident) return;
 
-    setIsDeleting(true)
+    setIsDeleting(true);
     try {
-      const result = await deleteResidentAction(deleteDialog.resident.uid)
+      const result = await deleteResidentAction(deleteDialog.resident.uid);
       if (result.success) {
         toastSuccess({
           toast,
           description: "Resident deleted successfully",
-        })
-        loadResidents() // Reload the residents list
+        });
+        loadResidents(); // Reload the residents list
       } else {
         toastError({
           toast,
           title: "Delete failed",
           description: result.error || "Failed to delete resident",
-        })
+        });
       }
     } catch (error) {
-      console.error("Error deleting resident:", error)
+      console.error("Error deleting resident:", error);
       toastError({
         toast,
         title: "Delete failed",
         description: "An unexpected error occurred while deleting resident",
         error,
-      })
+      });
     } finally {
-      setIsDeleting(false)
-      setDeleteDialog({ isOpen: false, resident: null })
+      setIsDeleting(false);
+      setDeleteDialog({ isOpen: false, resident: null });
     }
-  }
+  };
 
-  const handleStatusUpdate = async (uid: string, status: "active" | "inactive") => {
+  const handleStatusUpdate = async (
+    uid: string,
+    status: "active" | "inactive"
+  ) => {
     try {
-      const result = await updateResidentStatusAction(uid, status)
+      const result = await updateResidentStatusAction(uid, status);
       if (result.success) {
         toastSuccess({
           toast,
           description: `Resident status updated to ${status}`,
-        })
-        loadResidents() // Reload the residents list
+        });
+        loadResidents(); // Reload the residents list
       } else {
         toastError({
           toast,
           title: "Update failed",
           description: result.error || "Failed to update resident status",
-        })
+        });
       }
     } catch (error) {
-      console.error("Error updating resident status:", error)
+      console.error("Error updating resident status:", error);
       toastError({
         toast,
         title: "Update failed",
         description: "An unexpected error occurred while updating status",
         error,
-      })
+      });
     }
-  }
+  };
 
   // Load residents on component mount
   useEffect(() => {
-    loadResidents()
-  }, [])
+    loadResidents();
+  }, []);
 
   // Handle search and filter changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchQuery.trim() !== "" || statusFilter !== "all") {
-        handleSearch()
+        handleSearch();
       } else {
-        loadResidents()
+        loadResidents();
       }
-    }, 500) // Debounce search
+    }, 500); // Debounce search
 
-    return () => clearTimeout(timeoutId)
-  }, [searchQuery, statusFilter])
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, statusFilter]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "verified":
         return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+          <Badge
+            variant="outline"
+            className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+          >
             <CheckCircle className="mr-1 h-3 w-3" />
             Verified
           </Badge>
-        )
+        );
       case "pending":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+          <Badge
+            variant="outline"
+            className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+          >
             <AlertCircle className="mr-1 h-3 w-3" />
             Pending Verification
           </Badge>
-        )
+        );
       case "rejected":
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          <Badge
+            variant="outline"
+            className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+          >
             <AlertCircle className="mr-1 h-3 w-3" />
             Rejected
           </Badge>
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Residents</h1>
-          <p className="text-muted-foreground mt-2">Manage resident profiles and information</p>
+          <p className="text-muted-foreground mt-2">
+            Manage resident profiles and information
+          </p>
         </div>
-        <Button>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add Resident
-        </Button>
       </div>
 
       <div className="flex items-center space-x-2 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            type="search" 
-            placeholder="Search residents by name, email, phone, or address..." 
-            className="pl-8" 
+          <Input
+            type="search"
+            placeholder="Search residents by name, email, phone, or address..."
+            className="pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -313,16 +338,8 @@ export default function AdminResidentsPage() {
             <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
-        <Button 
-          variant="outline" 
-          onClick={loadResidents}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            "Refresh"
-          )}
+        <Button variant="outline" onClick={loadResidents} disabled={isLoading}>
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
         </Button>
       </div>
 
@@ -352,7 +369,9 @@ export default function AdminResidentsPage() {
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
                   <div className="text-muted-foreground">
-                    {searchQuery || statusFilter !== "all" ? "No residents found matching your criteria." : "No residents registered yet."}
+                    {searchQuery || statusFilter !== "all"
+                      ? "No residents found matching your criteria."
+                      : "No residents registered yet."}
                   </div>
                 </TableCell>
               </TableRow>
@@ -362,14 +381,28 @@ export default function AdminResidentsPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarImage src={resident.profileImageUrl} alt={resident.name} />
-                        <AvatarFallback>{resident.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
+                        <AvatarImage
+                          src={resident.profileImageUrl}
+                          alt={resident.name}
+                        />
+                        <AvatarFallback>
+                          {resident.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="font-medium">{resident.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {resident.age !== undefined && resident.age > 0 ? `${resident.age} years old` : 'N/A'}
-                          {resident.gender && ` • ${resident.gender.charAt(0).toUpperCase() + resident.gender.slice(1)}`}
+                          {resident.age !== undefined && resident.age > 0
+                            ? `${resident.age} years old`
+                            : "N/A"}
+                          {resident.gender &&
+                            ` • ${
+                              resident.gender.charAt(0).toUpperCase() +
+                              resident.gender.slice(1)
+                            }`}
                         </div>
                       </div>
                     </div>
@@ -392,7 +425,9 @@ export default function AdminResidentsPage() {
                       <span className="text-sm">{resident.address}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{getStatusBadge(resident.verificationStatus)}</TableCell>
+                  <TableCell>
+                    {getStatusBadge(resident.verificationStatus)}
+                  </TableCell>
                   <TableCell>{resident.registeredOn}</TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -420,13 +455,17 @@ export default function AdminResidentsPage() {
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => handleStatusUpdate(resident.uid, "active")}
+                          onClick={() =>
+                            handleStatusUpdate(resident.uid, "active")
+                          }
                         >
                           <UserCheck className="mr-2 h-4 w-4" />
                           Activate
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleStatusUpdate(resident.uid, "inactive")}
+                          onClick={() =>
+                            handleStatusUpdate(resident.uid, "inactive")
+                          }
                         >
                           <UserX className="mr-2 h-4 w-4" />
                           Deactivate
@@ -448,7 +487,7 @@ export default function AdminResidentsPage() {
           </TableBody>
         </Table>
       </div>
-      
+
       {/* Verification Modal */}
       <ResidentVerificationModal
         isOpen={verificationModal.isOpen}
@@ -458,13 +497,19 @@ export default function AdminResidentsPage() {
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && setDeleteDialog({ isOpen: false, resident: null })}>
+      <AlertDialog
+        open={deleteDialog.isOpen}
+        onOpenChange={(open) =>
+          !open && setDeleteDialog({ isOpen: false, resident: null })
+        }
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Resident</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteDialog.resident?.name}</strong>? 
-              This action cannot be undone and will permanently remove all resident data including:
+              Are you sure you want to delete{" "}
+              <strong>{deleteDialog.resident?.name}</strong>? This action cannot
+              be undone and will permanently remove all resident data including:
             </AlertDialogDescription>
             <div className="mt-2 text-sm text-muted-foreground">
               <ul className="list-disc list-inside space-y-1">
@@ -495,5 +540,5 @@ export default function AdminResidentsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
-} 
+  );
+}

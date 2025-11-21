@@ -12,6 +12,7 @@ export interface Announcement {
 	title: string;
 	description: string;
 	category: "Event" | "Notice" | "Important" | "Emergency";
+	image?: string;
 	status: "published" | "draft" | "expired";
 	visibility: "public" | "residents";
 	author: string;
@@ -25,6 +26,7 @@ export interface CreateAnnouncementData {
 	title: string;
 	description: string;
 	category: "Event" | "Notice" | "Important" | "Emergency";
+	image?: string;
 	visibility: "public" | "residents";
 	author: string;
 	expiresOn: string;
@@ -33,6 +35,7 @@ export interface CreateAnnouncementData {
 export interface UpdateAnnouncementData
 	extends Partial<CreateAnnouncementData> {
 	id: string;
+	image?: string;
 	status?: "published" | "draft" | "expired";
 }
 

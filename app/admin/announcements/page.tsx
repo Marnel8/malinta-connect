@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Megaphone, Clock, CheckCircle, AlertCircle, Eye, EyeOff, Plus, Edit, Trash2, FileText, MoreHorizontal } from "lucide-react";
+import Image from "next/image";
 import { useLanguage } from "@/contexts/language-context";
 import {
 	Dialog,
@@ -49,6 +50,9 @@ import {
 	type Announcement,
 	type CreateAnnouncementData,
 } from "@/app/actions/announcements";
+import { uploadAnnouncementImageAction } from "@/app/actions/uploads";
+
+const DEFAULT_ANNOUNCEMENT_IMAGE = "/placeholder.svg";
 
 export default function AdminAnnouncementsPage() {
 	const { t } = useLanguage();
@@ -68,11 +72,24 @@ export default function AdminAnnouncementsPage() {
 	const [publishingAnnouncementId, setPublishingAnnouncementId] = useState<string | null>(null);
 	const [isUnpublishing, setIsUnpublishing] = useState(false);
 	const [unpublishingAnnouncementId, setUnpublishingAnnouncementId] = useState<string | null>(null);
+	const [announcementImagePreview, setAnnouncementImagePreview] = useState<string | null>(null);
+	const [announcementImageDataUrl, setAnnouncementImageDataUrl] = useState<string | null>(null);
+	const [isUploadingImage, setIsUploadingImage] = useState(false);
 
 	// Load announcements on component mount
 	useEffect(() => {
 		loadAnnouncements();
 	}, []);
+
+useEffect(() => {
+	if (isAddAnnouncementOpen) {
+		setAnnouncementImagePreview(currentAnnouncement?.image || null);
+		setAnnouncementImageDataUrl(null);
+	} else {
+		setAnnouncementImagePreview(null);
+		setAnnouncementImageDataUrl(null);
+	}
+}, [isAddAnnouncementOpen, currentAnnouncement]);
 
 	const loadAnnouncements = async () => {
 		setIsLoading(true);
@@ -96,19 +113,73 @@ export default function AdminAnnouncementsPage() {
 		}
 	};
 
+	const handleAnnouncementImageChange = (files: FileList | null) => {
+		if (!files || files.length === 0) {
+			setAnnouncementImageDataUrl(null);
+			setAnnouncementImagePreview(currentAnnouncement?.image || null);
+			return;
+		}
+
+		const file = files[0];
+		const reader = new FileReader();
+		reader.onloadend = () => {
+			if (typeof reader.result === "string") {
+				setAnnouncementImagePreview(reader.result);
+				setAnnouncementImageDataUrl(reader.result);
+			}
+		};
+		reader.readAsDataURL(file);
+	};
+
 	const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
+		if (isSubmitting || isUploadingImage) return;
+
 		setIsSubmitting(true);
 
 		try {
 			const formData = new FormData(e.currentTarget);
+			let imageUrl = currentAnnouncement?.image || "";
+
+			if (announcementImageDataUrl) {
+				try {
+					setIsUploadingImage(true);
+					const uploadResult = await uploadAnnouncementImageAction(
+						announcementImageDataUrl
+					);
+					if (!uploadResult.success || !uploadResult.url) {
+						toastError({
+							title: "Unable to upload image",
+							description:
+								uploadResult.error ||
+								"Failed to upload announcement image. Please try again.",
+						});
+						return;
+					}
+					imageUrl = uploadResult.url;
+				} catch (error) {
+					toastError({
+						title: "Unable to upload image",
+						description: "Failed to upload announcement image. Please try again.",
+					});
+					return;
+				} finally {
+					setIsUploadingImage(false);
+				}
+			}
+
 			const announcementData: CreateAnnouncementData = {
 				title: formData.get("title") as string,
 				description: formData.get("description") as string,
-				category: formData.get("category") as "Event" | "Notice" | "Important" | "Emergency",
+				category: formData.get("category") as
+					| "Event"
+					| "Notice"
+					| "Important"
+					| "Emergency",
 				visibility: formData.get("visibility") as "public" | "residents",
 				author: formData.get("author") as string,
 				expiresOn: formData.get("expiresOn") as string,
+				image: imageUrl || undefined,
 			};
 
 			let result;
@@ -146,6 +217,7 @@ export default function AdminAnnouncementsPage() {
 			});
 		} finally {
 			setIsSubmitting(false);
+			setIsUploadingImage(false);
 		}
 	};
 
@@ -388,9 +460,22 @@ export default function AdminAnnouncementsPage() {
 						{filteredAnnouncements.map((announcement) => (
 							<TableRow key={announcement.id}>
 								<TableCell>
-									<div className="flex items-center">
-										<Megaphone className="mr-2 h-4 w-4 text-primary" />
-										<div className="font-medium">{announcement.title}</div>
+									<div className="flex items-center gap-3">
+										<div className="relative h-12 w-12 rounded-md overflow-hidden bg-muted">
+											<Image
+												src={announcement.image || DEFAULT_ANNOUNCEMENT_IMAGE}
+												alt={announcement.title}
+												fill
+												className="object-cover"
+												sizes="48px"
+											/>
+										</div>
+										<div>
+											<div className="font-medium">{announcement.title}</div>
+											<p className="text-sm text-muted-foreground truncate max-w-[220px]">
+												{announcement.description}
+											</p>
+										</div>
 									</div>
 								</TableCell>
 								<TableCell>{announcement.category}</TableCell>
@@ -506,7 +591,7 @@ export default function AdminAnnouncementsPage() {
 
 			{/* Add/Edit Announcement Dialog */}
 			<Dialog open={isAddAnnouncementOpen} onOpenChange={setIsAddAnnouncementOpen}>
-				<DialogContent className="sm:max-w-[600px]">
+				<DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>
 							{currentAnnouncement ? "Edit Announcement" : "New Announcement"}
@@ -542,6 +627,44 @@ export default function AdminAnnouncementsPage() {
 										required
 										rows={4}
 									/>
+								</div>
+								<div className="col-span-2">
+									<Label htmlFor="announcement-image" className="mb-2">
+										Cover Image (optional)
+									</Label>
+									<div className="space-y-3">
+										<div className="relative w-full h-48 rounded-md border border-dashed border-muted-foreground/40 overflow-hidden bg-muted">
+											<Image
+												src={
+													announcementImagePreview ||
+													currentAnnouncement?.image ||
+													DEFAULT_ANNOUNCEMENT_IMAGE
+												}
+												alt="Announcement preview"
+												fill
+												className="object-cover"
+											/>
+										</div>
+										<Input
+											id="announcement-image"
+											type="file"
+											accept="image/*"
+											onChange={(e) => handleAnnouncementImageChange(e.target.files)}
+										/>
+										{announcementImageDataUrl && (
+											<Button
+												type="button"
+												variant="ghost"
+												className="w-full"
+												onClick={() => {
+													setAnnouncementImageDataUrl(null);
+													setAnnouncementImagePreview(currentAnnouncement?.image || null);
+												}}
+											>
+												Clear selected image
+											</Button>
+										)}
+									</div>
 								</div>
 								<div>
 									<Label htmlFor="category" className="mb-2">
@@ -609,11 +732,20 @@ export default function AdminAnnouncementsPage() {
 								type="button"
 								variant="outline"
 								onClick={() => setIsAddAnnouncementOpen(false)}
+								disabled={isSubmitting || isUploadingImage}
 							>
 								Cancel
 							</Button>
-							<Button type="submit" disabled={isSubmitting}>
-								{isSubmitting ? (
+							<Button
+								type="submit"
+								disabled={isSubmitting || isUploadingImage}
+							>
+								{isUploadingImage ? (
+									<>
+										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+										Uploading image...
+									</>
+								) : isSubmitting ? (
 									<>
 										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
 										{currentAnnouncement ? "Updating..." : "Creating..."}
@@ -663,12 +795,22 @@ export default function AdminAnnouncementsPage() {
 
 			{/* View Announcement Dialog */}
 			<Dialog open={isViewAnnouncementOpen} onOpenChange={setIsViewAnnouncementOpen}>
-				<DialogContent className="sm:max-w-[600px]">
+				<DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>View Announcement</DialogTitle>
 					</DialogHeader>
 					{currentAnnouncement && (
 						<div className="space-y-4">
+							<div className="relative h-48 w-full rounded-md overflow-hidden">
+								<Image
+									src={
+										currentAnnouncement.image || DEFAULT_ANNOUNCEMENT_IMAGE
+									}
+									alt={currentAnnouncement.title}
+									fill
+									className="object-cover"
+								/>
+							</div>
 							<div className="flex items-center">
 								<Megaphone className="mr-2 h-5 w-5 text-primary" />
 								<h2 className="text-2xl font-bold">{currentAnnouncement.title}</h2>

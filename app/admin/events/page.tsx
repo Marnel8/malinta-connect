@@ -44,6 +44,7 @@ import {
 	type Event,
 	type CreateEventData,
 } from "@/app/actions/events";
+import { uploadEventImageAction } from "@/app/actions/uploads";
 
 // Utility function to format date as "Oct 15, 2025"
 const formatEventDate = (dateString: string): string => {
@@ -59,6 +60,9 @@ const formatEventDate = (dateString: string): string => {
 		return dateString;
 	}
 };
+
+const DEFAULT_EVENT_IMAGE =
+	"https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=1170&auto=format&fit=crop";
 
 export default function EventsManagementPage() {
 	const { t } = useLanguage();
@@ -77,6 +81,13 @@ export default function EventsManagementPage() {
 
 	const [isAddingEvent, setIsAddingEvent] = useState(false);
 	const [isFiltering, setIsFiltering] = useState(false);
+	const [eventImagePreview, setEventImagePreview] = useState<string | null>(
+		null
+	);
+	const [eventImageDataUrl, setEventImageDataUrl] = useState<string | null>(
+		null
+	);
+	const [isUploadingImage, setIsUploadingImage] = useState(false);
 
 	// Load events on component mount
 	useEffect(() => {
@@ -92,6 +103,16 @@ export default function EventsManagementPage() {
 
 		return () => clearTimeout(timer);
 	}, [searchQuery, categoryFilter, statusFilter]);
+
+	useEffect(() => {
+		if (isAddEventOpen) {
+			setEventImagePreview(currentEvent?.image || null);
+			setEventImageDataUrl(null);
+		} else {
+			setEventImagePreview(null);
+			setEventImageDataUrl(null);
+		}
+	}, [isAddEventOpen, currentEvent]);
 
 	const loadEvents = async () => {
 		setIsLoading(true);
@@ -126,6 +147,27 @@ export default function EventsManagementPage() {
 			statusFilter === "all" || event.status === statusFilter;
 		return matchesSearch && matchesCategory && matchesStatus;
 	});
+
+	const eventImageDisplay =
+		eventImagePreview || currentEvent?.image || DEFAULT_EVENT_IMAGE;
+
+	const handleEventImageChange = (files: FileList | null) => {
+		if (!files || files.length === 0) {
+			setEventImageDataUrl(null);
+			setEventImagePreview(currentEvent?.image || null);
+			return;
+		}
+
+		const file = files[0];
+		const reader = new FileReader();
+		reader.onloadend = () => {
+			if (typeof reader.result === "string") {
+				setEventImagePreview(reader.result);
+				setEventImageDataUrl(reader.result);
+			}
+		};
+		reader.readAsDataURL(file);
+	};
 
 	const handleAddEvent = async (eventData: CreateEventData) => {
 		setIsSubmitting(true);
@@ -220,7 +262,41 @@ export default function EventsManagementPage() {
 
 	const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
+		if (isSubmitting || isUploadingImage) return;
+
 		const formData = new FormData(e.currentTarget);
+		const defaultImage = DEFAULT_EVENT_IMAGE;
+		let imageUrl = currentEvent?.image || "";
+
+		if (eventImageDataUrl) {
+			try {
+				setIsUploadingImage(true);
+				const uploadResult = await uploadEventImageAction(eventImageDataUrl);
+				if (!uploadResult.success || !uploadResult.url) {
+					toastError({
+						title: t("admin.error"),
+						description:
+							uploadResult.error ||
+							"Failed to upload event image. Please try again.",
+					});
+					return;
+				}
+				imageUrl = uploadResult.url;
+			} catch (error) {
+				toastError({
+					title: t("admin.error"),
+					description: "Failed to upload event image. Please try again.",
+				});
+				return;
+			} finally {
+				setIsUploadingImage(false);
+			}
+		}
+
+		if (!imageUrl) {
+			imageUrl = defaultImage;
+		}
+
 		const eventData: CreateEventData = {
 			name: formData.get("name") as string,
 			date: formData.get("date") as string,
@@ -236,9 +312,7 @@ export default function EventsManagementPage() {
 				| "government",
 			organizer: formData.get("organizer") as string,
 			contact: formData.get("contact") as string,
-			image:
-				currentEvent?.image ||
-				"https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=1170&auto=format&fit=crop",
+			image: imageUrl,
 			featured: formData.get("featured") === "on",
 		};
 
@@ -499,7 +573,7 @@ export default function EventsManagementPage() {
 
 			{/* Add/Edit Event Dialog */}
 			<Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
-				<DialogContent className="sm:max-w-[600px]">
+				<DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>
 							{currentEvent ? t("admin.events.edit") : t("admin.events.add")}
@@ -557,6 +631,40 @@ export default function EventsManagementPage() {
 										defaultValue={currentEvent?.location || ""}
 										required
 									/>
+								</div>
+								<div className="col-span-2">
+									<Label htmlFor="event-image" className="mb-2">
+										Event Image (optional)
+									</Label>
+									<div className="space-y-3">
+										<div className="relative w-full h-48 rounded-md border border-dashed border-muted-foreground/40 flex items-center justify-center overflow-hidden bg-muted">
+											<Image
+												src={eventImageDisplay}
+												alt="Event preview"
+												fill
+												className="object-cover"
+											/>
+										</div>
+										<Input
+											id="event-image"
+											type="file"
+											accept="image/*"
+											onChange={(e) => handleEventImageChange(e.target.files)}
+										/>
+										{eventImageDataUrl && (
+											<Button
+												type="button"
+												variant="ghost"
+												className="w-full"
+												onClick={() => {
+													setEventImageDataUrl(null);
+													setEventImagePreview(currentEvent?.image || null);
+												}}
+											>
+												Clear selected image
+											</Button>
+										)}
+									</div>
 								</div>
 								<div>
 									<Label htmlFor="category" className="mb-2">
@@ -663,12 +771,20 @@ export default function EventsManagementPage() {
 								type="button"
 								variant="outline"
 								onClick={() => setIsAddEventOpen(false)}
-								disabled={isSubmitting}
+								disabled={isSubmitting || isUploadingImage}
 							>
 								{t("admin.cancel")}
 							</Button>
-							<Button type="submit" disabled={isSubmitting}>
-								{isSubmitting ? (
+							<Button
+								type="submit"
+								disabled={isSubmitting || isUploadingImage}
+							>
+								{isUploadingImage ? (
+									<>
+										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+										Uploading image...
+									</>
+								) : isSubmitting ? (
 									<>
 										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
 										{currentEvent ? "Updating..." : "Adding..."}
@@ -721,7 +837,7 @@ export default function EventsManagementPage() {
 
 			{/* View Event Dialog */}
 			<Dialog open={isViewEventOpen} onOpenChange={setIsViewEventOpen}>
-				<DialogContent className="sm:max-w-[600px]">
+				<DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>{t("admin.events.view")}</DialogTitle>
 					</DialogHeader>

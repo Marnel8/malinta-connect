@@ -488,6 +488,14 @@ export default function EventsPage() {
                 key={announcement.id}
                 className="hover:shadow-md transition-all"
               >
+                <div className="relative h-48 w-full">
+                  <Image
+                    src={announcement.image || "/placeholder.svg"}
+                    alt={announcement.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
                 <CardHeader className="px-4 sm:px-6 py-4">
                   <div className="flex justify-between items-start">
                     <div>
@@ -535,6 +543,14 @@ export default function EventsPage() {
         <DialogContent className="max-w-lg">
           {selectedAnnouncement && (
             <>
+              <div className="relative h-48 w-full rounded-md overflow-hidden">
+                <Image
+                  src={selectedAnnouncement.image || "/placeholder.svg"}
+                  alt={selectedAnnouncement.title}
+                  fill
+                  className="object-cover"
+                />
+              </div>
               <DialogHeader>
                 <DialogTitle>{selectedAnnouncement.title}</DialogTitle>
                 <DialogDescription className="space-y-2 text-muted-foreground">

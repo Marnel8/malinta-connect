@@ -354,3 +354,120 @@ export async function uploadBlotterProofImageAction(
 		return { success: false, error: "Failed to upload proof image" };
 	}
 }
+
+async function validateImageDataUrl(
+	dataUrl: string
+): Promise<{ success: true } | { success: false; error: string }> {
+	if (!dataUrl || typeof dataUrl !== "string") {
+		return { success: false, error: "Invalid image data" };
+	}
+
+	if (!dataUrl.startsWith("data:image/")) {
+		return {
+			success: false,
+			error: "Invalid image format. Image must be a data URL.",
+		};
+	}
+
+	return { success: true };
+}
+
+async function validateBasicDimensions(
+	dataUrl: string,
+	minSize: number = 400
+): Promise<{ success: true } | { success: false; error: string }> {
+	const dimensions = await getImageDimensions(dataUrl);
+	if (!dimensions) {
+		// If we can't determine dimensions, allow upload but warn in logs
+		console.warn(
+			"Could not read image dimensions for validation, proceeding with upload"
+		);
+		return { success: true };
+	}
+
+	const { width, height } = dimensions;
+	if (width < minSize || height < minSize) {
+		return {
+			success: false,
+			error: `Image must be at least ${minSize}px on the shortest side. Received ${width}x${height}.`,
+		};
+	}
+
+	return { success: true };
+}
+
+export async function uploadEventImageAction(
+	dataUrl: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+	try {
+		const validation = await validateImageDataUrl(dataUrl);
+		if (!validation.success) {
+			return validation;
+		}
+
+		const dimensionCheck = await validateBasicDimensions(dataUrl, 400);
+		if (!dimensionCheck.success) {
+			return dimensionCheck;
+		}
+
+		const result = await uploadToCloudinary(dataUrl, {
+			folder: "malinta-connect/events/covers",
+			resource_type: "image",
+			allowed_formats: ["jpg", "jpeg", "png", "webp"],
+			tags: ["events", "cover"],
+			transformation: [
+				{
+					width: 1600,
+					height: 900,
+					crop: "fill",
+					gravity: "auto",
+					quality: "auto",
+					format: "auto",
+				},
+			],
+		});
+
+		return { success: true, url: result.secure_url };
+	} catch (error) {
+		console.error("Event image upload failed:", error);
+		return { success: false, error: "Failed to upload event image" };
+	}
+}
+
+export async function uploadAnnouncementImageAction(
+	dataUrl: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+	try {
+		const validation = await validateImageDataUrl(dataUrl);
+		if (!validation.success) {
+			return validation;
+		}
+
+		const dimensionCheck = await validateBasicDimensions(dataUrl, 400);
+		if (!dimensionCheck.success) {
+			return dimensionCheck;
+		}
+
+		const result = await uploadToCloudinary(dataUrl, {
+			folder: "malinta-connect/announcements/covers",
+			resource_type: "image",
+			allowed_formats: ["jpg", "jpeg", "png", "webp"],
+			tags: ["announcements", "cover"],
+			transformation: [
+				{
+					width: 1400,
+					height: 900,
+					crop: "fill",
+					gravity: "auto",
+					quality: "auto",
+					format: "auto",
+				},
+			],
+		});
+
+		return { success: true, url: result.secure_url };
+	} catch (error) {
+		console.error("Announcement image upload failed:", error);
+		return { success: false, error: "Failed to upload announcement image" };
+	}
+}
