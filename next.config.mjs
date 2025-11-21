@@ -14,6 +14,12 @@ const nextConfig = {
       bodySizeLimit: '10mb', // Increased from default 1mb to handle larger image uploads
     },
   },
+  // Ensure email templates are included in production build
+  outputFileTracingIncludes: {
+    '/**': [
+      'mails/templates/**/*.ejs',
+    ],
+  },
 }
 
 export default nextConfig
