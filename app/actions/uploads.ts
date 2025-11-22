@@ -405,10 +405,8 @@ export async function uploadEventImageAction(
 			return validation;
 		}
 
-		const dimensionCheck = await validateBasicDimensions(dataUrl, 400);
-		if (!dimensionCheck.success) {
-			return dimensionCheck;
-		}
+		// No dimension restrictions - allow all image dimensions
+		// Cloudinary will handle resizing appropriately
 
 		const result = await uploadToCloudinary(dataUrl, {
 			folder: "malinta-connect/events/covers",
@@ -441,11 +439,6 @@ export async function uploadAnnouncementImageAction(
 		const validation = await validateImageDataUrl(dataUrl);
 		if (!validation.success) {
 			return validation;
-		}
-
-		const dimensionCheck = await validateBasicDimensions(dataUrl, 400);
-		if (!dimensionCheck.success) {
-			return dimensionCheck;
 		}
 
 		const result = await uploadToCloudinary(dataUrl, {
